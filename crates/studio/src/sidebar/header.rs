@@ -2,8 +2,8 @@
 //! project or one list), filter and sort, add project, new session.
 
 use gpui::{
-    ClickEvent, Context, Div, Focusable, IntoElement, ParentElement, SharedString, Stateful,
-    Styled, Window, div, prelude::*, svg,
+    ClickEvent, Context, Div, Focusable, FontWeight, IntoElement, ParentElement, SharedString,
+    Stateful, Styled, Window, div, prelude::*, svg,
 };
 use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, ICON_SIZE, ICON_SIZE_SMALL, SPACE_1,
@@ -99,30 +99,48 @@ impl Sidebar {
             )
     }
 
-    /// Switches the list between grouped by project and one list; the icon is
-    /// filled while grouped.
+    /// Switches the list between grouped by project and one list. The label names
+    /// the view shown, so the button needs no tooltip; the icon is filled while
+    /// grouped.
     fn render_view_toggle(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
         let grouped = self.store.read(cx).workspace().view() == SessionView::Projects;
-        let (icon, next) = if grouped {
-            (Icon::GroupByProjectOn, SessionView::Sessions)
+        let (icon, label, next) = if grouped {
+            (Icon::GroupByProjectOn, "Projects", SessionView::Sessions)
         } else {
-            (Icon::GroupByProject, SessionView::Projects)
+            (Icon::GroupByProject, "Sessions", SessionView::Projects)
         };
-        icon_button(
-            "group-by-project",
-            icon,
-            "Group by project",
-            true,
-            colors,
-            |button| {
-                button.on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
-                    sidebar.store.update(cx, |store, cx| {
-                        store.update(cx, |workspace| workspace.set_view(next))
-                    });
-                }))
-            },
-        )
+        div()
+            .id("group-by-project")
+            .group("group-by-project")
+            .flex_none()
+            .h(CONTROL_SIZE)
+            // The icon sits where an icon button's would; the label keeps a row's inset.
+            .pl((CONTROL_SIZE - ICON_SIZE) / 2.)
+            .pr(SPACE_2)
+            .flex()
+            .items_center()
+            .gap(SPACE_2)
+            .rounded(CONTROL_RADIUS)
+            .font_weight(FontWeight::MEDIUM)
+            .text_color(colors.text_primary)
+            .hover(|button| button.bg(colors.hover))
+            .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
+                sidebar.store.update(cx, |store, cx| {
+                    store.update(cx, |workspace| workspace.set_view(next))
+                });
+            }))
+            .child(
+                svg()
+                    .path(icon.path())
+                    .size(ICON_SIZE)
+                    .flex_none()
+                    .text_color(colors.text_secondary)
+                    .group_hover("group-by-project", |icon| {
+                        icon.text_color(colors.text_primary)
+                    }),
+            )
+            .child(label)
     }
 
     fn render_action_buttons(
