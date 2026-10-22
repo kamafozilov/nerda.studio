@@ -1,6 +1,7 @@
 //! Projects (folders on disk) and the agent sessions inside them, with persistence.
 
 mod age;
+pub mod browse;
 mod error;
 mod model;
 mod paths;
