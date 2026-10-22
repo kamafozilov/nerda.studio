@@ -86,10 +86,12 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`:
 - **The sidebar toggle** draws its glyph (`crates/studio/src/sidebar_glyph.rs`) from
   quads, so its inner panel narrows with the sidebar on the sidebar's own spring. GPUI's
   SVGs are static and could not do that.
-  outline style), copied into `crates/studio/assets/icons/` and embedded by
-  Add one only when
-  a screen needs it, as an `Icon` variant.
-  icons, so pull requests and the Return key cap use
+- **Every other icon** is an outline SVG on a 24 grid at a 1.5 stroke, copied into
+  `crates/studio/assets/icons/` and embedded by `crates/studio/src/assets.rs`; licenses
+  Add one only when a screen needs it, as an `Icon` variant, from the
+  same set; take one from elsewhere only when the set has nothing close, at the same
+  stroke. The search field's magnifier keeps its ring to 15 of the 24 units: one that
+  fills the box looks oversized beside 13 pt text.
   GPUI paints an SVG in its own `text_color` only, never its parent's.
 
 ## Controls and lists
