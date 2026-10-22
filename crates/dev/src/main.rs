@@ -1,12 +1,16 @@
 //! Live reload for the app: `cargo run -p dev`.
 //!
 //! Builds and starts the app, then watches the sources. After a change settles
-//! it builds again; only a build that succeeds replaces the running app, so a
-//! mistake mid-edit leaves the last good one on screen. The new build opens
-//! where the old window is and the old one quits only once the new one has
-//! drawn, so the window never goes away; saves made in the old one reach the
-//! disk before the new one reads it. If the app quits on its own, the next
-//! change brings it back.
+//! it builds again; only a build that succeeds is started, so a mistake mid-edit
+//! leaves the last good one on screen. Each new build takes the window over from
+//! the one running (the app's `instance` module): it opens where the old window
+//! is, and the old one quits only once the new one has drawn, so the window
+//! never goes away and saves made in the old one reach the disk before the new
+//! one reads it. A build that never draws leaves the old one running.
+//!
+//! Another launch, such as an agent's build, takes the window over too; once it
+//! quits, the runner opens its own build again. If the app quits on its own, the
+//! next change brings it back.
 
 mod app;
 
@@ -27,10 +31,6 @@ const POLL: Duration = Duration::from_millis(250);
 /// A change counts once the sources hold still this long: an editor saving many
 /// files, or a formatter after it, gives one build.
 const SETTLE: Duration = Duration::from_millis(300);
-/// How long the running app gets to write its pending save.
-const HANDOFF_WAIT: Duration = Duration::from_secs(2);
-/// How long a new build gets to draw its first frame.
-const READY_WAIT: Duration = Duration::from_secs(20);
 
 fn main() -> ExitCode {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
@@ -38,60 +38,83 @@ fn main() -> ExitCode {
         eprintln!("dev: can't find the workspace at {}", root.display());
         return ExitCode::FAILURE;
     };
-    let state = root.join("target/dev/screen.txt");
-    if let Some(folder) = state.parent()
-        && let Err(error) = fs::create_dir_all(folder)
-    {
-        eprintln!("dev: can't create {}: {error}", folder.display());
-        return ExitCode::FAILURE;
+    live_reload(&root)
+}
+
+fn live_reload(root: &Path) -> ExitCode {
+    let mut running = Running::default();
+    if build(root) {
+        running.launch(root);
     }
-    let mut app = build(&root).then(|| App::launch(&root, &state)).flatten();
-    let mut seen = sources(&root);
+    let mut seen = sources(root);
     loop {
         sleep(POLL);
-        if let Some(status) = app.as_mut().and_then(App::exited) {
-            println!("dev: the app quit ({status}); the next change opens it again");
-            app = None;
-        }
-        let now = sources(&root);
+        running.follow(root);
+        let now = sources(root);
         if now == seen {
             continue;
         }
-        seen = settled(&root, now);
+        seen = settled(root, now);
         println!("dev: sources changed, building");
-        if !build(&root) {
+        if !build(root) {
             println!("dev: the build failed; the running app stays");
             continue;
         }
-        app = replace(app, &root, &state);
+        running.launch(root);
     }
 }
 
-/// Puts the new build on screen in place of `old`, which keeps running if the
-/// new one never draws.
-fn replace(old: Option<App>, root: &Path, state: &Path) -> Option<App> {
-    let Some(mut old) = old else {
-        return App::launch(root, state);
-    };
-    // An app that can't hand off its file quits first, so two never save at once.
-    if !(old.ask("handoff") && old.wait_for("handed-off", HANDOFF_WAIT)) {
-        old.quit();
-        return App::launch(root, state);
+/// The builds the runner started that still run.
+#[derive(Default)]
+struct Running {
+    /// The newest.
+    current: Option<App>,
+    /// Older ones handing the window over, or back if the new one fails.
+    older: Vec<App>,
+    /// Another launch has the window; the runner's build comes back once it quits.
+    taken_over: bool,
+}
+
+impl Running {
+    fn launch(&mut self, root: &Path) {
+        self.older.extend(self.current.take());
+        self.taken_over = false;
+        self.current = App::launch(root).or_else(|| self.older.pop());
     }
-    match App::launch(root, state) {
-        Some(new) if new.wait_for("ready", READY_WAIT) => {
-            old.quit();
-            Some(new)
-        }
-        new => {
-            println!("dev: the new build didn't open; the running app stays");
-            if let Some(new) = new {
-                new.kill();
+
+    /// Notices the builds that quit, and what that leaves running.
+    fn follow(&mut self, root: &Path) {
+        self.older.retain_mut(|app| app.exited().is_none());
+        if let Some(status) = self.current.as_mut().and_then(App::exited) {
+            self.current = self.older.pop();
+            if self.current.is_some() {
+                println!(
+                    "dev: the new build quit ({status}) before it took over; the last one stays"
+                );
+            } else if instance_held() {
+                println!(
+                    "dev: another launch took over the window; the app comes back when it quits"
+                );
+                self.taken_over = true;
+            } else {
+                println!("dev: the app quit ({status}); the next change opens it again");
             }
-            old.ask("resume");
-            Some(old)
+        }
+        if self.taken_over && self.current.is_none() && !instance_held() {
+            println!("dev: the launch that took over quit; opening the app again");
+            self.launch(root);
         }
     }
+}
+
+/// Whether some instance of the app holds the lock only a running one holds.
+fn instance_held() -> bool {
+    let Some(path) = workspace::default_instance_lock_path() else {
+        return false;
+    };
+    // Held for a moment only: a launch that finds it taken tries again.
+    fs::File::open(&path)
+        .is_ok_and(|file| matches!(file.try_lock(), Err(fs::TryLockError::WouldBlock)))
 }
 
 /// Waits until the sources stop changing and returns how they settled.

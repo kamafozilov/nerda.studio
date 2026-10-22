@@ -33,6 +33,10 @@ On macOS every build run from the source tree runs as **Nerda Studio Dev**
 (`studio.nerda.dev`): it puts itself in `target/<profile>/Nerda Studio Dev.app` and runs
 from there, so it has its own name in the menu bar, Dock icon and ⌘Tab entry.
 
+Only one instance runs at a time, the newest: launching the app while it runs (another
+build, an agent's build) takes the window over in place, and the old instance saves and
+quits.
+
 ## Layout
 
 - `crates/studio`: the app binary: the main window, its shell (the top row with its tabs,
@@ -42,8 +46,10 @@ from there, so it has its own name in the menu bar, Dock icon and ⌘Tab entry.
 - `crates/workspace`: projects, sessions and the tabs open on them, with no UI: adding
   folders, browsing them by a typed path, search, sort and filter, opening and closing
   tabs, and Back and Forward. All but Back and Forward is saved as JSON in the platform's
-  data folder (`Nerda Studio/workspace.json`).
-- `crates/dev`: the live-reload runner; the app's side is `crates/studio/src/dev_reload`.
+  data folder (`Nerda Studio/workspace.json`), beside `instance.lock`, held by the
+  instance that saves.
+- `crates/dev`: the live-reload runner; one instance taking over from another is
+  `crates/studio/src/instance`.
 - `crates/app_bundle`: the macOS app bundle, its `Info.plist` and its icon, made from
   `assets/AppIcon.svg`.
 

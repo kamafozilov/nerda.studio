@@ -16,7 +16,7 @@ use theme::{MAIN_INSET, MAIN_RADIUS, SIDEBAR_WIDTH, TEXT_BODY, Theme, motion};
 use workspace::{Timestamp, Visits};
 
 use crate::{
-    accessibility, add_project::AddProjectPalette, app_menu, dev_reload, sidebar::Sidebar,
+    accessibility, add_project::AddProjectPalette, app_menu, instance::Screen, sidebar::Sidebar,
     store::Store, system_theme, tabs::TabStrip, welcome,
 };
 
@@ -65,8 +65,6 @@ pub struct Shell {
     add_project: Option<OpenPalette>,
     /// The timer of the hint Cmd-Q put up, while it is up; see `quit`.
     quit_hint: Option<Task<()>>,
-    /// Live reload's record of the screen, while the app runs under it.
-    dev: Option<dev_reload::Link>,
 }
 
 /// The add-project palette while it is open.
@@ -80,7 +78,7 @@ struct OpenPalette {
 impl Shell {
     pub fn new(
         store: Entity<Store>,
-        mut dev: Option<dev_reload::Link>,
+        sidebar_open: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -95,29 +93,10 @@ impl Shell {
         };
         cx.observe_window_appearance(window, refresh).detach();
         cx.observe_window_activation(window, refresh).detach();
-        if let Some(link) = &mut dev {
-            link.set_bounds(window.window_bounds());
-            cx.observe_window_bounds(window, |shell: &mut Self, window, _| {
-                if let Some(link) = &mut shell.dev {
-                    link.set_bounds(window.window_bounds());
-                }
-            })
-            .detach();
-            cx.observe_window_activation(window, |shell: &mut Self, window, _| {
-                if let Some(link) = &mut shell.dev {
-                    link.set_active(window.is_window_active());
-                }
-            })
-            .detach();
-        }
         // Key bindings dispatch from the focused element, so the shell holds focus
         // until something inside it takes it.
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
-        if let Some(link) = &dev {
-            link.listen(store.clone(), cx);
-            dev_reload::Link::announce_ready(window);
-        }
         // A project on screen always shows a session.
         let nothing_open = {
             let workspace = store.read(cx).workspace();
@@ -154,11 +133,10 @@ impl Shell {
             sidebar,
             tabs,
             visits,
-            sidebar_open: dev.as_ref().is_none_or(dev_reload::Link::sidebar_open),
+            sidebar_open,
             titlebar_pressed: false,
             add_project: None,
             quit_hint: None,
-            dev,
         }
     }
 
@@ -200,14 +178,20 @@ impl Shell {
         cx.notify();
     }
 
+    /// What a newer instance taking over needs to open where this one is.
+    pub fn screen(&self, window: &Window) -> Screen {
+        Screen {
+            bounds: window.window_bounds(),
+            sidebar_open: self.sidebar_open,
+            active: window.is_window_active(),
+        }
+    }
+
     /// Every way in slides the sidebar, the click and `Cmd-B` alike, so the
     /// same action always looks the same.
     fn toggle_sidebar(&mut self, cx: &mut Context<Self>) {
         cx.set_reduce_motion(accessibility::reduce_motion());
         self.sidebar_open = !self.sidebar_open;
-        if let Some(link) = &mut self.dev {
-            link.set_sidebar_open(self.sidebar_open);
-        }
         cx.notify();
     }
 

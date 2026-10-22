@@ -20,9 +20,19 @@ static SAVE_COUNTER: AtomicU64 = AtomicU64::new(0);
 /// Largest id a file may hold: integers stay exact in every JSON reader, and the counter cannot overflow.
 const MAX_ID: u64 = 1 << 53;
 
+/// The folder the app keeps its data in, or `None` if the platform has none.
+pub fn default_data_dir() -> Option<PathBuf> {
+    dirs::data_dir().map(|dir| dir.join("Nerda Studio"))
+}
+
 /// Where the app keeps its workspace, or `None` if the platform has no data folder.
 pub fn default_state_path() -> Option<PathBuf> {
-    dirs::data_dir().map(|dir| dir.join("Nerda Studio").join("workspace.json"))
+    default_data_dir().map(|dir| dir.join("workspace.json"))
+}
+
+/// Locked by the one running instance of the app, the only one that saves.
+pub fn default_instance_lock_path() -> Option<PathBuf> {
+    default_data_dir().map(|dir| dir.join("instance.lock"))
 }
 
 /// Read first so a newer format is reported as such instead of as corruption.

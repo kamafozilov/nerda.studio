@@ -984,6 +984,9 @@ dependencies = [
 [[package]]
 name = "dev"
 version = "0.1.0"
+dependencies = [
+ "workspace",
+]
 
 [[package]]
 name = "digest"

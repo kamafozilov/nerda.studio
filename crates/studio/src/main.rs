@@ -4,7 +4,7 @@ mod app_menu;
 mod assets;
 #[cfg(target_os = "macos")]
 mod bundle;
-mod dev_reload;
+mod instance;
 mod key_cap;
 mod shell;
 mod sidebar;
@@ -20,7 +20,7 @@ mod welcome;
 use assets::Assets;
 use gpui::{
     App, AppContext, Bounds, Entity, Global, KeyBinding, TitlebarOptions, WindowBounds,
-    WindowOptions, px, size,
+    WindowHandle, WindowOptions, px, size,
 };
 use gpui_platform::application;
 use shell::{
@@ -33,9 +33,17 @@ use theme::Theme;
 fn main() {
     #[cfg(target_os = "macos")]
     bundle::run_from_bundle();
+    // Before anything reads the workspace: only one instance saves it.
+    let claim = match instance::claim() {
+        Ok(claim) => claim,
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+    };
     let app = application().with_assets(Assets);
     app.on_reopen(reopen);
-    app.run(|cx: &mut App| {
+    app.run(move |cx: &mut App| {
         bind_keys(cx);
         text_input::bind_keys(cx);
         sidebar::bind_keys(cx);
@@ -48,11 +56,18 @@ fn main() {
         // click on the Dock icon brings back shows them as they were.
         let store = cx.new(Store::load);
         cx.set_global(Projects(store.clone()));
-        // Under live reload, a new build opens where the last one was.
-        let dev = dev_reload::Link::join();
-        let left = dev.as_ref().and_then(|(_, left)| *left);
+        // Taking over from a running instance, the window opens where its was.
+        let left = claim.screen();
+        let previous = claim.serve(store.clone(), cx);
+        instance::follow_runner(cx);
         let bounds = left.map_or_else(|| centered(cx), |left| left.bounds);
-        open_window(bounds, store, dev.map(|(link, _)| link), cx);
+        let sidebar_open = left.is_none_or(|left| left.sidebar_open);
+        let window = open_window(bounds, store, sidebar_open, cx);
+        if let Some(previous) = previous {
+            window
+                .update(cx, |_, window, _| previous.ready_after_first_frame(window))
+                .ok();
+        }
         // Elsewhere nothing brings a closed window back, so the app goes with it.
         if !cfg!(target_os = "macos") {
             cx.on_window_closed(|cx, _| {
@@ -62,7 +77,7 @@ fn main() {
             })
             .detach();
         }
-        // A reload while the editor is in front leaves it there.
+        // A takeover while the editor is in front leaves it there.
         if left.is_none_or(|left| left.active) {
             cx.activate(true);
         }
@@ -82,7 +97,7 @@ fn reopen(cx: &mut App) {
     let Some(Projects(store)) = cx.try_global::<Projects>() else {
         return;
     };
-    open_window(centered(cx), store.clone(), None, cx);
+    open_window(centered(cx), store.clone(), true, cx);
     cx.activate(true);
 }
 
@@ -95,9 +110,9 @@ fn centered(cx: &App) -> WindowBounds {
 fn open_window(
     bounds: WindowBounds,
     store: Entity<Store>,
-    dev: Option<dev_reload::Link>,
+    sidebar_open: bool,
     cx: &mut App,
-) {
+) -> WindowHandle<Shell> {
     let theme = *Theme::of(cx);
     cx.open_window(
         WindowOptions {
@@ -118,9 +133,9 @@ fn open_window(
             app_id: Some("studio.nerda".into()),
             ..Default::default()
         },
-        |window, cx| cx.new(|cx| Shell::new(store, dev, window, cx)),
+        |window, cx| cx.new(|cx| Shell::new(store, sidebar_open, window, cx)),
     )
-    .expect("the main window opens");
+    .expect("the main window opens")
 }
 
 /// The window's shortcuts: Cmd on macOS, Ctrl elsewhere.

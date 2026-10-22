@@ -23,8 +23,8 @@ pub struct Store {
     notice: Option<SharedString>,
     /// The file's contents as last handed to the writer.
     saved: Option<Arc<[u8]>>,
-    /// Where saves go once live reload's next build has taken the file over;
-    /// see [`Store::hand_off`].
+    /// Where saves go once a newer instance has taken the file over; see
+    /// [`Store::hand_off`].
     handed_off: Option<PathBuf>,
     /// Numbers the saves, newest highest.
     serial: u64,
@@ -157,8 +157,8 @@ impl Store {
         result
     }
 
-    /// Live reload: writes the pending save now and stops saving, so the next
-    /// build loads every change and owns the file from then on.
+    /// A newer instance takes over: writes the pending save now and stops
+    /// saving, so the new one loads every change and owns the file from then on.
     pub fn hand_off(&mut self) {
         let Some(path) = self.path.take() else {
             return;
@@ -169,8 +169,8 @@ impl Store {
         self.handed_off = Some(path);
     }
 
-    /// Live reload: the next build never took over, so this one saves again,
-    /// starting with what changed meanwhile.
+    /// The newer instance never took over, so this one saves again, starting
+    /// with what changed meanwhile.
     pub fn resume(&mut self, cx: &mut Context<Self>) {
         if let Some(path) = self.handed_off.take() {
             self.path = Some(path);

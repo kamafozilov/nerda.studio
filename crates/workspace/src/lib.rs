@@ -20,7 +20,7 @@ pub use model::{
     Timestamp,
 };
 pub use query::SessionGroup;
-pub use store::{default_state_path, write_state};
+pub use store::{default_data_dir, default_instance_lock_path, default_state_path, write_state};
 
 /// Title given to every freshly created session.
 const NEW_SESSION_TITLE: &str = "New session";

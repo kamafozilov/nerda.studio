@@ -38,7 +38,15 @@ named reason it could not be run.
 | Lists | Empty, one, many enough to scroll; filtered to nothing |
 | Saved data | Missing, corrupt (set aside, never overwritten), from a newer version (left untouched), unwritable |
 
-### Proving without a real click
+### Launching the app
+
+One instance runs at a time: a build you launch takes the owner's window over in place
+(the owner's live-reload runner, or the installed app), with its data. When you are done,
+quit what you launched (`kill` its pid); the runner then opens its own build again. To
+keep the owner's data out of a test, launch with `HOME` set to a scratch folder: the
+instance there is separate, with its own data, lock and window.
+
+## Proving without a real click
 
 The agent's terminal has no Accessibility permission, so macOS drops synthetic OS events.
 

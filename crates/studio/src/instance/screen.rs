@@ -1,4 +1,4 @@
-//! What one build leaves on screen for the next: the window's place, the
+//! What an instance hands the one taking over from it: the window's place, the
 //! sidebar's state and whether the window was in front, as one line of text.
 
 use gpui::{Bounds, WindowBounds, point, px, size};
@@ -8,11 +8,12 @@ pub struct Screen {
     pub bounds: WindowBounds,
     pub sidebar_open: bool,
     /// The window was in front, so the next one takes the front too; otherwise
-    /// a reload must not pull focus from the editor.
+    /// a takeover must not pull focus from the editor.
     pub active: bool,
 }
 
 /// `windowed x y width height sidebar active`, with the last two `1` or `0`.
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(super) fn format(screen: &Screen) -> String {
     let (kind, bounds) = match screen.bounds {
         WindowBounds::Windowed(bounds) => ("windowed", bounds),
@@ -30,6 +31,7 @@ pub(super) fn format(screen: &Screen) -> String {
     )
 }
 
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(super) fn parse(text: &str) -> Option<Screen> {
     let mut parts = text.split_whitespace();
     let kind = parts.next()?;
@@ -58,7 +60,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_screen_survives_the_file_and_damage_reads_as_nothing() {
+    fn the_screen_survives_the_line_and_damage_reads_as_nothing() {
         let screen = Screen {
             bounds: WindowBounds::Maximized(Bounds {
                 origin: point(px(-40.5), px(25.)),
