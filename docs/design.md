@@ -133,6 +133,18 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   `Cmd-1` to `Cmd-8` by place and `Cmd-9` the last.
 - **Back and Forward** (`Cmd-[`, `Cmd-]`) retrace the sessions shown, as a browser's
   history does; a closed tab drops out of them, and a new visit clears Forward.
+- **The menu bar** (macOS, `crates/studio/src/app_menu.rs`) lists every command beside
+  its shortcut: Nerda Studio (Services, Hide `Cmd-H`, Hide Others `Cmd-Alt-H`, Show All,
+  Quit), File (New Session, Add Project…, the Close Tab commands), Edit (Cut, Copy, Paste,
+  Select All, enabled in a text field), View (Toggle Sidebar, Back, Forward, Toggle Full
+  Screen `Ctrl-Cmd-F`) and Window (Minimize `Cmd-M`, Zoom, the next and previous tab). A
+  new command goes into its menu as it gets a shortcut.
+- **Quit.** `Cmd-Q` (`Ctrl-Q` elsewhere) in the window quits on a second press within 2 s:
+  the first shows "Press ⌘ Q again to quit", centered, in `popover_background` with key
+  caps, taking no clicks. Held down, the key's repeat is the second press. The menu's
+  Quit, and `Cmd-Q` with no window open, quit at once.
+- **Closing the window** leaves the app running, as Mac apps do; a click on its Dock icon
+  opens the window again on the same projects. Elsewhere closing it quits.
 - **Menus** are `popover_background` (opaque) with a hairline, a large shadow and
   `MENU_WIDTH` (220), growing to 360 before they scroll. A window-wide backdrop under the
   menu takes the click that closes it, so that click presses nothing else; Escape closes

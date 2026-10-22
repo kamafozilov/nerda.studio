@@ -4,7 +4,7 @@
 mod editing;
 mod element;
 mod ime;
-mod keys;
+pub mod keys;
 
 use std::borrow::Cow;
 use std::ops::Range;

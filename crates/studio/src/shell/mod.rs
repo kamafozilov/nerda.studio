@@ -4,22 +4,26 @@
 //! from the window's edges.
 
 mod commands;
+mod quit;
 mod top_row;
 
 use gpui::{
     AnimationExt, ClickEvent, Context, DismissEvent, Entity, FocusHandle, IntoElement,
-    ParentElement, Render, SpringAnimation, StyleRefinement, Styled, Subscription, Window, actions,
-    div, prelude::*,
+    ParentElement, Render, SpringAnimation, StyleRefinement, Styled, Subscription, Task, Window,
+    actions, div, prelude::*,
 };
 use theme::{MAIN_INSET, MAIN_RADIUS, SIDEBAR_WIDTH, TEXT_BODY, Theme, motion};
 use workspace::{Timestamp, Visits};
 
 use crate::{
-    accessibility, add_project::AddProjectPalette, dev_reload, sidebar::Sidebar, store::Store,
-    system_theme, tabs::TabStrip, welcome,
+    accessibility, add_project::AddProjectPalette, app_menu, dev_reload, sidebar::Sidebar,
+    store::Store, system_theme, tabs::TabStrip, welcome,
 };
 
 pub use commands::ActivateTab;
+
+/// The key context of the main window's root.
+pub const CONTEXT: &str = "Shell";
 
 actions!(
     studio,
@@ -43,6 +47,8 @@ actions!(
         GoBack,
         /// Shows the session Back left.
         GoForward,
+        /// Cmd-Q in the window: the first press asks for a second, which quits.
+        RequestQuit,
     ]
 );
 
@@ -57,6 +63,8 @@ pub struct Shell {
     /// The left button went down on the titlebar; the next move drags the window.
     titlebar_pressed: bool,
     add_project: Option<OpenPalette>,
+    /// The timer of the hint Cmd-Q put up, while it is up; see `quit`.
+    quit_hint: Option<Task<()>>,
     /// Live reload's record of the screen, while the app runs under it.
     dev: Option<dev_reload::Link>,
 }
@@ -71,6 +79,7 @@ struct OpenPalette {
 
 impl Shell {
     pub fn new(
+        store: Entity<Store>,
         mut dev: Option<dev_reload::Link>,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -105,7 +114,6 @@ impl Shell {
         // until something inside it takes it.
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
-        let store = cx.new(Store::load);
         if let Some(link) = &dev {
             link.listen(store.clone(), cx);
             dev_reload::Link::announce_ready(window);
@@ -149,6 +157,7 @@ impl Shell {
             sidebar_open: dev.as_ref().is_none_or(dev_reload::Link::sidebar_open),
             titlebar_pressed: false,
             add_project: None,
+            quit_hint: None,
             dev,
         }
     }
@@ -293,6 +302,7 @@ impl Render for Shell {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
         let root = div()
+            .key_context(CONTEXT)
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(|shell, _: &ToggleSidebar, _, cx| shell.toggle_sidebar(cx)))
             .on_action(cx.listener(|shell, _: &NewSession, _, cx| {
@@ -302,7 +312,9 @@ impl Render for Shell {
             }))
             .on_action(
                 cx.listener(|shell, _: &AddProject, window, cx| shell.open_add_project(window, cx)),
-            );
+            )
+            .on_action(cx.listener(|shell, _: &RequestQuit, _, cx| shell.request_quit(cx)));
+        let root = app_menu::on_window_actions(root);
         self.on_tab_actions(root, cx)
             .relative()
             .size_full()
@@ -322,5 +334,6 @@ impl Render for Shell {
             )
             // Over everything, the top row included, while it is open.
             .children(self.add_project.as_ref().map(|open| open.palette.clone()))
+            .children(self.quit_hint(cx))
     }
 }

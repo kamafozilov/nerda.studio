@@ -14,7 +14,10 @@ use theme::{
 use workspace::browse::{BrowseQuery, ListError, Target};
 
 use super::{AddProjectPalette, CONTEXT, Row};
-use crate::assets::Icon;
+use crate::{
+    assets::Icon,
+    key_cap::{Key, key_cap},
+};
 
 /// Opacity of a control that can't be used yet, as in the sidebar.
 const DISABLED_OPACITY: f32 = 0.4;
@@ -356,43 +359,8 @@ fn section_label(text: &'static str, colors: Colors) -> Div {
         .child(text)
 }
 
-/// What a key cap shows.
-#[derive(Clone, Copy)]
-enum Key {
-    Text(&'static str),
-    Return,
-}
-
 /// The modifier that turns Enter into "add the typed path".
 const ADD_MODIFIER: Key = Key::Text(if MAC { "⌘" } else { "Ctrl" });
-
-/// One key cap, holding a key or a chord such as ⌘↵: a filled rounded square, no
-/// border, so it sits quietly inside a button or beside a hint.
-fn key_cap(keys: &[Key], colors: Colors) -> Div {
-    div()
-        .flex_none()
-        .h(KEY_CAP_SIZE)
-        .min_w(KEY_CAP_SIZE)
-        .px(px(2.))
-        .flex()
-        .items_center()
-        .justify_center()
-        .rounded(SPACE_1)
-        .bg(colors.key_background)
-        .text_color(colors.text_secondary)
-        .line_height(KEY_CAP_SIZE)
-        .children(keys.iter().map(|key| {
-            match key {
-                // Text takes more room at its sides than the icon, which has its own.
-                Key::Text(text) => div().px(px(2.)).child(*text).into_any_element(),
-                Key::Return => svg()
-                    .path(Icon::Return.path())
-                    .size(ICON_SIZE)
-                    .text_color(colors.text_secondary)
-                    .into_any_element(),
-            }
-        }))
-}
 
 /// Key caps, one per key, then what they do.
 fn hint(keys: &[Key], label: &'static str, colors: Colors) -> Div {
