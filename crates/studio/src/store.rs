@@ -90,12 +90,6 @@ impl Store {
         cx.notify();
     }
 
-    /// Shows `notice` under the sidebar header until dismissed.
-    pub fn set_notice(&mut self, notice: impl Into<SharedString>, cx: &mut Context<Self>) {
-        self.notice = Some(notice.into());
-        cx.notify();
-    }
-
     /// Changes the workspace, saves it, and tells observers.
     pub fn update<R>(
         &mut self,

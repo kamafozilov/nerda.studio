@@ -10,9 +10,13 @@ use gpui::{AssetSource, Result, SharedString};
 pub enum Icon {
     Check,
     Close,
+    Folder,
     FolderAdd,
+    FolderUp,
     NewSession,
     PullRequests,
+    /// The Return key, shown in a key cap.
+    Return,
     Search,
     Settings,
     Sort,
@@ -24,9 +28,12 @@ impl Icon {
         match self {
             Self::Check => "icons/check.svg",
             Self::Close => "icons/x.svg",
+            Self::Folder => "icons/folder.svg",
             Self::FolderAdd => "icons/folder-add.svg",
+            Self::FolderUp => "icons/folder-up.svg",
             Self::NewSession => "icons/edit.svg",
             Self::PullRequests => "icons/git-pull-request.svg",
+            Self::Return => "icons/corner-down-left.svg",
             Self::Search => "icons/search.svg",
             Self::Settings => "icons/gear.svg",
             Self::Sort => "icons/sort.svg",
@@ -51,8 +58,20 @@ const FILES: &[(&str, &[u8])] = &[
         include_bytes!("../assets/icons/git-pull-request.svg"),
     ),
     (
+        "icons/corner-down-left.svg",
+        include_bytes!("../assets/icons/corner-down-left.svg"),
+    ),
+    (
+        "icons/folder.svg",
+        include_bytes!("../assets/icons/folder.svg"),
+    ),
+    (
         "icons/folder-add.svg",
         include_bytes!("../assets/icons/folder-add.svg"),
+    ),
+    (
+        "icons/folder-up.svg",
+        include_bytes!("../assets/icons/folder-up.svg"),
     ),
     (
         "icons/search.svg",

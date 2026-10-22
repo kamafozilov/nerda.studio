@@ -118,9 +118,9 @@ impl Sidebar {
                 true,
                 colors,
                 |button| {
-                    button.on_click(cx.listener(|sidebar, _: &ClickEvent, window, cx| {
-                        sidebar.add_project(window, cx)
-                    }))
+                    button.on_click(|_, window, cx| {
+                        window.dispatch_action(Box::new(crate::shell::AddProject), cx)
+                    })
                 },
             ))
             .child(icon_button(

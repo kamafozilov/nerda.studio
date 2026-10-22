@@ -2,9 +2,9 @@
 //! raised over it, sharing one top row.
 
 use gpui::{
-    AnimationExt, ClickEvent, Context, Entity, FocusHandle, FontWeight, IntoElement, MouseButton,
-    ParentElement, Pixels, Render, SharedString, SpringAnimation, Styled, Window, actions, div,
-    prelude::*, relative,
+    AnimationExt, ClickEvent, Context, DismissEvent, Entity, FocusHandle, FontWeight, IntoElement,
+    MouseButton, ParentElement, Pixels, Render, SharedString, SpringAnimation, Styled,
+    Subscription, Window, actions, div, prelude::*, relative,
 };
 use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, HEADER_HEIGHT, SIDEBAR_WIDTH, SPACE_1, SPACE_2, SPACE_3,
@@ -12,8 +12,8 @@ use theme::{
 };
 
 use crate::{
-    accessibility, sidebar::Sidebar, sidebar_glyph::sidebar_glyph, store::Store, system_theme,
-    traffic_lights, welcome,
+    accessibility, add_project::AddProjectPalette, sidebar::Sidebar, sidebar_glyph::sidebar_glyph,
+    store::Store, system_theme, traffic_lights, welcome,
 };
 
 actions!(
@@ -21,7 +21,9 @@ actions!(
     [
         ToggleSidebar,
         /// Starts a session in the current project, as the sidebar's button does.
-        NewSession
+        NewSession,
+        /// Opens the add-project palette, as the sidebar's button does.
+        AddProject
     ]
 );
 
@@ -32,6 +34,15 @@ pub struct Shell {
     sidebar_open: bool,
     /// The left button went down on the titlebar; the next move drags the window.
     titlebar_pressed: bool,
+    add_project: Option<OpenPalette>,
+}
+
+/// The add-project palette while it is open.
+struct OpenPalette {
+    palette: Entity<AddProjectPalette>,
+    /// Where focus was before it opened, to give it back.
+    focus_before: Option<FocusHandle>,
+    _subscription: Subscription,
 }
 
 impl Shell {
@@ -59,7 +70,46 @@ impl Shell {
             sidebar,
             sidebar_open: true,
             titlebar_pressed: false,
+            add_project: None,
         }
+    }
+
+    /// Opens the add-project palette; does nothing while it is open.
+    fn open_add_project(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.add_project.is_some() {
+            return;
+        }
+        let focus_before = window.focused(cx);
+        let workspace = self.store.read(cx).workspace();
+        let base = workspace
+            .context_project()
+            .and_then(|project| workspace.project(project))
+            .map(|project| project.path.clone());
+        let sidebar = self.sidebar.clone();
+        let palette = cx.new(|cx| AddProjectPalette::new(sidebar, base, window, cx));
+        let subscription = cx.subscribe_in(
+            &palette,
+            window,
+            |shell, _, _: &DismissEvent, window, cx| shell.close_add_project(window, cx),
+        );
+        self.add_project = Some(OpenPalette {
+            palette,
+            focus_before,
+            _subscription: subscription,
+        });
+        cx.notify();
+    }
+
+    /// Closes the palette and gives focus back to where it was.
+    fn close_add_project(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(open) = self.add_project.take() else {
+            return;
+        };
+        let focus = open
+            .focus_before
+            .unwrap_or_else(|| self.focus_handle.clone());
+        window.focus(&focus, cx);
+        cx.notify();
     }
 
     /// Every way in slides the sidebar, the click and `Cmd-B` alike, so the
@@ -274,6 +324,9 @@ impl Render for Shell {
                     .sidebar
                     .update(cx, |sidebar, cx| sidebar.new_session(cx))
             }))
+            .on_action(
+                cx.listener(|shell, _: &AddProject, window, cx| shell.open_add_project(window, cx)),
+            )
             .relative()
             .size_full()
             .flex()
@@ -293,9 +346,7 @@ impl Render for Shell {
                     .when(!has_projects, |main| {
                         main.child(welcome::no_projects(
                             cx.listener(|shell, _: &ClickEvent, window, cx| {
-                                shell
-                                    .sidebar
-                                    .update(cx, |sidebar, cx| sidebar.add_project(window, cx))
+                                shell.open_add_project(window, cx)
                             }),
                             cx,
                         ))
@@ -307,5 +358,7 @@ impl Render for Shell {
             })
             // Last, so it draws over the rest: it stays put while the sidebar moves.
             .child(self.sidebar_toggle(cx))
+            // Over everything, the top row included, while it is open.
+            .children(self.add_project.as_ref().map(|open| open.palette.clone()))
     }
 }

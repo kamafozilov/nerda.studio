@@ -12,9 +12,8 @@ mod menu;
 use std::path::Path;
 
 use gpui::{
-    App, Context, Entity, FocusHandle, IntoElement, ParentElement, PathPromptOptions, Render,
-    ScrollStrategy, Styled, Subscription, Task, UniformListScrollHandle, Window, actions, div,
-    prelude::*,
+    App, Context, Entity, FocusHandle, IntoElement, ParentElement, Render, ScrollStrategy, Styled,
+    Subscription, Task, UniformListScrollHandle, Window, actions, div, prelude::*,
 };
 use workspace::{AddProjectError, AddedProject, ProjectId, ProjectScope, SessionId, Timestamp};
 
@@ -163,48 +162,21 @@ impl Sidebar {
         }
     }
 
-    /// Asks for a folder in the system's picker and adds it as a project.
-    pub fn add_project(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let picked = cx.prompt_for_paths(PathPromptOptions {
-            files: false,
-            directories: true,
-            multiple: false,
-            prompt: Some("Add".into()),
-        });
-        cx.spawn_in(window, async move |sidebar, cx| {
-            let picked = picked.await;
-            sidebar
-                .update(cx, |sidebar, cx| match picked {
-                    Ok(Ok(Some(paths))) => {
-                        if let Some(path) = paths.first() {
-                            sidebar.add_project_at(path, cx);
-                        }
-                    }
-                    Ok(Err(error)) => sidebar.store.update(cx, |store, cx| {
-                        store.set_notice(
-                            format!("Couldn't open the folder picker ({error}). Try again."),
-                            cx,
-                        )
-                    }),
-                    // Cancelled, or the picker went away with the window.
-                    Ok(Ok(None)) | Err(_) => {}
-                })
-                .ok();
-        })
-        .detach();
-    }
-
     /// Adds the folder at `path`. A new project opens a new session in it; a folder
     /// already added opens that project's latest session, or a new one if it has none.
-    fn add_project_at(&mut self, path: &Path, cx: &mut Context<Self>) {
+    pub fn add_project_at(
+        &mut self,
+        path: &Path,
+        cx: &mut Context<Self>,
+    ) -> Result<(), AddProjectError> {
         let added = self.store.update(cx, |store, cx| {
             store.update(cx, |workspace| {
                 workspace.add_project(path, Timestamp::now())
             })
-        });
+        })?;
         match added {
-            Ok(AddedProject::Added(project)) => self.new_session_in(project, cx),
-            Ok(AddedProject::Existing(project)) => {
+            AddedProject::Added(project) => self.new_session_in(project, cx),
+            AddedProject::Existing(project) => {
                 let latest = self
                     .store
                     .read(cx)
@@ -216,12 +188,8 @@ impl Sidebar {
                     None => self.new_session_in(project, cx),
                 }
             }
-            Err(error) => {
-                let notice = add_error_text(&error);
-                self.store
-                    .update(cx, |store, cx| store.set_notice(notice, cx))
-            }
         }
+        Ok(())
     }
 
     fn open_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -290,26 +258,5 @@ impl Render for Sidebar {
             .children(notice)
             .child(list)
             .child(self.render_footer(cx))
-    }
-}
-
-/// What went wrong adding a folder, and what to do instead.
-fn add_error_text(error: &AddProjectError) -> String {
-    match error {
-        AddProjectError::NotFound(path) => format!(
-            "Couldn't find {}. Choose a folder that exists.",
-            path.display()
-        ),
-        AddProjectError::NotADirectory(path) => format!(
-            "{} is a file. Choose a folder to add as a project.",
-            path.file_name()
-                .unwrap_or(path.as_os_str())
-                .to_string_lossy()
-        ),
-        AddProjectError::Io(path, error) => format!(
-            "Couldn't open {} ({}). Check its permissions and try again.",
-            path.display(),
-            error.kind()
-        ),
     }
 }

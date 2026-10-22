@@ -1,4 +1,5 @@
 mod accessibility;
+mod add_project;
 mod assets;
 mod shell;
 mod sidebar;
@@ -30,6 +31,7 @@ fn main() {
         ]);
         text_input::bind_keys(cx);
         sidebar::bind_keys(cx);
+        add_project::bind_keys(cx);
         let theme = system_theme::current(cx.window_appearance());
         cx.set_global(theme);
         let bounds = Bounds::centered(None, size(px(1200.), px(800.)), cx);
