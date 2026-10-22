@@ -2,19 +2,33 @@
 //! raised over it, sharing one top row.
 
 use gpui::{
-    AnimationExt, ClickEvent, Context, FocusHandle, FontWeight, IntoElement, MouseButton,
-    ParentElement, Render, SpringAnimation, Styled, Window, actions, div, prelude::*,
+    AnimationExt, ClickEvent, Context, Entity, FocusHandle, FontWeight, IntoElement, MouseButton,
+    ParentElement, Pixels, Render, SharedString, SpringAnimation, Styled, Window, actions, div,
+    prelude::*, relative,
 };
 use theme::{
-    CONTROL_RADIUS, CONTROL_SIZE, HEADER_HEIGHT, SIDEBAR_WIDTH, SPACE_1, TEXT_BODY, Theme, motion,
+    CONTROL_RADIUS, CONTROL_SIZE, HEADER_HEIGHT, SIDEBAR_WIDTH, SPACE_1, SPACE_2, SPACE_3,
+    TEXT_BODY, Theme, motion,
 };
 
-use crate::{accessibility, sidebar_glyph::sidebar_glyph, system_theme, traffic_lights};
+use crate::{
+    accessibility, sidebar::Sidebar, sidebar_glyph::sidebar_glyph, store::Store, system_theme,
+    traffic_lights, welcome,
+};
 
-actions!(studio, [ToggleSidebar]);
+actions!(
+    studio,
+    [
+        ToggleSidebar,
+        /// Starts a session in the current project, as the sidebar's button does.
+        NewSession
+    ]
+);
 
 pub struct Shell {
     focus_handle: FocusHandle,
+    store: Entity<Store>,
+    sidebar: Entity<Sidebar>,
     sidebar_open: bool,
     /// The left button went down on the titlebar; the next move drags the window.
     titlebar_pressed: bool,
@@ -35,8 +49,14 @@ impl Shell {
         // until something inside it takes it.
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
+        let store = cx.new(|_| Store::load());
+        // The main area's top row names the selected session.
+        cx.observe(&store, |_, _, cx| cx.notify()).detach();
+        let sidebar = cx.new(|cx| Sidebar::new(store.clone(), cx));
         Self {
             focus_handle,
+            store,
+            sidebar,
             sidebar_open: true,
             titlebar_pressed: false,
         }
@@ -151,6 +171,71 @@ impl Shell {
                     .font_weight(FontWeight::MEDIUM)
                     .child("Nerda Studio"),
             )
+            .child(div().flex_1().min_h_0().child(self.sidebar.clone()))
+    }
+
+    /// The main area's top row: the selected session as "project / session". Its left
+    /// edge follows the sidebar's spring so the text clears the toggle at every
+    /// width instead of jumping when the sidebar closes.
+    fn main_header(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let colors = Theme::of(cx).colors;
+        let workspace = self.store.read(cx).workspace();
+        let crumbs = workspace.selected_session().and_then(|session| {
+            let session = workspace.session(session)?;
+            let project = workspace.display_name(session.project)?;
+            Some((
+                SharedString::from(project),
+                SharedString::from(session.title.clone()),
+            ))
+        });
+        let toggle_end = traffic_lights::content_start() + CONTROL_SIZE + SPACE_2;
+        div()
+            .h(HEADER_HEIGHT)
+            .flex_none()
+            .pr(SPACE_3)
+            .flex()
+            .items_center()
+            .gap(SPACE_1)
+            .whitespace_nowrap()
+            .when_some(crumbs, |row, (project, session)| {
+                // Both crumbs truncate; the project gives way first, at half the row.
+                row.child(
+                    div()
+                        .min_w_0()
+                        .max_w(relative(0.5))
+                        .overflow_hidden()
+                        .text_ellipsis()
+                        .text_color(colors.text_secondary)
+                        .child(project),
+                )
+                .child(
+                    div()
+                        .flex_none()
+                        .text_color(colors.text_secondary)
+                        .child("/"),
+                )
+                .child(
+                    div()
+                        .min_w_0()
+                        .overflow_hidden()
+                        .text_ellipsis()
+                        .text_color(colors.text_primary)
+                        .child(session),
+                )
+            })
+            .with_spring(
+                "main-header",
+                self.sidebar_spring(),
+                move |row, phase: f32| {
+                    let sidebar_edge = SIDEBAR_WIDTH * phase.clamp(0., 1.);
+                    let clear_of_toggle: Pixels = toggle_end - sidebar_edge;
+                    row.pl(if clear_of_toggle > SPACE_3 {
+                        clear_of_toggle
+                    } else {
+                        SPACE_3
+                    })
+                },
+            )
     }
 
     fn sidebar(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -180,9 +265,15 @@ impl Shell {
 impl Render for Shell {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
+        let has_projects = self.store.read(cx).workspace().has_projects();
         div()
             .track_focus(&self.focus_handle)
             .on_action(cx.listener(|shell, _: &ToggleSidebar, _, cx| shell.toggle_sidebar(cx)))
+            .on_action(cx.listener(|shell, _: &NewSession, _, cx| {
+                shell
+                    .sidebar
+                    .update(cx, |sidebar, cx| sidebar.new_session(cx))
+            }))
             .relative()
             .size_full()
             .flex()
@@ -195,7 +286,20 @@ impl Render for Shell {
                     .flex_1()
                     .min_w_0()
                     .h_full()
-                    .bg(colors.panel_background),
+                    .flex()
+                    .flex_col()
+                    .bg(colors.panel_background)
+                    .child(self.main_header(cx))
+                    .when(!has_projects, |main| {
+                        main.child(welcome::no_projects(
+                            cx.listener(|shell, _: &ClickEvent, window, cx| {
+                                shell
+                                    .sidebar
+                                    .update(cx, |sidebar, cx| sidebar.add_project(window, cx))
+                            }),
+                            cx,
+                        ))
+                    }),
             )
             // The titlebar spans the top row on macOS, where it replaces AppKit's.
             .when(cfg!(target_os = "macos"), |root| {

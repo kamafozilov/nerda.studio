@@ -13,6 +13,7 @@ publish = false
 gpui = { git = "https://github.com/zed-industries/zed", rev = "50304070c283519f2f2338b45671af26374025fe" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "50304070c283519f2f2338b45671af26374025fe", features = ["font-kit"] }
 theme = { path = "crates/theme" }
+workspace = { path = "crates/workspace" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 dirs = "6.0"

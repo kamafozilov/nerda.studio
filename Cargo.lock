@@ -4408,7 +4408,9 @@ dependencies = [
  "gpui_platform",
  "objc2-app-kit 0.3.2",
  "theme",
+ "unicode-segmentation",
  "windows-sys",
+ "workspace",
 ]
 
 [[package]]

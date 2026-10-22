@@ -1,23 +1,35 @@
 mod accessibility;
+mod assets;
 mod shell;
+mod sidebar;
 mod sidebar_glyph;
+mod store;
 mod system_theme;
+mod text_input;
+mod tooltip;
 mod traffic_lights;
+mod welcome;
 
+use assets::Assets;
 use gpui::{
     App, AppContext, Bounds, KeyBinding, TitlebarOptions, WindowBounds, WindowOptions, px, size,
 };
 use gpui_platform::application;
-use shell::{Shell, ToggleSidebar};
+use shell::{NewSession, Shell, ToggleSidebar};
 
 fn main() {
-    application().run(|cx: &mut App| {
-        let toggle_sidebar = if cfg!(target_os = "macos") {
-            "cmd-b"
+    application().with_assets(Assets).run(|cx: &mut App| {
+        let (toggle_sidebar, new_session) = if cfg!(target_os = "macos") {
+            ("cmd-b", "cmd-n")
         } else {
-            "ctrl-b"
+            ("ctrl-b", "ctrl-n")
         };
-        cx.bind_keys([KeyBinding::new(toggle_sidebar, ToggleSidebar, None)]);
+        cx.bind_keys([
+            KeyBinding::new(toggle_sidebar, ToggleSidebar, None),
+            KeyBinding::new(new_session, NewSession, None),
+        ]);
+        text_input::bind_keys(cx);
+        sidebar::bind_keys(cx);
         let theme = system_theme::current(cx.window_appearance());
         cx.set_global(theme);
         let bounds = Bounds::centered(None, size(px(1200.), px(800.)), cx);

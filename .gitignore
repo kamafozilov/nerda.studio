@@ -1,1 +1,3 @@
 /target
+# A common global rule, `Icon?` for macOS folder icons, also matches this folder.
+!/crates/studio/assets/icons/
