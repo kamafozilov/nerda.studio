@@ -42,5 +42,7 @@ the runner and the app quits with it, its changes saved.
 - `crates/dev`: the live-reload runner; the app's side is `crates/studio/src/dev_reload`.
 
 GPUI is pinned to one commit of its repository in the root `Cargo.toml`: crates.io has
-only an older `gpui` without `gpui_platform`.
+only an older `gpui` without `gpui_platform`. `vendor/block` is the `block` crate, which
+GPUI's macOS backend pulls in, patched so that a future Rust still compiles it; the root
+`Cargo.toml` puts it in place of the crates.io copy.
 

@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+# Third-party crates patched in place: dependencies, not workspace members.
+exclude = ["vendor"]
 
 [workspace.package]
 version = "0.1.0"
@@ -17,3 +19,8 @@ workspace = { path = "crates/workspace" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 dirs = "6.0"
+
+[patch.crates-io]
+# block 0.1.6 (under metal, under GPUI's macOS backend) declares an extern static of an
+# uninhabited type, which a future Rust rejects; `vendor/block` makes the type inhabited.
+block = { path = "vendor/block" }

@@ -1,0 +1,16 @@
+# block 0.1.6 from crates.io, patched: its opaque `Class` is an empty enum, and an extern
+# static of an uninhabited type is a future-incompatibility error (rust-lang/rust#74840).
+# Upstream is unmaintained; metal 0.33, under GPUI's macOS backend, still depends on it.
+# `extern` without an ABI is spelled out as `extern "C"`, which it already meant, so the
+# build stays free of deprecation warnings.
+# Its tests need `objc_test_utils`, a helper crate that is not published, so that
+# dev-dependency is dropped and the tests do not build here.
+
+[package]
+name = "block"
+version = "0.1.6"
+authors = ["Steven Sheldon"]
+description = "Rust interface for Apple's C language extension of blocks."
+readme = "README.md"
+repository = "http://github.com/SSheldon/rust-block"
+license = "MIT"
