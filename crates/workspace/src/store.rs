@@ -90,6 +90,12 @@ impl Workspace {
 
     /// Writes the workspace to `path` atomically, creating missing parent folders.
     pub fn save(&self, path: &Path) -> io::Result<()> {
+        write_state(path, &self.encode()?)
+    }
+
+    /// The workspace as the file holds it, for [`write_state`] to write
+    /// elsewhere, such as off the UI thread.
+    pub fn encode(&self) -> io::Result<Vec<u8>> {
         let file = FileRef {
             version: VERSION,
             next_id: self.next_id,
@@ -102,25 +108,7 @@ impl Workspace {
             tabs: &self.tabs,
             collapsed: &self.collapsed,
         };
-        let json = serde_json::to_vec_pretty(&file).map_err(io::Error::other)?;
-        let parent = path.parent().unwrap_or(Path::new(""));
-        fs::create_dir_all(parent)?;
-        let name = path.file_name().ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "the state path has no file name",
-            )
-        })?;
-        let serial = SAVE_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let mut temp_name = std::ffi::OsString::from(".");
-        temp_name.push(name);
-        temp_name.push(format!(".{}.{serial}.tmp", std::process::id()));
-        let temp = parent.join(temp_name);
-        let written = write_synced(&temp, &json).and_then(|()| fs::rename(&temp, path));
-        if written.is_err() {
-            let _ = fs::remove_file(&temp);
-        }
-        written
+        serde_json::to_vec_pretty(&file).map_err(io::Error::other)
     }
 
     /// Rebuilds a workspace from disk, dropping duplicates and anything pointing at missing items.
@@ -176,6 +164,29 @@ impl Workspace {
         Ok(workspace)
     }
 }
+/// Writes `bytes` from [`Workspace::encode`] to `path` atomically, creating
+/// missing parent folders: a crash mid-write leaves the old file whole.
+pub fn write_state(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    let parent = path.parent().unwrap_or(Path::new(""));
+    fs::create_dir_all(parent)?;
+    let name = path.file_name().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "the state path has no file name",
+        )
+    })?;
+    let serial = SAVE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let mut temp_name = std::ffi::OsString::from(".");
+    temp_name.push(name);
+    temp_name.push(format!(".{}.{serial}.tmp", std::process::id()));
+    let temp = parent.join(temp_name);
+    let written = write_synced(&temp, bytes).and_then(|()| fs::rename(&temp, path));
+    if written.is_err() {
+        let _ = fs::remove_file(&temp);
+    }
+    written
+}
+
 /// Writes `bytes` to a new file and flushes it to disk before it can replace the real one.
 fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let mut file = fs::File::create(path)?;

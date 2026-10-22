@@ -84,7 +84,7 @@ impl Shell {
         // until something inside it takes it.
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
-        let store = cx.new(|_| Store::load());
+        let store = cx.new(Store::load);
         // A project on screen always shows a session.
         let nothing_open = {
             let workspace = store.read(cx).workspace();

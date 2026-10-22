@@ -1,8 +1,16 @@
 //! The app's projects and sessions, saved to disk after every change.
+//!
+//! The UI thread only encodes the workspace; the file is written and flushed on
+//! the background executor, so a click that changes something never waits on the
+//! disk. A change that leaves the file's contents as they were writes nothing.
+//! Quitting writes the newest state before the app exits.
 
-use std::path::PathBuf;
+use std::{
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex},
+};
 
-use gpui::{Context, SharedString};
+use gpui::{Context, SharedString, Subscription};
 use workspace::{LoadError, Timestamp, Workspace};
 
 /// Shared by the sidebar and the main area; both observe it.
@@ -13,21 +21,68 @@ pub struct Store {
     path: Option<PathBuf>,
     /// A problem the user should know about, shown until dismissed.
     notice: Option<SharedString>,
+    /// The file's contents as last handed to the writer.
+    saved: Option<Arc<[u8]>>,
+    /// Numbers the saves, newest highest.
+    serial: u64,
+    writer: Arc<Writer>,
+    _quit: Option<Subscription>,
+}
+
+/// Writes saves in order of their numbers: one that finds a newer one already
+/// written skips, so a slow write can never put an older state back.
+#[derive(Default)]
+struct Writer {
+    /// The number of the save on disk.
+    written: Mutex<u64>,
+}
+
+impl Writer {
+    fn write(&self, serial: u64, path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+        let mut written = self
+            .written
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if serial <= *written {
+            return Ok(());
+        }
+        workspace::write_state(path, bytes)?;
+        *written = serial;
+        Ok(())
+    }
 }
 
 impl Store {
-    pub fn load() -> Self {
+    pub fn load(cx: &mut Context<Self>) -> Self {
+        let (workspace, path, notice) = Self::read();
+        // Quitting must not lose a save still on its way to the disk.
+        let quit = path.is_some().then(|| {
+            cx.on_app_quit(|store, _| {
+                if let (Some(path), Some(bytes)) = (&store.path, &store.saved) {
+                    store.writer.write(store.serial, path, bytes).ok();
+                }
+                async {}
+            })
+        });
+        Self {
+            workspace,
+            path,
+            notice,
+            saved: None,
+            serial: 0,
+            writer: Arc::default(),
+            _quit: quit,
+        }
+    }
+
+    fn read() -> (Workspace, Option<PathBuf>, Option<SharedString>) {
         let Some(path) = workspace::default_state_path() else {
             return Self::unsaved(
                 "This system has no folder for app data, so changes won't be saved.",
             );
         };
         match Workspace::load(&path) {
-            Ok(workspace) => Self {
-                workspace,
-                path: Some(path),
-                notice: None,
-            },
+            Ok(workspace) => (workspace, Some(path), None),
             Err(LoadError::Corrupt(_)) => Self::set_aside(path),
             // Unreadable but intact: leave the file alone and run without saving
             // rather than overwrite it.
@@ -43,33 +98,29 @@ impl Store {
         }
     }
 
-    fn unsaved(notice: &str) -> Self {
-        Self {
-            workspace: Workspace::default(),
-            path: None,
-            notice: Some(notice.to_owned().into()),
-        }
+    fn unsaved(notice: &str) -> (Workspace, Option<PathBuf>, Option<SharedString>) {
+        (Workspace::default(), None, Some(notice.to_owned().into()))
     }
 
     /// A corrupt file is moved aside, never overwritten, so it can be recovered.
-    fn set_aside(path: PathBuf) -> Self {
+    fn set_aside(path: PathBuf) -> (Workspace, Option<PathBuf>, Option<SharedString>) {
         let backup = path.with_extension(format!("corrupt-{}.json", Timestamp::now().0));
         let backup_name = backup
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_default();
         match std::fs::rename(&path, &backup) {
-            Ok(()) => Self {
-                workspace: Workspace::default(),
-                path: Some(path),
-                notice: Some(
+            Ok(()) => (
+                Workspace::default(),
+                Some(path),
+                Some(
                     format!(
                         "Your saved projects couldn't be read, so they were set aside as \
                          {backup_name}. Add your projects again."
                     )
                     .into(),
                 ),
-            },
+            ),
             Err(error) => Self::unsaved(&format!(
                 "Your saved projects couldn't be read or set aside ({error}). Changes made \
                  here won't be saved."
@@ -97,19 +148,73 @@ impl Store {
         change: impl FnOnce(&mut Workspace) -> R,
     ) -> R {
         let result = change(&mut self.workspace);
-        if let Some(path) = &self.path
-            && let Err(error) = self.workspace.save(path)
-        {
-            self.notice = Some(
-                format!(
-                    "Couldn't save your changes ({error}). Check free disk space and the \
-                     permissions of {}.",
-                    path.display()
-                )
-                .into(),
-            );
-        }
+        self.save(cx);
         cx.notify();
         result
+    }
+
+    fn save(&mut self, cx: &mut Context<Self>) {
+        let Some(path) = self.path.clone() else {
+            return;
+        };
+        let bytes: Arc<[u8]> = match self.workspace.encode() {
+            Ok(bytes) => bytes.into(),
+            Err(error) => return self.save_failed(&error, &path),
+        };
+        if self.saved.as_deref() == Some(&*bytes) {
+            return;
+        }
+        self.serial += 1;
+        let serial = self.serial;
+        self.saved = Some(bytes.clone());
+        let writer = self.writer.clone();
+        cx.spawn(async move |store, cx| {
+            let written = {
+                let path = path.clone();
+                cx.background_executor()
+                    .spawn(async move { writer.write(serial, &path, &bytes) })
+                    .await
+            };
+            if let Err(error) = written {
+                store
+                    .update(cx, |store, cx| {
+                        // The next change tries again, even one back to this state.
+                        store.saved = None;
+                        store.save_failed(&error, &path);
+                        cx.notify();
+                    })
+                    .ok();
+            }
+        })
+        .detach();
+    }
+
+    fn save_failed(&mut self, error: &std::io::Error, path: &Path) {
+        self.notice = Some(
+            format!(
+                "Couldn't save your changes ({error}). Check free disk space and the \
+                 permissions of {}.",
+                path.display()
+            )
+            .into(),
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Writer;
+
+    #[test]
+    fn a_slow_older_save_never_replaces_a_newer_one() {
+        let dir = std::env::temp_dir().join(format!("nerda-writer-{}", std::process::id()));
+        let path = dir.join("workspace.json");
+        let writer = Writer::default();
+        writer.write(2, &path, b"newer").unwrap();
+        writer.write(1, &path, b"older").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"newer");
+        writer.write(3, &path, b"newest").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"newest");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
