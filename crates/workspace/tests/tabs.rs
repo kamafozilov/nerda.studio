@@ -73,9 +73,26 @@ fn closing_the_last_tab_opens_the_projects_draft() {
     assert_eq!(workspace.open_tabs(), [draft]);
     assert_eq!(workspace.tabs(), [SessionId(7), draft]);
 
-    // Closing the draft itself reopens it rather than making another.
+    // The draft alone can't close: closing it would only open it again.
+    assert!(!workspace.can_close_tab(draft));
     workspace.close_tab(draft, Timestamp(200));
     assert_eq!(workspace.open_tabs(), [draft]);
+    workspace.close_all_tabs(Timestamp(200));
+    assert_eq!(workspace.open_tabs(), [draft]);
+}
+
+#[test]
+fn a_draft_closes_beside_another_tab_and_a_used_tab_closes_alone() {
+    let mut workspace = with_tabs(3);
+    workspace.open_session(SessionId(8));
+    assert!(workspace.can_close_tab(SessionId(8)));
+    assert!(workspace.can_close_tab(SessionId(7)));
+    // Off screen, nothing to close.
+    assert!(!workspace.can_close_tab(SessionId(3)));
+
+    workspace.close_tab(SessionId(8), Timestamp(100));
+    assert_eq!(workspace.open_tabs(), ids(&[7]));
+    assert!(workspace.can_close_tab(SessionId(7)));
 }
 
 #[test]

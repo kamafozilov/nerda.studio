@@ -65,14 +65,17 @@ impl TabStrip {
     ) -> Option<AnyElement> {
         let menu = self.menu.as_ref()?;
         let colors = Theme::of(cx).colors;
-        let tabs = self.store.read(cx).workspace().open_tabs();
+        let workspace = self.store.read(cx).workspace();
+        let tabs = workspace.open_tabs();
         let index = tabs.iter().position(|&tab| tab == menu.tab)?;
+        // A lone draft can't close; with company, every tab can.
+        let closable = workspace.can_close_tab(menu.tab);
         let choices = [
             Choice {
                 id: "close",
                 label: "Close Tab",
                 shortcut: Some(if MAC { "⌘W" } else { "Ctrl+W" }),
-                enabled: true,
+                enabled: closable,
                 run: Workspace::close_tab,
             },
             Choice {
@@ -100,7 +103,7 @@ impl TabStrip {
                 id: "close-all",
                 label: "Close All Tabs",
                 shortcut: Some(if MAC { "⇧⌘W" } else { "Ctrl+Shift+W" }),
-                enabled: true,
+                enabled: closable,
                 run: |workspace, _, now| workspace.close_all_tabs(now),
             },
         ];

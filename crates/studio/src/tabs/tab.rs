@@ -37,8 +37,8 @@ impl TabStrip {
                     return div().into_any_element();
                 };
                 let width = self.bounds.borrow().get(&id).map(|slot| slot.size.width);
-                let can_close =
-                    is_selected || width.is_none_or(|width| width >= TAB_CLOSE_MIN_WIDTH);
+                let can_close = label.closable
+                    && (is_selected || width.is_none_or(|width| width >= TAB_CLOSE_MIN_WIDTH));
                 self.live_tab(id, &label, is_selected, can_close, colors, cx)
                     .into_any_element()
             }

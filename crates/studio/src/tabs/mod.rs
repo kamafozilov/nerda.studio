@@ -2,7 +2,8 @@
 //! session button. Tabs share the row up to `TAB_MAX_WIDTH` each; an opened tab's
 //! slot grows from nothing and a closed one collapses in place before it leaves.
 //! A tab can be dragged along the row, closed by its button, a middle click or
-//! its menu, and the selected one by `Cmd-W`.
+//! its menu, and the selected one by `Cmd-W`. A project's unused draft alone in
+//! the row has no close button: closing it would only open it again.
 //!
 //!
 //! The strip redraws on every frame of a drag or a tab's motion, so a frame only
@@ -86,6 +87,8 @@ struct Label {
     /// The tab's hover group, which shows its close button.
     group: SharedString,
     close: SharedString,
+    /// Closing it would change something; see `Workspace::can_close_tab`.
+    closable: bool,
 }
 
 struct Closing {
@@ -143,6 +146,7 @@ impl TabStrip {
                     title,
                     group: format!("tab-{}", id.0).into(),
                     close: format!("close-tab-{}", id.0).into(),
+                    closable: workspace.can_close_tab(id),
                 };
                 (id, label)
             })

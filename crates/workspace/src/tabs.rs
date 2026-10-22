@@ -2,7 +2,8 @@
 //! session's project is the one on screen. Opening a session gives it a tab
 //! unless it has one; closing the selected tab selects its right neighbor, else
 //! its left, and closing a project's last tab opens the project's draft, so a
-//! project on screen always shows a session.
+//! project on screen always shows a session. That draft alone on screen can't
+//! close: closing it would only open it again.
 //!
 
 use std::collections::HashSet;
@@ -52,8 +53,18 @@ impl Workspace {
         session.inspect(|&id| self.open_session(id)).is_some()
     }
 
+    /// Whether closing the tab on screen `id` changes anything: false off
+    /// screen, and for an unused draft that is the project's only tab.
+    pub fn can_close_tab(&self, id: SessionId) -> bool {
+        let tabs = self.open_tabs();
+        tabs.contains(&id)
+            && (tabs.len() > 1 || self.session(id).is_some_and(|session| !session.is_empty()))
+    }
+
     pub fn close_tab(&mut self, id: SessionId, now: Timestamp) {
-        self.close_tabs(&[id], None, now);
+        if self.can_close_tab(id) {
+            self.close_tabs(&[id], None, now);
+        }
     }
 
     /// Closes every tab on screen but `id`, and selects it.
