@@ -29,6 +29,10 @@ window's place without the window going away: same place and size, same sidebar,
 only if the old one was. A build that fails leaves the running app as it is. Ctrl-C stops
 the runner and the app quits with it, its changes saved.
 
+On macOS every build run from the source tree runs as **Nerda Studio Dev**
+(`studio.nerda.dev`): it puts itself in `target/<profile>/Nerda Studio Dev.app` and runs
+from there, so it has its own name in the menu bar, Dock icon and ⌘Tab entry.
+
 ## Layout
 
 - `crates/studio`: the app binary: the main window, its shell (the top row with its tabs,
@@ -40,6 +44,8 @@ the runner and the app quits with it, its changes saved.
   tabs, and Back and Forward. All but Back and Forward is saved as JSON in the platform's
   data folder (`Nerda Studio/workspace.json`).
 - `crates/dev`: the live-reload runner; the app's side is `crates/studio/src/dev_reload`.
+- `crates/app_bundle`: the macOS app bundle, its `Info.plist` and its icon, made from
+  `assets/AppIcon.svg`.
 
 GPUI is pinned to one commit of its repository in the root `Cargo.toml`: crates.io has
 only an older `gpui` without `gpui_platform`. `vendor/block` is the `block` crate, which

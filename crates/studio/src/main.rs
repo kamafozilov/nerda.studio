@@ -2,6 +2,8 @@ mod accessibility;
 mod add_project;
 mod app_menu;
 mod assets;
+#[cfg(target_os = "macos")]
+mod bundle;
 mod dev_reload;
 mod key_cap;
 mod shell;
@@ -29,6 +31,8 @@ use store::Store;
 use theme::Theme;
 
 fn main() {
+    #[cfg(target_os = "macos")]
+    bundle::run_from_bundle();
     let app = application().with_assets(Assets);
     app.on_reopen(reopen);
     app.run(|cx: &mut App| {
