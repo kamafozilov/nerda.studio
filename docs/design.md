@@ -95,6 +95,8 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   stroke. The search field's magnifier keeps its ring to 15 of the 24 units: one that
   fills the box looks oversized beside 13 pt text.
   GPUI paints an SVG in its own `text_color` only, never its parent's.
+- **A toggle** is an icon button whose icon is the set's outline while off and the same
+  shape filled while on, keeping the icon button's colors in both.
 
 ## Controls and lists
 
@@ -143,10 +145,11 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   high and at least as wide, `key_background` fill with no hairline, `SPACE_1` corners,
   the key in `text_secondary`. Return is an icon, other keys text (⌘, `esc`). Inside a
   button `FIELD_TARGET_SIZE` (24) high, the cap sits 2 px from its top, bottom and right.
-- **The sidebar header** is two rows: the search field across the sidebar, then the list's
-  two views as tabs ("Projects", "Sessions"; the chosen one on `row_selected`) with filter
-  and sort, Add project and New session at its trailing edge. The view, like the sort and
-  the filter, is saved. A filter to one project keeps the filter button on `hover`.
+- **The sidebar header** is two rows: the search field across the sidebar, then Group by
+  project (a toggle between the Projects and Sessions views) at the leading edge, with
+  filter and sort, Add project and New session at the trailing edge. The toggle and the
+  filter show once there is a project. The view, like the sort and the filter, is saved. A
+  filter to one project keeps the filter button on `hover`.
 - **Projects** lists each project as a header over its sessions, which hang from a
   `border` hairline under the header's icon. A header shows a folder and the medium-weight
   name; folded, the name turns `text_secondary` with the session count at the trailing

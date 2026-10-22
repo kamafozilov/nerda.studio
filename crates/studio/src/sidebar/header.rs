@@ -1,9 +1,9 @@
-//! The header: the search field on its own row, then the list's view (Projects or
-//! Sessions) with filter and sort, add project, new session.
+//! The header: the search field on its own row, then the list's view (grouped by
+//! project or one list), filter and sort, add project, new session.
 
 use gpui::{
-    ClickEvent, Context, Div, Focusable, FontWeight, IntoElement, ParentElement, SharedString,
-    Stateful, Styled, Window, div, prelude::*, svg,
+    ClickEvent, Context, Div, Focusable, IntoElement, ParentElement, SharedString, Stateful,
+    Styled, Window, div, prelude::*, svg,
 };
 use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, ICON_SIZE, ICON_SIZE_SMALL, SPACE_1,
@@ -73,8 +73,8 @@ impl Sidebar {
         } else {
             "New session (Ctrl+N)"
         };
-        // Search spans the sidebar on its own row; under it, the list's title
-        // and the actions on it.
+        // Search spans the sidebar on its own row; under it, the list's view at the
+        // leading edge and the actions on it at the trailing edge.
         div()
             .mx(SPACE_2)
             .flex()
@@ -87,49 +87,42 @@ impl Sidebar {
                     .flex()
                     .items_center()
                     .gap(SPACE_1)
-                    .child(self.view_tab(SessionView::Projects, "Projects", cx))
-                    .child(self.view_tab(SessionView::Sessions, "Sessions", cx))
-                    .child(div().flex_1())
-                    // Filtering shows only once there is something to filter.
+                    // Grouping and filtering show only once there is something to
+                    // group or filter.
                     .when(has_projects, |row| {
-                        row.child(self.render_menu_button(window, cx))
+                        row.child(self.render_view_toggle(cx))
+                            .child(div().flex_1())
+                            .child(self.render_menu_button(window, cx))
                     })
+                    .when(!has_projects, |row| row.justify_end())
                     .child(self.render_action_buttons(has_projects, new_session_label, cx)),
             )
     }
 
-    /// One of the list's two views, as a tab: the chosen one sits on the selection's
-    /// fill, the other reads as secondary until the pointer reaches it.
-    fn view_tab(
-        &self,
-        view: SessionView,
-        label: &'static str,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
+    /// Switches the list between grouped by project and one list; the icon is
+    /// filled while grouped.
+    fn render_view_toggle(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
-        let chosen = self.store.read(cx).workspace().view() == view;
-        div()
-            .id(label)
-            .flex_none()
-            .h(FIELD_TARGET_SIZE)
-            .px(SPACE_2)
-            .flex()
-            .items_center()
-            .rounded(CONTROL_RADIUS)
-            .font_weight(FontWeight::MEDIUM)
-            .when(chosen, |tab| {
-                tab.bg(colors.row_selected).text_color(colors.text_primary)
-            })
-            .when(!chosen, |tab| {
-                tab.text_color(colors.text_secondary)
-                    .hover(|tab| tab.bg(colors.hover))
-                    .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
-                        sidebar.store.update(cx, |store, cx| {
-                            store.update(cx, |workspace| workspace.set_view(view))
-                        });
-                    }))
-            })
-            .child(label)
+        let grouped = self.store.read(cx).workspace().view() == SessionView::Projects;
+        let (icon, next) = if grouped {
+            (Icon::GroupByProjectOn, SessionView::Sessions)
+        } else {
+            (Icon::GroupByProject, SessionView::Projects)
+        };
+        icon_button(
+            "group-by-project",
+            icon,
+            "Group by project",
+            true,
+            colors,
+            |button| {
+                button.on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
+                    sidebar.store.update(cx, |store, cx| {
+                        store.update(cx, |workspace| workspace.set_view(next))
+                    });
+                }))
+            },
+        )
     }
 
     fn render_action_buttons(

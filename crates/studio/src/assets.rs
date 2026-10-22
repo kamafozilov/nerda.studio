@@ -24,6 +24,9 @@ pub enum Icon {
     Folder,
     FolderAdd,
     FolderUp,
+    /// The list grouped by project: off, then on as the same shape filled.
+    GroupByProject,
+    GroupByProjectOn,
     NewSession,
     /// A new tab in the top row.
     NewTab,
@@ -48,6 +51,8 @@ impl Icon {
             Self::Folder => "icons/folder.svg",
             Self::FolderAdd => "icons/folder-add.svg",
             Self::FolderUp => "icons/folder-up.svg",
+            Self::GroupByProject => "icons/layers-2.svg",
+            Self::GroupByProjectOn => "icons/layers-2-filled.svg",
             Self::NewSession => "icons/edit.svg",
             Self::NewTab => "icons/plus.svg",
             Self::PullRequests => "icons/git-pull-request.svg",
@@ -102,6 +107,14 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/folder-up.svg",
         include_bytes!("../assets/icons/folder-up.svg"),
+    ),
+    (
+        "icons/layers-2.svg",
+        include_bytes!("../assets/icons/layers-2.svg"),
+    ),
+    (
+        "icons/layers-2-filled.svg",
+        include_bytes!("../assets/icons/layers-2-filled.svg"),
     ),
     ("icons/plus.svg", include_bytes!("../assets/icons/plus.svg")),
     (
