@@ -126,6 +126,7 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`:
   inside a dialog shows in the dialog, under its field, until the next edit.
 - **Before the first project** the sidebar stays blank under its header; the main area
   says what a project is and offers "Add project", centered.
+- **Palettes** are dialogs of one field over a list:
   `PALETTE_WIDTH` (576) centered a tenth of the way down the window and never above the
   top row, `popover_background` with a hairline, a large shadow and `DIALOG_RADIUS` (12),
   over a window-wide `scrim` that takes the click closing it (the second press of a

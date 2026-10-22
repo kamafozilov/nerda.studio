@@ -1,9 +1,8 @@
 //! Add project: a palette over the window that browses to a folder as you type its
-//! It opens at `~/`; the text up to the last separator names
-//! the folder listed, the rest filters its subfolders. Enter on a highlighted folder
-//! opens it; Enter with none highlighted, or Cmd-Enter, adds the typed path,
-//! creating the folder first if it doesn't exist. The system's folder picker stays
-//! one click away in the footer.
+//! path. It opens at `~/`; the text up to the last separator names the folder listed,
+//! the rest filters its subfolders. Enter on a highlighted folder opens it; Enter with
+//! none highlighted, or Cmd-Enter, adds the typed path, creating the folder first if it
+//! doesn't exist. The system's folder picker stays one click away in the footer.
 
 mod view;
 

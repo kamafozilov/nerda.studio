@@ -4,6 +4,9 @@ Rust on GPUI; `README.md` has the layout and how to run it. Before changing anyt
 screen, read [docs/design.md](docs/design.md): materials, colors, motion and window chrome
 follow its rules.
 
+Code, comments and docs never name another product or project as a source or model
+("after X's", "like X", "ported from X"): describe the behavior itself. License texts
+
 ## Done means proven
 
 The owner wants every change to work, edge cases included. A change is done when each of

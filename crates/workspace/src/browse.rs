@@ -1,5 +1,6 @@
-//! text up to the last separator names the folder listed, the rest filters its
-//! subfolders by prefix or names a folder to create.
+//! Typing a folder path to add as a project: the text up to the last separator names
+//! the folder listed, the rest filters its subfolders by prefix or names a folder to
+//! create.
 
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};

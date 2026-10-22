@@ -1,4 +1,5 @@
 //! The filter and sort menu: how sessions are ordered and which project they come
+//! from.
 
 use gpui::{
     Anchor, AnyElement, ClickEvent, Context, ElementId, IntoElement, MouseButton, ParentElement,

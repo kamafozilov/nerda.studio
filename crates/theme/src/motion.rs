@@ -1,5 +1,5 @@
-//! Springs, described as Apple describes them: a response (how quickly the value
-//! gets there, in seconds) and a damping ratio (1 settles without overshoot).
+//! Springs, described by a response (how quickly the value gets there, in seconds)
+//! and a damping ratio (1 settles without overshoot).
 //!
 //! Springs rather than timed curves because a toggle pressed again mid-flight
 //! turns back from where it is, keeping its speed.

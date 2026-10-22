@@ -1,7 +1,7 @@
 # Nerda Studio
 
 One desktop app for my work: coding agents first, then a design canvas, notes and more.
-Built in Rust on [GPUI](https://gpui.rs), Zed's GPU-accelerated UI framework.
+Built in Rust on [GPUI](https://gpui.rs), a GPU-accelerated UI framework.
 
 ## Run
 
@@ -28,6 +28,6 @@ cargo run -p studio
   typed path, search, sort and filter, saved as JSON in the platform's data folder
   (`Nerda Studio/workspace.json`).
 
-GPUI comes from Zed's repository, pinned to one commit in the root `Cargo.toml`: crates.io has
+GPUI is pinned to one commit of its repository in the root `Cargo.toml`: crates.io has
 only an older `gpui` without `gpui_platform`.
 
