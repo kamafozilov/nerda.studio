@@ -1,6 +1,7 @@
 mod accessibility;
 mod add_project;
 mod assets;
+mod dev_reload;
 mod shell;
 mod sidebar;
 mod sidebar_glyph;
@@ -31,10 +32,16 @@ fn main() {
         tabs::bind_keys(cx);
         let theme = system_theme::current(cx.window_appearance());
         cx.set_global(theme);
-        let bounds = Bounds::centered(None, size(px(1200.), px(800.)), cx);
+        // Under live reload, a new build opens where the last one was.
+        let dev = dev_reload::Link::join();
+        let left = dev.as_ref().and_then(|(_, left)| *left);
+        let bounds = left.map_or_else(
+            || WindowBounds::Windowed(Bounds::centered(None, size(px(1200.), px(800.)), cx)),
+            |left| left.bounds,
+        );
         cx.open_window(
             WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                window_bounds: Some(bounds),
                 window_min_size: Some(size(px(720.), px(480.))),
                 // Windows keeps its system titlebar until the app draws its own
                 // caption buttons; macOS draws the traffic lights over our glass.
@@ -51,10 +58,13 @@ fn main() {
                 app_id: Some("studio.nerda".into()),
                 ..Default::default()
             },
-            |window, cx| cx.new(|cx| Shell::new(window, cx)),
+            |window, cx| cx.new(|cx| Shell::new(dev.map(|(link, _)| link), window, cx)),
         )
         .expect("the main window opens");
-        cx.activate(true);
+        // A reload while the editor is in front leaves it there.
+        if left.is_none_or(|left| left.active) {
+            cx.activate(true);
+        }
     });
 }
 

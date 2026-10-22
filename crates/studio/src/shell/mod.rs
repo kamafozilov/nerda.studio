@@ -15,8 +15,8 @@ use theme::{MAIN_INSET, MAIN_RADIUS, SIDEBAR_WIDTH, TEXT_BODY, Theme, motion};
 use workspace::{Timestamp, Visits};
 
 use crate::{
-    accessibility, add_project::AddProjectPalette, sidebar::Sidebar, store::Store, system_theme,
-    tabs::TabStrip, welcome,
+    accessibility, add_project::AddProjectPalette, dev_reload, sidebar::Sidebar, store::Store,
+    system_theme, tabs::TabStrip, welcome,
 };
 
 pub use commands::ActivateTab;
@@ -57,6 +57,8 @@ pub struct Shell {
     /// The left button went down on the titlebar; the next move drags the window.
     titlebar_pressed: bool,
     add_project: Option<OpenPalette>,
+    /// Live reload's record of the screen, while the app runs under it.
+    dev: Option<dev_reload::Link>,
 }
 
 /// The add-project palette while it is open.
@@ -68,7 +70,11 @@ struct OpenPalette {
 }
 
 impl Shell {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        mut dev: Option<dev_reload::Link>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         // A change made in System Settings shows up when the app comes back to
         // front, so the theme is re-read then as well as on an appearance switch.
         let refresh = |_: &mut Self, window: &mut Window, cx: &mut Context<Self>| {
@@ -80,11 +86,30 @@ impl Shell {
         };
         cx.observe_window_appearance(window, refresh).detach();
         cx.observe_window_activation(window, refresh).detach();
+        if let Some(link) = &mut dev {
+            link.set_bounds(window.window_bounds());
+            cx.observe_window_bounds(window, |shell: &mut Self, window, _| {
+                if let Some(link) = &mut shell.dev {
+                    link.set_bounds(window.window_bounds());
+                }
+            })
+            .detach();
+            cx.observe_window_activation(window, |shell: &mut Self, window, _| {
+                if let Some(link) = &mut shell.dev {
+                    link.set_active(window.is_window_active());
+                }
+            })
+            .detach();
+        }
         // Key bindings dispatch from the focused element, so the shell holds focus
         // until something inside it takes it.
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
         let store = cx.new(Store::load);
+        if let Some(link) = &dev {
+            link.listen(store.clone(), cx);
+            dev_reload::Link::announce_ready(window);
+        }
         // A project on screen always shows a session.
         let nothing_open = {
             let workspace = store.read(cx).workspace();
@@ -121,9 +146,10 @@ impl Shell {
             sidebar,
             tabs,
             visits,
-            sidebar_open: true,
+            sidebar_open: dev.as_ref().is_none_or(dev_reload::Link::sidebar_open),
             titlebar_pressed: false,
             add_project: None,
+            dev,
         }
     }
 
@@ -170,6 +196,9 @@ impl Shell {
     fn toggle_sidebar(&mut self, cx: &mut Context<Self>) {
         cx.set_reduce_motion(accessibility::reduce_motion());
         self.sidebar_open = !self.sidebar_open;
+        if let Some(link) = &mut self.dev {
+            link.set_sidebar_open(self.sidebar_open);
+        }
         cx.notify();
     }
 

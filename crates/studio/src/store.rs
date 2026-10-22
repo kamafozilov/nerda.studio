@@ -23,6 +23,9 @@ pub struct Store {
     notice: Option<SharedString>,
     /// The file's contents as last handed to the writer.
     saved: Option<Arc<[u8]>>,
+    /// Where saves go once live reload's next build has taken the file over;
+    /// see [`Store::hand_off`].
+    handed_off: Option<PathBuf>,
     /// Numbers the saves, newest highest.
     serial: u64,
     writer: Arc<Writer>,
@@ -69,6 +72,7 @@ impl Store {
             path,
             notice,
             saved: None,
+            handed_off: None,
             serial: 0,
             writer: Arc::default(),
             _quit: quit,
@@ -151,6 +155,28 @@ impl Store {
         self.save(cx);
         cx.notify();
         result
+    }
+
+    /// Live reload: writes the pending save now and stops saving, so the next
+    /// build loads every change and owns the file from then on.
+    pub fn hand_off(&mut self) {
+        let Some(path) = self.path.take() else {
+            return;
+        };
+        if let Some(bytes) = &self.saved {
+            self.writer.write(self.serial, &path, bytes).ok();
+        }
+        self.handed_off = Some(path);
+    }
+
+    /// Live reload: the next build never took over, so this one saves again,
+    /// starting with what changed meanwhile.
+    pub fn resume(&mut self, cx: &mut Context<Self>) {
+        if let Some(path) = self.handed_off.take() {
+            self.path = Some(path);
+            self.saved = None;
+            self.save(cx);
+        }
     }
 
     fn save(&mut self, cx: &mut Context<Self>) {
