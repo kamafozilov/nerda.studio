@@ -11,8 +11,12 @@
 //! Another launch, such as an agent's build, takes the window over too; once it
 //! quits, the runner opens its own build again. If the app quits on its own, the
 //! next change brings it back.
+//!
+//! `cargo run -p dev -- install` puts a release build in `/Applications`.
 
 mod app;
+#[cfg(target_os = "macos")]
+mod install;
 
 use std::{
     collections::hash_map::DefaultHasher,
@@ -38,7 +42,15 @@ fn main() -> ExitCode {
         eprintln!("dev: can't find the workspace at {}", root.display());
         return ExitCode::FAILURE;
     };
-    live_reload(&root)
+    match std::env::args().nth(1).as_deref() {
+        None => live_reload(&root),
+        #[cfg(target_os = "macos")]
+        Some("install") => install::run(&root),
+        Some(other) => {
+            eprintln!("dev: unknown command {other:?}; run it bare, or with install on macOS");
+            ExitCode::FAILURE
+        }
+    }
 }
 
 fn live_reload(root: &Path) -> ExitCode {

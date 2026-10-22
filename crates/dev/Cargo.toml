@@ -7,3 +7,6 @@ publish.workspace = true
 
 [dependencies]
 workspace.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+app_bundle.workspace = true

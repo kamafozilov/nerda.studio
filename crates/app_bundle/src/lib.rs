@@ -1,7 +1,12 @@
 //! The macOS app bundle the app runs from. macOS knows an app (its name in the
 //! menu bar, its Dock icon, ⌘Tab, the permissions it is granted) only by the
 //! bundle its executable sits in, so every build runs from one: a build started
-//! outside a bundle puts itself in one next to it (`crates/studio/src/bundle.rs`).
+//! outside a bundle puts itself in one next to it (`crates/studio/src/bundle.rs`),
+//! and `cargo run -p dev -- install` puts a release build in `/Applications`.
+//!
+//! Development builds and the installed app are two apps to macOS, with their
+//! own names, so opening one never just brings the other forward. They share
+//! the data folder, and the newest one launched takes over the window.
 //!
 //! `assets/AppIcon.icns` is made from `assets/AppIcon.svg`: render it to a
 //! 1024 px PNG that keeps its transparency, then `sips -z` the ten sizes of an
@@ -24,6 +29,12 @@ pub struct Identity {
 pub const DEV: Identity = Identity {
     id: "studio.nerda.dev",
     name: "Nerda Studio Dev",
+};
+
+/// The app installed in `/Applications`.
+pub const RELEASE: Identity = Identity {
+    id: "studio.nerda",
+    name: "Nerda Studio",
 };
 
 const EXECUTABLE: &str = "studio";

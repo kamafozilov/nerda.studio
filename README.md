@@ -31,11 +31,21 @@ the runner and the app quits with it, its changes saved.
 
 On macOS every build run from the source tree runs as **Nerda Studio Dev**
 (`studio.nerda.dev`): it puts itself in `target/<profile>/Nerda Studio Dev.app` and runs
-from there, so it has its own name in the menu bar, Dock icon and ⌘Tab entry.
+from there, so it has its own name in the menu bar, Dock icon and ⌘Tab entry. To install
+the app itself, **Nerda Studio** (`studio.nerda`), in `/Applications` and open it:
+
+```sh
+cargo run -p dev -- install
+```
+
+It is signed ad hoc, so macOS asks again for any permission after each install; set
+`NERDA_SIGN_IDENTITY` to the name of a code-signing certificate in your keychain and the
+permissions stay.
 
 Only one instance runs at a time, the newest: launching the app while it runs (another
-build, an agent's build) takes the window over in place, and the old instance saves and
-quits.
+build, the installed app, an agent's build) takes the window over in place, and the old
+instance saves and quits. Opening the installed app while it already runs brings it to
+the front.
 
 ## Layout
 
@@ -48,8 +58,8 @@ quits.
   tabs, and Back and Forward. All but Back and Forward is saved as JSON in the platform's
   data folder (`Nerda Studio/workspace.json`), beside `instance.lock`, held by the
   instance that saves.
-- `crates/dev`: the live-reload runner; one instance taking over from another is
-  `crates/studio/src/instance`.
+- `crates/dev`: the live-reload runner and `install`; one instance taking over from
+  another is `crates/studio/src/instance`.
 - `crates/app_bundle`: the macOS app bundle, its `Info.plist` and its icon, made from
   `assets/AppIcon.svg`.
 

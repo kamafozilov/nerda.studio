@@ -985,6 +985,7 @@ dependencies = [
 name = "dev"
 version = "0.1.0"
 dependencies = [
+ "app_bundle",
  "workspace",
 ]
 
