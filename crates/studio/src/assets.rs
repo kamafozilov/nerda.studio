@@ -11,16 +11,22 @@ use gpui::{AssetSource, Result, SharedString};
 /// An icon the app draws. GPUI paints an SVG in its own `text_color` only.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Icon {
+    /// Back to the session shown before.
+    Back,
     Check,
     Close,
     /// A folded project in the session list.
     Collapsed,
     /// An unfolded project in the session list.
     Expanded,
+    /// Forward to the session Back left.
+    Forward,
     Folder,
     FolderAdd,
     FolderUp,
     NewSession,
+    /// A new tab in the top row.
+    NewTab,
     PullRequests,
     /// The Return key, shown in a key cap.
     Return,
@@ -33,14 +39,17 @@ pub enum Icon {
 impl Icon {
     pub fn path(self) -> &'static str {
         match self {
+            Self::Back => "icons/angle-left.svg",
             Self::Check => "icons/check.svg",
             Self::Close => "icons/x.svg",
             Self::Collapsed => "icons/angle-right.svg",
             Self::Expanded => "icons/angle-down.svg",
+            Self::Forward => "icons/angle-right.svg",
             Self::Folder => "icons/folder.svg",
             Self::FolderAdd => "icons/folder-add.svg",
             Self::FolderUp => "icons/folder-up.svg",
             Self::NewSession => "icons/edit.svg",
+            Self::NewTab => "icons/plus.svg",
             Self::PullRequests => "icons/git-pull-request.svg",
             Self::Return => "icons/corner-down-left.svg",
             Self::Search => "icons/search.svg",
@@ -55,6 +64,10 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/angle-down.svg",
         include_bytes!("../assets/icons/angle-down.svg"),
+    ),
+    (
+        "icons/angle-left.svg",
+        include_bytes!("../assets/icons/angle-left.svg"),
     ),
     (
         "icons/angle-right.svg",
@@ -90,6 +103,7 @@ const FILES: &[(&str, &[u8])] = &[
         "icons/folder-up.svg",
         include_bytes!("../assets/icons/folder-up.svg"),
     ),
+    ("icons/plus.svg", include_bytes!("../assets/icons/plus.svg")),
     (
         "icons/search.svg",
         include_bytes!("../assets/icons/search.svg"),

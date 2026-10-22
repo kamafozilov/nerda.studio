@@ -20,13 +20,14 @@ cargo run -p studio
 
 ## Layout
 
-- `crates/studio`: the app binary: the main window, its shell, the sidebar and the Add
-  project palette.
+- `crates/studio`: the app binary: the main window, its shell (the top row with its tabs,
+  the sidebar and the main area's card) and the Add project palette.
 - `crates/theme`: the look every crate shares: materials, colors and sizes. The rules are in
   [docs/design.md](docs/design.md).
-- `crates/workspace`: projects and sessions, with no UI: adding folders, browsing them by a
-  typed path, search, sort and filter, saved as JSON in the platform's data folder
-  (`Nerda Studio/workspace.json`).
+- `crates/workspace`: projects, sessions and the tabs open on them, with no UI: adding
+  folders, browsing them by a typed path, search, sort and filter, opening and closing
+  tabs, and Back and Forward. All but Back and Forward is saved as JSON in the platform's
+  data folder (`Nerda Studio/workspace.json`).
 
 GPUI is pinned to one commit of its repository in the root `Cargo.toml`: crates.io has
 only an older `gpui` without `gpui_platform`.

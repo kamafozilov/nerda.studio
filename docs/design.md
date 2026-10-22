@@ -8,8 +8,8 @@ components read them through `Theme::of(cx)` and the constants in `theme`, never
 
 | Layer | What it is | Token |
 | --- | --- | --- |
-| Window base | The blurred desktop under a tint. The sidebar sits on it directly. | `window_background` |
-| Main area | Raised over the base, flush with the window's edges, a hairline from the sidebar. | `panel_background`, `border` |
+| Window base | The blurred desktop under a tint. The top row and the sidebar sit on it directly. | `window_background` |
+| Main area | A card raised over the base: `MAIN_RADIUS` (10) corners and a hairline, `MAIN_INSET` (6) clear of the window's right and bottom edges, and of its left while the sidebar is closed. | `panel_background`, `border` |
 
 - **Glass** on macOS and Windows: the window uses `WindowBackgroundAppearance::Blurred`
   and the base tint is translucent. Measured on macOS 27, GPUI's blur
@@ -21,9 +21,9 @@ components read them through `Theme::of(cx)` and the constants in `theme`, never
   is opaque, the same colors otherwise. `crates/studio/src/system_theme.rs` rereads the
   setting when the window comes back to front, so a change made in System Settings applies
   without a restart.
-- **The glass is in the sidebar.** The main area stays near solid, about 6% of the desktop
-  showing through, because its content (code, chat, a design canvas) must read the same
-  on any desktop and keep its own colors.
+- **The glass is in the top row and the sidebar.** The main area stays near solid, about
+  6% of the desktop showing through, because its content (code, chat, a design canvas)
+  must read the same on any desktop and keep its own colors.
 - Do not stack another translucent surface on the main area. GPUI blurs only what is behind
   the window, not the app's own content, so a menu or popover needs an opaque background of
   its own.
@@ -69,17 +69,19 @@ no tertiary text color: one light enough to look tertiary falls near 3:1 on the 
 
 ## Layout and type
 
-Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`:
+Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
+`MAIN_INSET` (6) and the tabs' `TAB_GAP` (2):
 
-- The window has one top row, `HEADER_HEIGHT` (44), across the sidebar and the main area.
-  The macOS traffic lights and everything else in it center on it.
-- The sidebar is `SIDEBAR_WIDTH` (260); `Cmd-B` (`Ctrl-B` elsewhere) or its toggle in the
-  top row hides it, and the toggle then stays in place over the main area.
+- The window has one top row, `HEADER_HEIGHT` (44), across the whole window on the glass:
+  the macOS traffic lights, the sidebar toggle, Back and Forward, then the tabs over the
+  card. Everything in it centers on it.
+- The sidebar is `SIDEBAR_WIDTH` (260), under the top row, and meets the card. `Cmd-B`
+  (`Ctrl-B` elsewhere) or its toggle hides it: the toggle stays in place, Back and Forward
+  ride the sidebar's edge, `MAIN_INSET` inside it, and come to rest after the toggle.
 - An icon button is `CONTROL_SIZE` (28) square with `CONTROL_RADIUS` (6), its icon
   `ICON_SIZE` (16) in `text_secondary`, turning `text_primary` on `hover`.
 - Text is the platform's UI font (GPUI's `.SystemUIFont`; SF Pro on macOS) at
-  `TEXT_BODY` (13), the size of macOS controls. The app name is medium weight; emphasis is
-  weight, not size.
+  `TEXT_BODY` (13), the size of macOS controls. Emphasis is weight, not size.
 
 ## Icons
 
@@ -98,14 +100,34 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`:
 
 - **Icon-only buttons** carry a tooltip naming the action ("Add project", "New session (⌘N)").
   A button that can't act yet stays visible at 40% opacity, its tooltip saying why.
-- **Tooltips** sit centered above their control, `SPACE_1` clear of it, never at the
-  pointer, so they don't cover the controls beside it (`crates/studio/src/tooltip.rs`;
-  GPUI's `.tooltip()` follows the pointer and isn't used). One shows after the pointer rests
-  `TOOLTIP_DELAY` (500 ms); within `TOOLTIP_WARM` (300 ms) of another, at once. A press
-  hides it.
+- **Tooltips** sit centered above their control, or below it in the top row, where there
+  is no room above; `SPACE_1` clear of it, never at the pointer, so they don't cover the
+  controls beside it (`crates/studio/src/tooltip.rs`; GPUI's `.tooltip()` follows the
+  pointer and isn't used). One shows after the pointer rests `TOOLTIP_DELAY` (500 ms);
+  within `TOOLTIP_WARM` (300 ms) of another, at once. A press hides it.
 - **Rows** are `ROW_HEIGHT` (28), spanning the list with `SPACE_2` sides and a rounded
   surface inside: `row_selected` under the selection, `hover` under the pointer or the
   keyboard highlight. Text truncates with an ellipsis; secondary labels truncate first.
+- **Tabs** in the top row are the sessions open in the project on screen
+  (`crates/studio/src/tabs/`). Each project keeps its own, saved with the workspace;
+  showing another project's session switches the row to that project's tabs. A tab is
+  `CONTROL_SIZE` high, its title in `text_primary` on `row_selected` when selected and on
+  `hover` under the pointer. Tabs share the row up to `TAB_MAX_WIDTH` (224) each,
+  `TAB_GAP` apart, however many there are; the selected one keeps `TAB_SELECTED_MIN_WIDTH`
+  (112). Under the pointer a tab shows its close button if it is at least
+  `TAB_CLOSE_MIN_WIDTH` (72) wide or selected. New session follows the last tab.
+- **Opening and closing tabs.** A session opened from the sidebar, a shortcut or New
+  session gets a tab at the end unless it has one. Closing the selected tab selects its
+  right neighbor, else its left; closing a project's last tab opens the project's draft, so
+  a project on screen always shows a session. A tab closes from its button, a middle
+  click, `Cmd-W`, or its menu (a right click): Close Tab, Close Other Tabs, Close Tabs to
+  the Right or to the Left, Close All Tabs. Dragged along the row, a tab reorders.
+- **Tab shortcuts** (Ctrl for Cmd elsewhere): `Cmd-T` or `Cmd-N` new session, `Cmd-W`
+  close, `Cmd-Alt-T` close the others, `Cmd-Shift-W` close all, `Ctrl-Tab` or
+  `Cmd-Shift-]` the next tab and `Ctrl-Shift-Tab` or `Cmd-Shift-[` the previous, wrapping,
+  `Cmd-1` to `Cmd-8` by place and `Cmd-9` the last.
+- **Back and Forward** (`Cmd-[`, `Cmd-]`) retrace the sessions shown, as a browser's
+  history does; a closed tab drops out of them, and a new visit clears Forward.
 - **Menus** are `popover_background` (opaque) with a hairline, a large shadow and
   `MENU_WIDTH` (220), growing to 360 before they scroll. A window-wide backdrop under the
   menu takes the click that closes it, so that click presses nothing else; Escape closes
@@ -174,14 +196,23 @@ toggle pressed again mid-flight turns back from where it is, keeping its speed. 
   entrances: `PANEL_ENTER` responds in 0.3 s, `PANEL_EXIT` in 0.25 s.
 - **Reduce motion** in the system settings snaps every animation to its end.
   `crates/studio/src/accessibility.rs` reads the setting on macOS and Windows on each
-  toggle and hands it to GPUI, which does not read it itself; Linux has no one setting.
+  toggle and each change to the tabs, and hands it to GPUI, which does not read it itself;
+  Linux has no one setting.
 - **The sidebar** animates its width and fades with it. Its contents stay pinned to the
   window's left edge while the sidebar's edge sweeps over them, so nothing passes under the
-  traffic lights or the toggle, which never move.
+  traffic lights or the toggle, which never move. On the same spring the card's left inset
+  grows and Back and Forward ride the sidebar's edge.
+- **Tabs**: an opened tab's slot grows from nothing on `TAB_ENTER` (0.25 s) and a closed
+  one collapses in place on `TAB_EXIT` (0.2 s) before it leaves, so its neighbors give way
+  gradually; the tab inside keeps its settled width and the slot's edge cuts it. Reopened
+  mid-collapse, it grows back from where it is. A dropped tab, and the tabs it passed,
+  glide into their slots on `TAB_ENTER`. Switching projects replaces the row at once: it
+  is not a close.
 
 Measured on macOS at 120 Hz: the sidebar closes to 90% in 159 ms and settles in 374 ms;
 it opens to 90% in 204 ms. Reversed mid-flight, it carries on for two frames and turns
-back without a jump.
+back without a jump. A tab opens to 90% in about 160 ms and settles in 350 ms; a closed
+one is gone in 200 ms (debug build).
 
 ## Window chrome
 
@@ -191,6 +222,7 @@ back without a jump.
 - macOS: the app owns the titlebar (`app_owns_titlebar_drag`), so AppKit acts on no click in
   the top row. The shell's `titlebar` strip spans the row: dragging it moves the window and
   double-clicking it does what System Settings says (zoom or minimize). A control in the
-  row draws after the strip and calls `.occlude()`, so its clicks, double-clicks included,
-  stay its own and never move or zoom the window.
+  row (the toggle, Back and Forward, each tab, New session) draws after the strip and
+  calls `.occlude()`, so its clicks, double-clicks included, stay its own and never move
+  or zoom the window.
 - Windows: the system titlebar stays until the app draws its own caption buttons.

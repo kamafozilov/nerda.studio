@@ -12,6 +12,8 @@ mod list;
 mod menu;
 mod project_rows;
 
+pub(crate) use header::icon_button;
+
 use std::{collections::HashSet, path::Path};
 
 use gpui::{

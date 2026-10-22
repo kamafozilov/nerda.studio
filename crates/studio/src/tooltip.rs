@@ -1,4 +1,5 @@
-//! A text tooltip naming an icon-only control, centered above it.
+//! A text tooltip naming an icon-only control, centered above it, or below it
+//! in the window's top row, where there is no room above.
 //!
 //! GPUI's own `.tooltip()` places the label at the pointer and flips it over
 //! the pointer near the window's bottom, onto neighboring controls. This one
@@ -33,6 +34,7 @@ impl TooltipExt for Stateful<Div> {
             id,
             text: text.into(),
             target: self,
+            below: false,
         }
     }
 }
@@ -42,6 +44,15 @@ pub struct WithTooltip {
     id: ElementId,
     text: SharedString,
     target: Stateful<Div>,
+    below: bool,
+}
+
+impl WithTooltip {
+    /// Shows the tooltip under the control, for controls in the top row.
+    pub fn below(mut self) -> Self {
+        self.below = true;
+        self
+    }
 }
 
 #[derive(Default)]
@@ -135,10 +146,10 @@ impl RenderOnce for WithTooltip {
                 target.child(deferred(
                     div()
                         .absolute()
-                        .bottom_full()
+                        .when(self.below, |row| row.top_full().mt(SPACE_1))
+                        .when(!self.below, |row| row.bottom_full().mb(SPACE_1))
                         .left_0()
                         .right_0()
-                        .mb(SPACE_1)
                         .flex()
                         .justify_center()
                         .child(

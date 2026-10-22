@@ -24,7 +24,7 @@ const DISABLED_OPACITY: f32 = 0.4;
 
 /// A square icon-only control with a tooltip naming it. Chain listeners on
 /// `build`; the tooltip wraps the result.
-pub(super) fn icon_button(
+pub(crate) fn icon_button(
     id: impl Into<SharedString>,
     icon: Icon,
     label: impl Into<SharedString>,

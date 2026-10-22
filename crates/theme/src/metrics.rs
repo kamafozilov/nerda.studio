@@ -8,6 +8,22 @@ pub const HEADER_HEIGHT: Pixels = px(44.);
 /// Width of the sidebar.
 pub const SIDEBAR_WIDTH: Pixels = px(260.);
 
+/// Gap between the main area's card and the window's edges; on the left only
+/// while the sidebar is closed, since the open sidebar meets the card.
+pub const MAIN_INSET: Pixels = px(6.);
+/// Corners of the main area's card.
+pub const MAIN_RADIUS: Pixels = px(10.);
+
+/// Widest a tab in the top row grows; tabs share the row below that.
+pub const TAB_MAX_WIDTH: Pixels = px(224.);
+/// Narrowest the selected tab shrinks while the others keep giving way.
+pub const TAB_SELECTED_MIN_WIDTH: Pixels = px(112.);
+/// Narrower than this, a tab drops its close button and a click anywhere on it
+/// selects it.
+pub const TAB_CLOSE_MIN_WIDTH: Pixels = px(72.);
+/// Space between neighboring tabs.
+pub const TAB_GAP: Pixels = px(2.);
+
 /// Side of a square icon button, which is also its hit area.
 pub const CONTROL_SIZE: Pixels = px(28.);
 pub const CONTROL_RADIUS: Pixels = px(6.);
