@@ -108,12 +108,12 @@ fn scope_filters_and_unknown_projects_fall_back_to_all() {
 }
 
 #[test]
-fn selecting_an_unknown_session_clears_the_selection() {
+fn opening_an_unknown_session_changes_nothing() {
     let mut workspace = load_json(FIXTURE);
-    workspace.select_session(Some(SessionId(5)));
+    workspace.open_session(SessionId(5));
+    workspace.open_session(SessionId(99));
     assert_eq!(workspace.selected_session(), Some(SessionId(5)));
-    workspace.select_session(Some(SessionId(99)));
-    assert_eq!(workspace.selected_session(), None);
+    assert_eq!(workspace.tabs(), [SessionId(5)]);
 }
 
 #[test]
@@ -122,7 +122,7 @@ fn context_project_prefers_selection_then_scope_then_activity() {
     assert_eq!(workspace.context_project(), Some(ProjectId(1)));
     workspace.set_scope(ProjectScope::Project(ProjectId(2)));
     assert_eq!(workspace.context_project(), Some(ProjectId(2)));
-    workspace.select_session(Some(SessionId(7)));
+    workspace.open_session(SessionId(7));
     assert_eq!(workspace.context_project(), Some(ProjectId(1)));
 
     assert_eq!(Workspace::default().context_project(), None);

@@ -59,9 +59,17 @@ fn round_trip_keeps_state_and_the_id_counter() {
         panic!("expected a new project");
     };
     let session = workspace.new_session(project, Timestamp(6)).unwrap();
+    let AddedProject::Added(second) = workspace
+        .add_project(&temp.dir("second"), Timestamp(5))
+        .unwrap()
+    else {
+        panic!("expected a new project");
+    };
+    let elsewhere = workspace.new_session(second, Timestamp(6)).unwrap();
+    workspace.open_session(elsewhere);
     workspace.set_sort(SessionSort::Created);
     workspace.set_scope(ProjectScope::Project(project));
-    workspace.select_session(Some(session));
+    workspace.open_session(session);
     workspace.set_collapsed(project, true);
     workspace.set_view(SessionView::Sessions);
     workspace.save(&path).unwrap();
@@ -72,6 +80,7 @@ fn round_trip_keeps_state_and_the_id_counter() {
     assert_eq!(loaded.sort(), SessionSort::Created);
     assert_eq!(loaded.scope(), ProjectScope::Project(project));
     assert_eq!(loaded.selected_session(), Some(session));
+    assert_eq!(loaded.tabs(), [elsewhere, session]);
     assert!(loaded.is_collapsed(project));
     assert_eq!(loaded.view(), SessionView::Sessions);
 
@@ -102,6 +111,7 @@ fn loading_repairs_dangling_references_and_the_counter() {
             ],
             "scope": {"Project": 4},
             "selected_session": 9,
+            "tabs": [9, 8, 8, 77],
             "collapsed": [1, 4]}"#,
     );
     let titles: Vec<&str> = workspace
@@ -118,6 +128,7 @@ fn loading_repairs_dangling_references_and_the_counter() {
     assert_eq!(sessions, ["kept"]);
     assert_eq!(workspace.scope(), ProjectScope::All);
     assert_eq!(workspace.selected_session(), None);
+    assert_eq!(workspace.tabs(), [SessionId(8)]);
     assert!(workspace.session(SessionId(9)).is_none());
     assert!(workspace.is_collapsed(ProjectId(1)));
     assert!(!workspace.is_collapsed(ProjectId(4)));

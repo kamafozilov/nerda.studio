@@ -41,6 +41,7 @@ struct FileRef<'a> {
     sort: SessionSort,
     scope: ProjectScope,
     selected_session: Option<SessionId>,
+    tabs: &'a [SessionId],
     collapsed: &'a BTreeSet<ProjectId>,
 }
 
@@ -61,6 +62,9 @@ struct FileV1 {
     scope: ProjectScope,
     #[serde(default)]
     selected_session: Option<SessionId>,
+    /// Files written before sessions opened as tabs have none.
+    #[serde(default)]
+    tabs: Vec<SessionId>,
     /// Files written before projects could fold have none.
     #[serde(default)]
     collapsed: Vec<ProjectId>,
@@ -95,6 +99,7 @@ impl Workspace {
             sort: self.sort,
             scope: self.scope,
             selected_session: self.selected_session,
+            tabs: &self.tabs,
             collapsed: &self.collapsed,
         };
         let json = serde_json::to_vec_pretty(&file).map_err(io::Error::other)?;
@@ -156,14 +161,21 @@ impl Workspace {
             ..Workspace::default()
         };
         workspace.set_scope(file.scope);
-        workspace.select_session(file.selected_session);
+        for tab in file.tabs {
+            if workspace.session(tab).is_some() && !workspace.tabs.contains(&tab) {
+                workspace.tabs.push(tab);
+            }
+        }
+        // An older file's selection becomes its one tab.
+        if let Some(selected) = file.selected_session {
+            workspace.open_session(selected);
+        }
         for project in file.collapsed {
             workspace.set_collapsed(project, true);
         }
         Ok(workspace)
     }
 }
-
 /// Writes `bytes` to a new file and flushes it to disk before it can replace the real one.
 fn write_synced(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let mut file = fs::File::create(path)?;

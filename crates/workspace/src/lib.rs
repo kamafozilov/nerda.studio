@@ -3,15 +3,18 @@
 mod age;
 pub mod browse;
 mod error;
+mod history;
 mod model;
 mod paths;
 mod query;
 mod store;
+mod tabs;
 
 use std::{collections::BTreeSet, path::Path};
 
 pub use age::compact_age;
 pub use error::{AddProjectError, LoadError};
+pub use history::Visits;
 pub use model::{
     AddedProject, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, SessionView,
     Timestamp,
@@ -22,7 +25,8 @@ pub use store::default_state_path;
 /// Title given to every freshly created session.
 const NEW_SESSION_TITLE: &str = "New session";
 
-/// All projects and sessions plus the sidebar's view, sort, scope and selection.
+/// All projects and sessions plus the sidebar's view, sort, scope and selection,
+/// and the sessions open as tabs.
 #[derive(Clone, Debug, Default)]
 pub struct Workspace {
     /// Next id to hand out; shared by projects and sessions and only ever increased.
@@ -32,7 +36,11 @@ pub struct Workspace {
     view: SessionView,
     sort: SessionSort,
     scope: ProjectScope,
+    /// The session on screen; always one of `tabs`.
     selected_session: Option<SessionId>,
+    /// Sessions open as tabs, in order. Every project's tabs share this list, and
+    /// the selected session's project is the one whose tabs show.
+    tabs: Vec<SessionId>,
     /// Projects folded to their header in the session list.
     collapsed: BTreeSet<ProjectId>,
 }
@@ -125,11 +133,6 @@ impl Workspace {
 
     pub fn selected_session(&self) -> Option<SessionId> {
         self.selected_session
-    }
-
-    /// Selects a session; an unknown id clears the selection.
-    pub fn select_session(&mut self, session: Option<SessionId>) {
-        self.selected_session = session.filter(|&id| self.session(id).is_some());
     }
 
     /// Whether the project is folded to its header in the session list.

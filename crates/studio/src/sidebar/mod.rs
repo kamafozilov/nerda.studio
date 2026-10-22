@@ -125,10 +125,10 @@ impl Sidebar {
         self.search.update(cx, |search, cx| search.set_text("", cx));
     }
 
-    /// Opens a session: selects it and leaves search so it shows in place.
+    /// Opens a session in its tab and leaves search so it shows in place.
     fn open_session(&mut self, session: SessionId, cx: &mut Context<Self>) {
         self.store.update(cx, |store, cx| {
-            store.update(cx, |workspace| workspace.select_session(Some(session)));
+            store.update(cx, |workspace| workspace.open_session(session));
         });
         self.clear_search(cx);
         self.reveal = Some(session);
@@ -144,7 +144,7 @@ impl Sidebar {
                     workspace.set_scope(ProjectScope::All);
                 }
                 workspace.set_collapsed(project, false);
-                workspace.select_session(Some(session));
+                workspace.open_session(session);
             });
         });
         self.clear_search(cx);
