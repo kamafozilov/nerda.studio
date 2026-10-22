@@ -7,10 +7,15 @@ use gpui::{
     AnyElement, ClickEvent, Context, IntoElement, ParentElement, ScrollStrategy, SharedString,
     Styled, div, prelude::*, px, svg, uniform_list,
 };
-use theme::{CONTROL_RADIUS, ICON_SIZE, ICON_SIZE_SMALL, ROW_HEIGHT, SPACE_2, SPACE_3, Theme};
+use theme::{
+    CONTROL_RADIUS, ICON_SIZE, ICON_SIZE_SMALL, ROW_GAP, ROW_HEIGHT, SPACE_2, SPACE_3, Theme,
+};
 use workspace::{ProjectScope, SessionId, SessionView, Timestamp, compact_age};
 
-use super::{Row, Sidebar, project_rows::indent_guide};
+use super::{
+    Row, Sidebar,
+    project_rows::{indent_guide, row_slot},
+};
 use crate::{assets::Icon, tooltip::TooltipExt};
 
 /// Widest a project name grows beside a session's title before it truncates.
@@ -118,11 +123,12 @@ impl Sidebar {
             self.scroll.scroll_to_item(index, ScrollStrategy::Nearest);
         }
         // The gap under the header sits outside the scrolling area, so rows scroll
-        // out of sight below it instead of up against the header.
+        // out of sight below it instead of up against the header. The first row's
+        // slot adds half a `ROW_GAP` above its surface, so the gap gives that back.
         div()
             .flex_1()
             .min_h_0()
-            .pt(SPACE_2)
+            .pt(SPACE_2 - ROW_GAP / 2.)
             .flex()
             .flex_col()
             .child(
@@ -152,7 +158,7 @@ impl Sidebar {
                 self.render_show_row(project, Some(hidden), cx)
             }
             Some(&Row::ShowLess(project)) => self.render_show_row(project, None, cx),
-            None => div().h(ROW_HEIGHT).into_any_element(),
+            None => row_slot().into_any_element(),
         }
     }
 
@@ -165,7 +171,7 @@ impl Sidebar {
         let colors = Theme::of(cx).colors;
         let workspace = self.store.read(cx).workspace();
         let Some(session) = workspace.session(id) else {
-            return div().h(ROW_HEIGHT).into_any_element();
+            return row_slot().into_any_element();
         };
         let nested = workspace.view() == SessionView::Projects;
         let selected = workspace.selected_session() == Some(id);
@@ -177,20 +183,15 @@ impl Sidebar {
             .then(|| workspace.display_name(session.project))
             .flatten()
             .map(SharedString::from);
-        // The row spans the list; its rounded surface sits inside the side padding,
-        // and under a project it hangs from the project's guide.
-        div()
-            .w_full()
-            .h(ROW_HEIGHT)
-            .px(SPACE_2)
-            .flex()
+        // Under a project the row hangs from the project's guide.
+        row_slot()
             .when(nested, |row| row.child(indent_guide(colors)))
             .child(
                 div()
                     .id(("session", id.0))
                     .flex_1()
                     .min_w_0()
-                    .h_full()
+                    .h(ROW_HEIGHT)
                     .px(SPACE_2)
                     .flex()
                     .items_center()

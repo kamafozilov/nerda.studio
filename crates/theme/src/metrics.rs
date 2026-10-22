@@ -36,6 +36,9 @@ pub const ICON_SIZE_SMALL: Pixels = px(12.);
 pub const FIELD_TARGET_SIZE: Pixels = px(24.);
 /// Height of one row in a list or menu; rows use `CONTROL_RADIUS` corners.
 pub const ROW_HEIGHT: Pixels = px(28.);
+/// Space between the surfaces of neighboring rows in the sidebar list, where a
+/// selected row and a hovered one can sit side by side and must stay two shapes.
+pub const ROW_GAP: Pixels = px(2.);
 /// Width of a menu that opens from a control.
 pub const MENU_WIDTH: Pixels = px(220.);
 

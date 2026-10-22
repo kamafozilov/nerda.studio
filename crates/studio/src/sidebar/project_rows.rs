@@ -2,10 +2,12 @@
 //! guide its sessions hang from, and the rows showing more or fewer of them.
 
 use gpui::{
-    AnyElement, ClickEvent, Context, FontWeight, IntoElement, ParentElement, SharedString, Styled,
-    div, prelude::*, px, svg,
+    AnyElement, ClickEvent, Context, Div, FontWeight, IntoElement, ParentElement, SharedString,
+    Styled, div, prelude::*, px, svg,
 };
-use theme::{CONTROL_RADIUS, CONTROL_SIZE, Colors, ICON_SIZE, ROW_HEIGHT, SPACE_1, SPACE_2, Theme};
+use theme::{
+    CONTROL_RADIUS, CONTROL_SIZE, Colors, ICON_SIZE, ROW_GAP, ROW_HEIGHT, SPACE_1, SPACE_2, Theme,
+};
 use workspace::{ProjectId, Workspace};
 
 use super::{Row, Sidebar, header::icon_button};
@@ -13,6 +15,18 @@ use crate::assets::Icon;
 
 /// Sessions a project lists before "Show more", newest first under the sort.
 const LATEST_SESSIONS: usize = 5;
+
+/// The slot a list row fills: it spans the list inside the side padding and is
+/// `ROW_GAP` taller than the row's `ROW_HEIGHT` surface, which it centers, so
+/// neighboring surfaces stand apart while a project's guide runs through the gap.
+pub(super) fn row_slot() -> Div {
+    div()
+        .w_full()
+        .h(ROW_HEIGHT + ROW_GAP)
+        .px(SPACE_2)
+        .flex()
+        .items_center()
+}
 
 /// The column a project's sessions hang in: as wide as the header's inset and
 /// icon, with a hairline under the icon's center.
@@ -87,7 +101,7 @@ impl Sidebar {
         let colors = Theme::of(cx).colors;
         let workspace = self.store.read(cx).workspace();
         let Some(name) = workspace.display_name(project) else {
-            return div().h(ROW_HEIGHT).into_any_element();
+            return row_slot().into_any_element();
         };
         // A search unfolds every project and folding waits for it to clear, so
         // the header offers no chevron meanwhile.
@@ -167,16 +181,13 @@ impl Sidebar {
                     .group_hover(group.clone(), |slot| slot.visible())
                     .child(new_session),
             );
-        // The row spans the list; its rounded surface sits inside the side padding.
-        div()
-            .w_full()
-            .h(ROW_HEIGHT)
-            .px(SPACE_2)
+        row_slot()
             .child(
                 div()
                     .id(("project", project.0))
                     .group(group.clone())
-                    .size_full()
+                    .w_full()
+                    .h(ROW_HEIGHT)
                     .pl(SPACE_1)
                     .flex()
                     .items_center()
@@ -224,18 +235,14 @@ impl Sidebar {
         } else {
             "show-less"
         };
-        div()
-            .w_full()
-            .h(ROW_HEIGHT)
-            .px(SPACE_2)
-            .flex()
+        row_slot()
             .child(indent_guide(colors))
             .child(
                 div()
                     .id((id, project.0))
                     .flex_1()
                     .min_w_0()
-                    .h_full()
+                    .h(ROW_HEIGHT)
                     .px(SPACE_2)
                     .flex()
                     .items_center()

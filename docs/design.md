@@ -109,7 +109,10 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   within `TOOLTIP_WARM` (300 ms) of another, at once. A press hides it.
 - **Rows** are `ROW_HEIGHT` (28), spanning the list with `SPACE_2` sides and a rounded
   surface inside: `row_selected` under the selection, `hover` under the pointer or the
-  keyboard highlight. Text truncates with an ellipsis; secondary labels truncate first.
+  keyboard highlight. In the sidebar list, where a filled header and a selected session
+  can be neighbors, each row's slot is `ROW_GAP` (2) taller and centers the surface, so
+  neighboring surfaces stand 2 apart while a project's guide runs through the gap. Text
+  truncates with an ellipsis; secondary labels truncate first.
 - **Tabs** in the top row are the sessions open in the project on screen
   (`crates/studio/src/tabs/`). Each project keeps its own, saved with the workspace;
   showing another project's session switches the row to that project's tabs. A tab is
