@@ -2,7 +2,8 @@ mod support;
 
 use support::{TempDir, load_json};
 use workspace::{
-    AddedProject, LoadError, ProjectId, ProjectScope, SessionId, SessionSort, Timestamp, Workspace,
+    AddedProject, LoadError, ProjectId, ProjectScope, SessionId, SessionSort, SessionView,
+    Timestamp, Workspace,
 };
 
 #[test]
@@ -61,6 +62,8 @@ fn round_trip_keeps_state_and_the_id_counter() {
     workspace.set_sort(SessionSort::Created);
     workspace.set_scope(ProjectScope::Project(project));
     workspace.select_session(Some(session));
+    workspace.set_collapsed(project, true);
+    workspace.set_view(SessionView::Sessions);
     workspace.save(&path).unwrap();
 
     let mut loaded = Workspace::load(&path).unwrap();
@@ -69,6 +72,8 @@ fn round_trip_keeps_state_and_the_id_counter() {
     assert_eq!(loaded.sort(), SessionSort::Created);
     assert_eq!(loaded.scope(), ProjectScope::Project(project));
     assert_eq!(loaded.selected_session(), Some(session));
+    assert!(loaded.is_collapsed(project));
+    assert_eq!(loaded.view(), SessionView::Sessions);
 
     let other = temp.dir("other");
     let AddedProject::Added(next) = loaded.add_project(&other, Timestamp(7)).unwrap() else {
@@ -96,7 +101,8 @@ fn loading_repairs_dangling_references_and_the_counter() {
                 {"id": 9, "project": 4, "title": "orphan", "created_at": 1, "last_activity_at": 2}
             ],
             "scope": {"Project": 4},
-            "selected_session": 9}"#,
+            "selected_session": 9,
+            "collapsed": [1, 4]}"#,
     );
     let titles: Vec<&str> = workspace
         .projects()
@@ -113,6 +119,8 @@ fn loading_repairs_dangling_references_and_the_counter() {
     assert_eq!(workspace.scope(), ProjectScope::All);
     assert_eq!(workspace.selected_session(), None);
     assert!(workspace.session(SessionId(9)).is_none());
+    assert!(workspace.is_collapsed(ProjectId(1)));
+    assert!(!workspace.is_collapsed(ProjectId(4)));
 
     // The counter moves above id 8 even though the file said 2.
     let mut workspace = workspace;

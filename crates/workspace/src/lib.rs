@@ -8,28 +8,33 @@ mod paths;
 mod query;
 mod store;
 
-use std::path::Path;
+use std::{collections::BTreeSet, path::Path};
 
 pub use age::compact_age;
 pub use error::{AddProjectError, LoadError};
 pub use model::{
-    AddedProject, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, Timestamp,
+    AddedProject, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, SessionView,
+    Timestamp,
 };
+pub use query::SessionGroup;
 pub use store::default_state_path;
 
 /// Title given to every freshly created session.
 const NEW_SESSION_TITLE: &str = "New session";
 
-/// All projects and sessions plus the sidebar's sort, scope and selection.
+/// All projects and sessions plus the sidebar's view, sort, scope and selection.
 #[derive(Clone, Debug, Default)]
 pub struct Workspace {
     /// Next id to hand out; shared by projects and sessions and only ever increased.
     next_id: u64,
     projects: Vec<Project>,
     sessions: Vec<Session>,
+    view: SessionView,
     sort: SessionSort,
     scope: ProjectScope,
     selected_session: Option<SessionId>,
+    /// Projects folded to their header in the session list.
+    collapsed: BTreeSet<ProjectId>,
 }
 
 impl Workspace {
@@ -90,6 +95,14 @@ impl Workspace {
         self.sessions.iter().find(|session| session.id == id)
     }
 
+    pub fn view(&self) -> SessionView {
+        self.view
+    }
+
+    pub fn set_view(&mut self, view: SessionView) {
+        self.view = view;
+    }
+
     pub fn sort(&self) -> SessionSort {
         self.sort
     }
@@ -117,6 +130,20 @@ impl Workspace {
     /// Selects a session; an unknown id clears the selection.
     pub fn select_session(&mut self, session: Option<SessionId>) {
         self.selected_session = session.filter(|&id| self.session(id).is_some());
+    }
+
+    /// Whether the project is folded to its header in the session list.
+    pub fn is_collapsed(&self, project: ProjectId) -> bool {
+        self.collapsed.contains(&project)
+    }
+
+    /// Folds or unfolds a project in the session list; an unknown project is ignored.
+    pub fn set_collapsed(&mut self, project: ProjectId, collapsed: bool) {
+        if !collapsed {
+            self.collapsed.remove(&project);
+        } else if self.project(project).is_some() {
+            self.collapsed.insert(project);
+        }
     }
 
     fn allocate_id(&mut self) -> u64 {

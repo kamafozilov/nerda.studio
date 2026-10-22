@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -6,7 +6,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{LoadError, Project, ProjectScope, Session, SessionId, SessionSort, Workspace};
+use crate::{
+    LoadError, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, SessionView,
+    Workspace,
+};
 
 /// Format version written by this build; files with any other version are refused.
 const VERSION: u32 = 1;
@@ -34,9 +37,11 @@ struct FileRef<'a> {
     next_id: u64,
     projects: &'a [Project],
     sessions: &'a [Session],
+    view: SessionView,
     sort: SessionSort,
     scope: ProjectScope,
     selected_session: Option<SessionId>,
+    collapsed: &'a BTreeSet<ProjectId>,
 }
 
 #[derive(Deserialize)]
@@ -47,12 +52,18 @@ struct FileV1 {
     projects: Vec<Project>,
     #[serde(default)]
     sessions: Vec<Session>,
+    /// Files written before the view could change have none.
+    #[serde(default)]
+    view: SessionView,
     #[serde(default)]
     sort: SessionSort,
     #[serde(default)]
     scope: ProjectScope,
     #[serde(default)]
     selected_session: Option<SessionId>,
+    /// Files written before projects could fold have none.
+    #[serde(default)]
+    collapsed: Vec<ProjectId>,
 }
 
 impl Workspace {
@@ -80,9 +91,11 @@ impl Workspace {
             next_id: self.next_id,
             projects: &self.projects,
             sessions: &self.sessions,
+            view: self.view,
             sort: self.sort,
             scope: self.scope,
             selected_session: self.selected_session,
+            collapsed: &self.collapsed,
         };
         let json = serde_json::to_vec_pretty(&file).map_err(io::Error::other)?;
         let parent = path.parent().unwrap_or(Path::new(""));
@@ -138,11 +151,15 @@ impl Workspace {
             next_id,
             projects,
             sessions,
+            view: file.view,
             sort: file.sort,
             ..Workspace::default()
         };
         workspace.set_scope(file.scope);
         workspace.select_session(file.selected_session);
+        for project in file.collapsed {
+            workspace.set_collapsed(project, true);
+        }
         Ok(workspace)
     }
 }

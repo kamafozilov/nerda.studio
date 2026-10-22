@@ -68,6 +68,16 @@ pub enum SessionSort {
     Created,
 }
 
+/// How the session list is laid out.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SessionView {
+    /// Each project a header over its own sessions.
+    #[default]
+    Projects,
+    /// One list of every session, each naming its project.
+    Sessions,
+}
+
 /// Which projects' sessions the session list shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProjectScope {
