@@ -1,0 +1,155 @@
+mod support;
+
+use support::{TempDir, load_json};
+use workspace::{
+    AddedProject, ProjectId, ProjectScope, SessionId, SessionSort, Timestamp, Workspace,
+};
+
+/// Two projects (1, 2) with sessions of mixed activity; ids 3..=7.
+const FIXTURE: &str = r#"{"version": 1, "next_id": 20,
+    "projects": [
+        {"id": 1, "title": "one", "path": "/one", "created_at": 0},
+        {"id": 2, "title": "two", "path": "/two", "created_at": 0}
+    ],
+    "sessions": [
+        {"id": 3, "project": 1, "title": "Исправить Баг", "created_at": 10, "last_activity_at": 300},
+        {"id": 4, "project": 1, "title": "Fix bug", "created_at": 20, "last_activity_at": 300},
+        {"id": 5, "project": 2, "title": "Oʻzbekcha Matn", "created_at": 30, "last_activity_at": 100},
+        {"id": 6, "project": 2, "title": "Draft", "created_at": 30, "last_activity_at": null},
+        {"id": 7, "project": 1, "title": "Old", "created_at": 5, "last_activity_at": 50}
+    ]}"#;
+
+fn ids(sessions: Vec<&workspace::Session>) -> Vec<u64> {
+    sessions.iter().map(|session| session.id.0).collect()
+}
+
+#[test]
+fn new_session_reuses_the_empty_draft() {
+    let temp = TempDir::new();
+    let mut workspace = Workspace::default();
+    let AddedProject::Added(project) = workspace.add_project(temp.path(), Timestamp(0)).unwrap()
+    else {
+        panic!("expected a new project");
+    };
+    let first = workspace.new_session(project, Timestamp(1)).unwrap();
+    let second = workspace.new_session(project, Timestamp(2)).unwrap();
+
+    assert_eq!(first, second);
+    let session = workspace.session(first).unwrap();
+    assert_eq!(
+        (
+            session.title.as_str(),
+            session.created_at,
+            session.last_activity_at
+        ),
+        ("New session", Timestamp(1), None)
+    );
+    assert_eq!(workspace.visible_sessions("").len(), 1);
+    assert_eq!(workspace.selected_session(), None);
+}
+
+#[test]
+fn new_session_creates_a_fresh_id_once_sessions_have_activity() {
+    let mut workspace = load_json(FIXTURE);
+    let created = workspace.new_session(ProjectId(1), Timestamp(400)).unwrap();
+
+    assert_eq!(created, SessionId(20));
+    assert_eq!(
+        workspace.new_session(ProjectId(1), Timestamp(401)),
+        Some(created)
+    );
+    // Project 2's draft belongs to project 2 only.
+    assert_eq!(
+        workspace.new_session(ProjectId(2), Timestamp(402)),
+        Some(SessionId(6))
+    );
+}
+
+#[test]
+fn new_session_for_an_unknown_project_creates_nothing() {
+    let mut workspace = load_json(FIXTURE);
+    assert_eq!(workspace.new_session(ProjectId(99), Timestamp(1)), None);
+    assert_eq!(workspace.visible_sessions("").len(), 5);
+}
+
+#[test]
+fn search_is_trimmed_and_unicode_case_insensitive() {
+    let workspace = load_json(FIXTURE);
+    assert_eq!(ids(workspace.visible_sessions("  баг\t")), [3]);
+    assert_eq!(ids(workspace.visible_sessions("ИСПРАВ")), [3]);
+    assert_eq!(ids(workspace.visible_sessions("oʻzBEK")), [5]);
+    assert_eq!(ids(workspace.visible_sessions("BUG")), [4]);
+    assert_eq!(
+        ids(workspace.visible_sessions("nothing")),
+        Vec::<u64>::new()
+    );
+    assert_eq!(workspace.visible_sessions("   ").len(), 5);
+}
+
+#[test]
+fn sorts_newest_first_with_ties_by_id() {
+    let mut workspace = load_json(FIXTURE);
+    assert_eq!(workspace.sort(), SessionSort::LastActivity);
+    assert_eq!(ids(workspace.visible_sessions("")), [4, 3, 5, 7, 6]);
+
+    workspace.set_sort(SessionSort::Created);
+    assert_eq!(ids(workspace.visible_sessions("")), [6, 5, 4, 3, 7]);
+}
+
+#[test]
+fn scope_filters_and_unknown_projects_fall_back_to_all() {
+    let mut workspace = load_json(FIXTURE);
+    workspace.set_scope(ProjectScope::Project(ProjectId(2)));
+    assert_eq!(ids(workspace.visible_sessions("")), [5, 6]);
+
+    workspace.set_scope(ProjectScope::Project(ProjectId(99)));
+    assert_eq!(workspace.scope(), ProjectScope::All);
+    assert_eq!(workspace.visible_sessions("").len(), 5);
+}
+
+#[test]
+fn selecting_an_unknown_session_clears_the_selection() {
+    let mut workspace = load_json(FIXTURE);
+    workspace.select_session(Some(SessionId(5)));
+    assert_eq!(workspace.selected_session(), Some(SessionId(5)));
+    workspace.select_session(Some(SessionId(99)));
+    assert_eq!(workspace.selected_session(), None);
+}
+
+#[test]
+fn context_project_prefers_selection_then_scope_then_activity() {
+    let mut workspace = load_json(FIXTURE);
+    assert_eq!(workspace.context_project(), Some(ProjectId(1)));
+    workspace.set_scope(ProjectScope::Project(ProjectId(2)));
+    assert_eq!(workspace.context_project(), Some(ProjectId(2)));
+    workspace.select_session(Some(SessionId(7)));
+    assert_eq!(workspace.context_project(), Some(ProjectId(1)));
+
+    assert_eq!(Workspace::default().context_project(), None);
+}
+
+#[test]
+fn latest_session_picks_greatest_activity_with_ties_by_id() {
+    let temp = TempDir::new();
+    let mut workspace = load_json(FIXTURE);
+    assert_eq!(
+        workspace
+            .latest_session(ProjectId(1))
+            .map(|session| session.id),
+        Some(SessionId(4))
+    );
+    // The draft's activity is its creation time (30), below session 5's activity (100).
+    assert_eq!(
+        workspace
+            .latest_session(ProjectId(2))
+            .map(|session| session.id),
+        Some(SessionId(5))
+    );
+    assert!(workspace.latest_session(ProjectId(99)).is_none());
+
+    let AddedProject::Added(empty) = workspace.add_project(temp.path(), Timestamp(0)).unwrap()
+    else {
+        panic!("expected a new project");
+    };
+    assert!(workspace.latest_session(empty).is_none());
+}
