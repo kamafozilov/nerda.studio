@@ -42,24 +42,24 @@ pub enum Icon {
 impl Icon {
     pub fn path(self) -> &'static str {
         match self {
-            Self::Back => "icons/angle-left.svg",
-            Self::Check => "icons/check.svg",
-            Self::Close => "icons/x.svg",
-            Self::Collapsed => "icons/angle-right.svg",
-            Self::Expanded => "icons/angle-down.svg",
-            Self::Forward => "icons/angle-right.svg",
-            Self::Folder => "icons/folder.svg",
+            Self::Back => "icons/arrow-left-01.svg",
+            Self::Check => "icons/tick-02.svg",
+            Self::Close => "icons/cancel-01.svg",
+            Self::Collapsed => "icons/arrow-right-01.svg",
+            Self::Expanded => "icons/arrow-down-01.svg",
+            Self::Forward => "icons/arrow-right-01.svg",
+            Self::Folder => "icons/folder-01.svg",
             Self::FolderAdd => "icons/folder-add.svg",
-            Self::FolderUp => "icons/folder-up.svg",
-            Self::GroupByProject => "icons/layers-2.svg",
-            Self::GroupByProjectOn => "icons/layers-2-filled.svg",
-            Self::NewSession => "icons/edit.svg",
-            Self::NewTab => "icons/plus.svg",
+            Self::FolderUp => "icons/folder-upload.svg",
+            Self::GroupByProject => "icons/layers-01.svg",
+            Self::GroupByProjectOn => "icons/layers-01-filled.svg",
+            Self::NewSession => "icons/pencil-edit-02.svg",
+            Self::NewTab => "icons/add-01.svg",
             Self::PullRequests => "icons/git-pull-request.svg",
-            Self::Return => "icons/corner-down-left.svg",
+            Self::Return => "icons/arrow-turn-backward.svg",
             Self::Search => "icons/search.svg",
             Self::Settings => "icons/gear.svg",
-            Self::Sort => "icons/sort.svg",
+            Self::Sort => "icons/list-filter.svg",
             Self::Usage => "icons/gauge.svg",
         }
     }
@@ -67,22 +67,41 @@ impl Icon {
 
 const FILES: &[(&str, &[u8])] = &[
     (
-        "icons/angle-down.svg",
-        include_bytes!("../assets/icons/angle-down.svg"),
+        "icons/add-01.svg",
+        include_bytes!("../assets/icons/add-01.svg"),
     ),
     (
-        "icons/angle-left.svg",
-        include_bytes!("../assets/icons/angle-left.svg"),
+        "icons/arrow-down-01.svg",
+        include_bytes!("../assets/icons/arrow-down-01.svg"),
     ),
     (
-        "icons/angle-right.svg",
-        include_bytes!("../assets/icons/angle-right.svg"),
+        "icons/arrow-left-01.svg",
+        include_bytes!("../assets/icons/arrow-left-01.svg"),
     ),
     (
-        "icons/check.svg",
-        include_bytes!("../assets/icons/check.svg"),
+        "icons/arrow-right-01.svg",
+        include_bytes!("../assets/icons/arrow-right-01.svg"),
     ),
-    ("icons/edit.svg", include_bytes!("../assets/icons/edit.svg")),
+    (
+        "icons/arrow-turn-backward.svg",
+        include_bytes!("../assets/icons/arrow-turn-backward.svg"),
+    ),
+    (
+        "icons/cancel-01.svg",
+        include_bytes!("../assets/icons/cancel-01.svg"),
+    ),
+    (
+        "icons/folder-01.svg",
+        include_bytes!("../assets/icons/folder-01.svg"),
+    ),
+    (
+        "icons/folder-add.svg",
+        include_bytes!("../assets/icons/folder-add.svg"),
+    ),
+    (
+        "icons/folder-upload.svg",
+        include_bytes!("../assets/icons/folder-upload.svg"),
+    ),
     (
         "icons/gauge.svg",
         include_bytes!("../assets/icons/gauge.svg"),
@@ -93,36 +112,29 @@ const FILES: &[(&str, &[u8])] = &[
         include_bytes!("../assets/icons/git-pull-request.svg"),
     ),
     (
-        "icons/corner-down-left.svg",
-        include_bytes!("../assets/icons/corner-down-left.svg"),
+        "icons/layers-01.svg",
+        include_bytes!("../assets/icons/layers-01.svg"),
     ),
     (
-        "icons/folder.svg",
-        include_bytes!("../assets/icons/folder.svg"),
+        "icons/layers-01-filled.svg",
+        include_bytes!("../assets/icons/layers-01-filled.svg"),
     ),
     (
-        "icons/folder-add.svg",
-        include_bytes!("../assets/icons/folder-add.svg"),
+        "icons/list-filter.svg",
+        include_bytes!("../assets/icons/list-filter.svg"),
     ),
     (
-        "icons/folder-up.svg",
-        include_bytes!("../assets/icons/folder-up.svg"),
+        "icons/pencil-edit-02.svg",
+        include_bytes!("../assets/icons/pencil-edit-02.svg"),
     ),
-    (
-        "icons/layers-2.svg",
-        include_bytes!("../assets/icons/layers-2.svg"),
-    ),
-    (
-        "icons/layers-2-filled.svg",
-        include_bytes!("../assets/icons/layers-2-filled.svg"),
-    ),
-    ("icons/plus.svg", include_bytes!("../assets/icons/plus.svg")),
     (
         "icons/search.svg",
         include_bytes!("../assets/icons/search.svg"),
     ),
-    ("icons/sort.svg", include_bytes!("../assets/icons/sort.svg")),
-    ("icons/x.svg", include_bytes!("../assets/icons/x.svg")),
+    (
+        "icons/tick-02.svg",
+        include_bytes!("../assets/icons/tick-02.svg"),
+    ),
 ];
 
 pub struct Assets;

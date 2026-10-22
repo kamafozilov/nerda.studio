@@ -95,8 +95,8 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   stroke. The search field's magnifier keeps its ring to 15 of the 24 units: one that
   fills the box looks oversized beside 13 pt text.
   GPUI paints an SVG in its own `text_color` only, never its parent's.
-- **A toggle** shows the set's outline icon while off and the same shape filled while on,
-  in the icon button's colors.
+- **A toggle** shows the set's outline icon while off and the same outline with its main
+  shape filled while on, in the icon button's colors.
 
 ## Controls and lists
 
