@@ -122,7 +122,20 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`:
   the key in `text_secondary`. Return is an icon, other keys text (⌘, `esc`). Inside a
   button `FIELD_TARGET_SIZE` (24) high, the cap sits 2 px from its top, bottom and right.
 - **The sidebar header** is two rows: the search field across the sidebar, then the list's
-  title ("Sessions") with filter and sort, Add project and New session at its trailing edge.
+  two views as tabs ("Projects", "Sessions"; the chosen one on `row_selected`) with filter
+  and sort, Add project and New session at its trailing edge. The view, like the sort and
+  the filter, is saved. A filter to one project keeps the filter button on `hover`.
+- **Projects** lists each project as a header over its sessions, which hang from a
+  `border` hairline under the header's icon. A header shows a folder and the medium-weight
+  name; folded, the name turns `text_secondary` with the session count at the trailing
+  edge. Under the pointer the folder becomes the chevron a click acts on, and the count a
+  New session button for that project. A project lists its 5 latest sessions, then
+  "Show N more" (and "Show less"); the selected session always shows. Search unfolds
+  every project and hides those without a match. Folding is saved; Show more is not.
+- **Sessions** lists every session in one list, each naming its project in
+  `text_secondary` while more than one project is in view.
+- GPUI shapes text before hover is known, so hover never changes a text color: it changes
+  a fill or an icon.
 - **Problems** show as a message under the sidebar header until dismissed: what failed and
   what to do next, without parser or error-code detail the reader can't act on. A problem
   inside a dialog shows in the dialog, under its field, until the next edit.

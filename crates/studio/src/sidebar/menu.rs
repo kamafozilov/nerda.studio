@@ -21,6 +21,9 @@ impl Sidebar {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
+        // A project filter stays marked on the button, so a list narrowed to one
+        // project never passes for all of them.
+        let filtered = self.store.read(cx).workspace().scope() != ProjectScope::All;
         div()
             .relative()
             .flex_none()
@@ -32,7 +35,7 @@ impl Sidebar {
                 colors,
                 |button| {
                     button
-                        .when(self.menu_open, |button| button.bg(colors.hover))
+                        .when(self.menu_open || filtered, |button| button.bg(colors.hover))
                         .on_click(cx.listener(|sidebar, _: &ClickEvent, window, cx| {
                             sidebar.open_menu(window, cx)
                         }))

@@ -13,6 +13,10 @@ use gpui::{AssetSource, Result, SharedString};
 pub enum Icon {
     Check,
     Close,
+    /// A folded project in the session list.
+    Collapsed,
+    /// An unfolded project in the session list.
+    Expanded,
     Folder,
     FolderAdd,
     FolderUp,
@@ -31,6 +35,8 @@ impl Icon {
         match self {
             Self::Check => "icons/check.svg",
             Self::Close => "icons/x.svg",
+            Self::Collapsed => "icons/angle-right.svg",
+            Self::Expanded => "icons/angle-down.svg",
             Self::Folder => "icons/folder.svg",
             Self::FolderAdd => "icons/folder-add.svg",
             Self::FolderUp => "icons/folder-up.svg",
@@ -46,6 +52,14 @@ impl Icon {
 }
 
 const FILES: &[(&str, &[u8])] = &[
+    (
+        "icons/angle-down.svg",
+        include_bytes!("../assets/icons/angle-down.svg"),
+    ),
+    (
+        "icons/angle-right.svg",
+        include_bytes!("../assets/icons/angle-right.svg"),
+    ),
     (
         "icons/check.svg",
         include_bytes!("../assets/icons/check.svg"),

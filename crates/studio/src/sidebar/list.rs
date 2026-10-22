@@ -1,5 +1,6 @@
-//! Under the header: a notice if there is one, then the sessions or what stands in
-//! for them when there are none. With no projects the list is blank: the main
+//! Under the header: a notice if there is one, then the session list in its view
+//! (by project, or every session naming its project), or what stands in for it
+//! when there is nothing to list. With no projects the list is blank: the main
 //! area offers the first step.
 
 use gpui::{
@@ -7,9 +8,9 @@ use gpui::{
     Styled, div, prelude::*, px, svg, uniform_list,
 };
 use theme::{CONTROL_RADIUS, ICON_SIZE, ICON_SIZE_SMALL, ROW_HEIGHT, SPACE_2, SPACE_3, Theme};
-use workspace::{ProjectScope, Timestamp, compact_age};
+use workspace::{ProjectScope, SessionId, SessionView, Timestamp, compact_age};
 
-use super::Sidebar;
+use super::{Row, Sidebar, project_rows::indent_guide};
 use crate::{assets::Icon, tooltip::TooltipExt};
 
 /// Widest a project name grows beside a session's title before it truncates.
@@ -73,38 +74,48 @@ impl Sidebar {
     /// Refreshes `rows` from the workspace, then draws them or an empty state.
     pub(super) fn render_list(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let workspace = self.store.read(cx).workspace();
+        self.rows.clear();
         if !workspace.has_projects() {
-            self.rows.clear();
             return div().flex_1().into_any_element();
         }
-        self.rows = workspace
-            .visible_sessions(&self.query)
-            .into_iter()
-            .map(|session| session.id)
-            .collect();
-        self.show_projects =
-            workspace.scope() == ProjectScope::All && workspace.projects().len() > 1;
-        let empty_text: Option<SharedString> = self.rows.is_empty().then(|| {
-            if self.searching() {
+        let view = workspace.view();
+        match view {
+            SessionView::Projects => self.push_project_rows(workspace),
+            SessionView::Sessions => self.rows.extend(
+                workspace
+                    .visible_sessions(&self.query)
+                    .into_iter()
+                    .map(|session| Row::Session(session.id)),
+            ),
+        }
+        // Under a header the project goes without saying; in one list it needs
+        // naming once more than one project is in view.
+        self.label_projects = view == SessionView::Sessions
+            && workspace.scope() == ProjectScope::All
+            && workspace.projects().len() > 1;
+        let searching = self.searching();
+        if self.rows.is_empty() {
+            let text: SharedString = if searching {
                 format!("No sessions match \u{201c}{}\u{201d}", self.query.trim()).into()
-            } else if let ProjectScope::Project(project) = workspace.scope()
-                && let Some(name) = workspace.display_name(project)
-            {
-                format!("No sessions in {name} yet").into()
             } else {
                 "No sessions yet".into()
-            }
-        });
-        if self.highlighted >= self.rows.len() {
-            self.highlighted = 0;
+            };
+            return self.empty_state(text, cx).into_any_element();
+        }
+        if searching && !matches!(self.rows.get(self.highlighted), Some(Row::Session(_))) {
+            self.highlighted = self
+                .rows
+                .iter()
+                .position(|row| matches!(row, Row::Session(_)))
+                .unwrap_or(0);
         }
         if let Some(session) = self.reveal.take()
-            && let Some(index) = self.rows.iter().position(|&row| row == session)
+            && let Some(index) = self
+                .rows
+                .iter()
+                .position(|&row| row == Row::Session(session))
         {
             self.scroll.scroll_to_item(index, ScrollStrategy::Nearest);
-        }
-        if let Some(text) = empty_text {
-            return self.empty_state(text, cx).into_any_element();
         }
         // The gap under the header sits outside the scrolling area, so rows scroll
         // out of sight below it instead of up against the header.
@@ -132,30 +143,54 @@ impl Sidebar {
     }
 
     fn render_row(&self, index: usize, cx: &mut Context<Self>) -> AnyElement {
+        match self.rows.get(index) {
+            Some(&Row::Project(project, sessions)) => {
+                self.render_project_row(project, sessions, cx)
+            }
+            Some(&Row::Session(session)) => self.render_session_row(index, session, cx),
+            Some(&Row::ShowMore(project, hidden)) => {
+                self.render_show_row(project, Some(hidden), cx)
+            }
+            Some(&Row::ShowLess(project)) => self.render_show_row(project, None, cx),
+            None => div().h(ROW_HEIGHT).into_any_element(),
+        }
+    }
+
+    fn render_session_row(
+        &self,
+        index: usize,
+        id: SessionId,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let colors = Theme::of(cx).colors;
         let workspace = self.store.read(cx).workspace();
-        let Some(session) = self.rows.get(index).and_then(|&id| workspace.session(id)) else {
+        let Some(session) = workspace.session(id) else {
             return div().h(ROW_HEIGHT).into_any_element();
         };
-        let id = session.id;
+        let nested = workspace.view() == SessionView::Projects;
         let selected = workspace.selected_session() == Some(id);
         let highlighted = self.searching() && index == self.highlighted;
         let title = SharedString::from(session.title.clone());
         let age = compact_age(session.activity(), Timestamp::now());
         let project = self
-            .show_projects
+            .label_projects
             .then(|| workspace.display_name(session.project))
             .flatten()
             .map(SharedString::from);
-        // The row spans the list; its rounded surface sits inside the side padding.
+        // The row spans the list; its rounded surface sits inside the side padding,
+        // and under a project it hangs from the project's guide.
         div()
             .w_full()
             .h(ROW_HEIGHT)
             .px(SPACE_2)
+            .flex()
+            .when(nested, |row| row.child(indent_guide(colors)))
             .child(
                 div()
                     .id(("session", id.0))
-                    .size_full()
+                    .flex_1()
+                    .min_w_0()
+                    .h_full()
                     .px(SPACE_2)
                     .flex()
                     .items_center()

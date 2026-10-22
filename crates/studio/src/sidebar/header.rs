@@ -1,5 +1,5 @@
-//! The header: the search field on its own row, then the list's title with
-//! filter and sort, add project, new session.
+//! The header: the search field on its own row, then the list's view (Projects or
+//! Sessions) with filter and sort, add project, new session.
 
 use gpui::{
     ClickEvent, Context, Div, Focusable, FontWeight, IntoElement, ParentElement, SharedString,
@@ -9,6 +9,8 @@ use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, ICON_SIZE, ICON_SIZE_SMALL, SPACE_1,
     SPACE_2, Theme,
 };
+
+use workspace::SessionView;
 
 use super::Sidebar;
 use crate::{
@@ -23,16 +25,17 @@ const DISABLED_OPACITY: f32 = 0.4;
 /// A square icon-only control with a tooltip naming it. Chain listeners on
 /// `build`; the tooltip wraps the result.
 pub(super) fn icon_button(
-    id: &'static str,
+    id: impl Into<SharedString>,
     icon: Icon,
     label: impl Into<SharedString>,
     enabled: bool,
     colors: Colors,
     build: impl FnOnce(Stateful<Div>) -> Stateful<Div>,
 ) -> WithTooltip {
+    let id: SharedString = id.into();
     let button = div()
-        .id(id)
-        .group(id)
+        .id(id.clone())
+        .group(id.clone())
         .size(CONTROL_SIZE)
         .flex_none()
         .flex()
@@ -62,7 +65,6 @@ impl Sidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let colors = Theme::of(cx).colors;
         let has_projects = self.store.read(cx).workspace().has_projects();
         let new_session_label = if !has_projects {
             "New session: add a project first"
@@ -82,23 +84,52 @@ impl Sidebar {
             .child(
                 div()
                     .h(CONTROL_SIZE)
-                    .pl(SPACE_2)
                     .flex()
                     .items_center()
                     .gap(SPACE_1)
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(colors.text_secondary)
-                            .child("Sessions"),
-                    )
+                    .child(self.view_tab(SessionView::Projects, "Projects", cx))
+                    .child(self.view_tab(SessionView::Sessions, "Sessions", cx))
+                    .child(div().flex_1())
+                    // Filtering shows only once there is something to filter.
                     .when(has_projects, |row| {
                         row.child(self.render_menu_button(window, cx))
                     })
                     .child(self.render_action_buttons(has_projects, new_session_label, cx)),
             )
+    }
+
+    /// One of the list's two views, as a tab: the chosen one sits on the selection's
+    /// fill, the other reads as secondary until the pointer reaches it.
+    fn view_tab(
+        &self,
+        view: SessionView,
+        label: &'static str,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let colors = Theme::of(cx).colors;
+        let chosen = self.store.read(cx).workspace().view() == view;
+        div()
+            .id(label)
+            .flex_none()
+            .h(FIELD_TARGET_SIZE)
+            .px(SPACE_2)
+            .flex()
+            .items_center()
+            .rounded(CONTROL_RADIUS)
+            .font_weight(FontWeight::MEDIUM)
+            .when(chosen, |tab| {
+                tab.bg(colors.row_selected).text_color(colors.text_primary)
+            })
+            .when(!chosen, |tab| {
+                tab.text_color(colors.text_secondary)
+                    .hover(|tab| tab.bg(colors.hover))
+                    .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
+                        sidebar.store.update(cx, |store, cx| {
+                            store.update(cx, |workspace| workspace.set_view(view))
+                        });
+                    }))
+            })
+            .child(label)
     }
 
     fn render_action_buttons(
