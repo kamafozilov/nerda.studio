@@ -1,19 +1,21 @@
 //! A session's conversation as the screen shows it: turns of the person's
 //! message and what came back, reduced from the session's events.
 
+mod reply;
 mod status;
+mod turn;
 
-use std::mem::discriminant;
-
-use serde_json::Value;
-
+use reply::Streaming;
 pub use status::Status;
 use status::Work;
+pub use turn::{
+    Ending, Finished, Item, Permission, PermissionState, Text, ToolCall, ToolStatus, Turn,
+    TurnState,
+};
 
 use crate::event::Event;
 use crate::protocol::{
-    Assistant, Block, BlockKind, Command, Decision, Delta, Incoming, Message, MessageId, Outcome,
-    PermissionRequest, RequestId, Stage, Stream, ToolResult, ToolUseId, TurnResult, Usage,
+    Command, Decision, Incoming, MessageId, Outcome, RequestId, Stage, ToolUseId, TurnResult,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -24,138 +26,6 @@ pub struct Transcript {
     streaming: Option<Streaming>,
     /// What the process had cost when its last turn ended.
     spent: f64,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct Streaming {
-    message: String,
-    open: Vec<OpenBlock>,
-}
-
-/// A block of the streaming message, by its index, and the item showing it.
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct OpenBlock {
-    index: u32,
-    turn: usize,
-    item: usize,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Turn {
-    /// What the person sent; `None` for a turn the agent began on its own,
-    /// as when a background task of its finishes.
-    pub message: Option<Message>,
-    pub state: TurnState,
-    pub items: Vec<Item>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum TurnState {
-    /// Sent; the agent hasn't taken it up.
-    Queued,
-    Running,
-    Ended(Ending),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Ending {
-    Finished(Finished),
-    /// Stopped, before or while it ran.
-    Interrupted,
-    /// In words to show.
-    Errored(String),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Finished {
-    /// What this turn cost.
-    pub cost_usd: f64,
-    pub usage: Usage,
-    pub duration_ms: u64,
-}
-
-/// What came back, in the order it came.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Item {
-    Text(Text),
-    Thinking(Text),
-    Tool(ToolCall),
-    Permission(Permission),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Text {
-    pub text: String,
-    /// More of it may come.
-    pub streaming: bool,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ToolCall {
-    pub id: ToolUseId,
-    pub name: String,
-    /// `Null` until the call is written out in full.
-    pub input: Value,
-    pub status: ToolStatus,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ToolStatus {
-    Running,
-    /// With the tool's output.
-    Done(String),
-    /// With the tool's output; empty when the turn ended before the tool did.
-    Failed(String),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Permission {
-    pub request: PermissionRequest,
-    pub state: PermissionState,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PermissionState {
-    Pending,
-    Allowed,
-    Denied,
-    /// Withdrawn by the agent, or left unanswered when the turn ended.
-    Cancelled,
-}
-
-impl Permission {
-    /// The answer that lets the tool run as asked.
-    pub fn allow(&self) -> Command {
-        self.answer(Decision::Allow {
-            input: self.request.input.clone(),
-        })
-    }
-
-    /// The answer that refuses the tool, telling the agent why.
-    pub fn deny(&self, message: impl Into<String>) -> Command {
-        self.answer(Decision::Deny {
-            message: message.into(),
-        })
-    }
-
-    fn answer(&self, decision: Decision) -> Command {
-        Command::Answer {
-            request: self.request.id.clone(),
-            decision,
-        }
-    }
-}
-
-impl Turn {
-    fn is_ended(&self) -> bool {
-        matches!(self.state, TurnState::Ended(_))
-    }
-
-    fn answers(&self, id: &MessageId) -> bool {
-        self.message
-            .as_ref()
-            .is_some_and(|message| message.id == *id)
-    }
 }
 
 impl Default for Transcript {
@@ -283,123 +153,6 @@ impl Transcript {
         }
     }
 
-    fn stream(&mut self, stream: &Stream) {
-        match stream {
-            Stream::MessageStart { id } => {
-                self.streaming = Some(Streaming {
-                    message: id.clone(),
-                    open: Vec::new(),
-                });
-            }
-            Stream::BlockStart { index, kind } => {
-                let item = match kind {
-                    BlockKind::Text => Item::Text(Text::streaming()),
-                    BlockKind::Thinking => Item::Thinking(Text::streaming()),
-                    BlockKind::ToolUse { id, name } => Item::Tool(ToolCall {
-                        id: id.clone(),
-                        name: name.clone(),
-                        input: Value::Null,
-                        status: ToolStatus::Running,
-                    }),
-                    BlockKind::Other => return,
-                };
-                // Without its message's start, the finished block alone shows it.
-                if self.streaming.is_none() {
-                    return;
-                }
-                let turn = self.active_turn();
-                self.turns[turn].items.push(item);
-                let item = self.turns[turn].items.len() - 1;
-                if let Some(streaming) = &mut self.streaming {
-                    let index = *index;
-                    streaming.open.push(OpenBlock { index, turn, item });
-                }
-            }
-            Stream::Delta { index, delta } => {
-                let (Delta::Text(more) | Delta::Thinking(more)) = delta else {
-                    return;
-                };
-                let Some(block) = self.open_block(*index) else {
-                    return;
-                };
-                if let Item::Text(text) | Item::Thinking(text) =
-                    &mut self.turns[block.turn].items[block.item]
-                {
-                    text.text.push_str(more);
-                }
-            }
-            Stream::BlockStop { index } => {
-                let Some(streaming) = &mut self.streaming else {
-                    return;
-                };
-                let Some(at) = streaming.open.iter().position(|b| b.index == *index) else {
-                    return;
-                };
-                let block = streaming.open.remove(at);
-                if let Item::Text(text) | Item::Thinking(text) =
-                    &mut self.turns[block.turn].items[block.item]
-                {
-                    text.streaming = false;
-                }
-            }
-            Stream::Other => {}
-        }
-    }
-
-    /// A finished block takes the place of the one that streamed it, or, when
-    /// none did, comes after what the turn has.
-    fn assistant(&mut self, assistant: &Assistant) {
-        let turn = self.active_turn();
-        for block in &assistant.blocks {
-            let finished = match block {
-                Block::Text(text) => Item::Text(Text::done(text)),
-                Block::Thinking(text) => Item::Thinking(Text::done(text)),
-                Block::ToolUse { id, name, input } => Item::Tool(ToolCall {
-                    id: id.clone(),
-                    name: name.clone(),
-                    input: input.clone(),
-                    status: ToolStatus::Running,
-                }),
-                Block::Other(_) => continue,
-            };
-            let turns = &self.turns;
-            let streamed = self
-                .streaming
-                .as_mut()
-                .filter(|streaming| streaming.message == assistant.message_id)
-                .and_then(|streaming| {
-                    let at = streaming.open.iter().position(|block| {
-                        let item = &turns[block.turn].items[block.item];
-                        discriminant(item) == discriminant(&finished)
-                    })?;
-                    Some(streaming.open.remove(at))
-                });
-            match streamed {
-                Some(block) => match (&mut self.turns[block.turn].items[block.item], finished) {
-                    (Item::Tool(call), Item::Tool(written)) => call.input = written.input,
-                    (item, finished) => *item = finished,
-                },
-                None => self.turns[turn].items.push(finished),
-            }
-        }
-    }
-
-    fn tool_result(&mut self, result: &ToolResult) {
-        let calls = self.turns.iter_mut().rev().flat_map(|turn| &mut turn.items);
-        for item in calls {
-            if let Item::Tool(call) = item
-                && call.id == result.tool_use_id
-            {
-                call.status = if result.is_error {
-                    ToolStatus::Failed(result.output.clone())
-                } else {
-                    ToolStatus::Done(result.output.clone())
-                };
-                return;
-            }
-        }
-    }
-
     fn finish(&mut self, result: &TurnResult) {
         let cost_usd = (result.total_cost_usd - self.spent).max(0.0);
         self.spent = result.total_cost_usd;
@@ -488,15 +241,6 @@ impl Transcript {
         })
     }
 
-    fn open_block(&self, index: u32) -> Option<OpenBlock> {
-        let streaming = self.streaming.as_ref()?;
-        streaming
-            .open
-            .iter()
-            .find(|block| block.index == index)
-            .copied()
-    }
-
     fn pending_mut(&mut self, id: &RequestId) -> Option<&mut Permission> {
         let mut items = self.turns.iter_mut().flat_map(|turn| &mut turn.items);
         items.find_map(|item| match item {
@@ -513,22 +257,6 @@ impl Transcript {
         Work {
             busy: self.turns.iter().any(|turn| !turn.is_ended()),
             asking: self.pending_permissions().next().is_some(),
-        }
-    }
-}
-
-impl Text {
-    fn streaming() -> Self {
-        Self {
-            text: String::new(),
-            streaming: true,
-        }
-    }
-
-    fn done(text: &str) -> Self {
-        Self {
-            text: text.to_owned(),
-            streaming: false,
         }
     }
 }
