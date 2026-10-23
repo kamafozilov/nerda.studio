@@ -6,6 +6,7 @@
 //! Quitting writes the newest state before the app exits.
 
 use std::{
+    io::ErrorKind,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
@@ -82,7 +83,7 @@ impl Store {
     fn read() -> (Workspace, Option<PathBuf>, Option<SharedString>) {
         let Some(path) = workspace::default_state_path() else {
             return Self::unsaved(
-                "This system has no folder for app data, so changes won't be saved.",
+                "This system has no folder for app data, so changes won\u{2019}t be saved.",
             );
         };
         match Workspace::load(&path) {
@@ -92,12 +93,17 @@ impl Store {
             // rather than overwrite it.
             Err(LoadError::UnsupportedVersion(_)) => Self::unsaved(
                 "Your projects were saved by a newer Nerda Studio. Update the app to open \
-                 them; changes made here won't be saved.",
+                 them; changes made here won\u{2019}t be saved.",
             ),
-            Err(error) => Self::unsaved(&format!(
-                "Couldn't read your saved projects ({error}). Check the permissions of {}; \
-                 changes made here won't be saved.",
-                path.display()
+            Err(LoadError::Io(error)) if is_denied(&error) => Self::unsaved(&format!(
+                "Nerda Studio isn\u{2019}t allowed to read your saved projects in {}; changes \
+                 made here won\u{2019}t be saved.",
+                folder_of(&path)
+            )),
+            Err(_) => Self::unsaved(&format!(
+                "Couldn\u{2019}t read your saved projects in {}; changes made here won\u{2019}t \
+                 be saved.",
+                folder_of(&path)
             )),
         }
     }
@@ -119,15 +125,16 @@ impl Store {
                 Some(path),
                 Some(
                     format!(
-                        "Your saved projects couldn't be read, so they were set aside as \
+                        "Your saved projects couldn\u{2019}t be read, so they were set aside as \
                          {backup_name}. Add your projects again."
                     )
                     .into(),
                 ),
             ),
-            Err(error) => Self::unsaved(&format!(
-                "Your saved projects couldn't be read or set aside ({error}). Changes made \
-                 here won't be saved."
+            Err(_) => Self::unsaved(&format!(
+                "Your saved projects in {} couldn\u{2019}t be read or set aside; changes made \
+                 here won\u{2019}t be saved.",
+                folder_of(&path)
             )),
         }
     }
@@ -215,16 +222,36 @@ impl Store {
         .detach();
     }
 
+    /// What went wrong, in words the reader can act on, without the system's
+    /// error codes.
     fn save_failed(&mut self, error: &std::io::Error, path: &Path) {
-        self.notice = Some(
+        let folder = folder_of(path);
+        let notice = if is_denied(error) {
             format!(
-                "Couldn't save your changes ({error}). Check free disk space and the \
-                 permissions of {}.",
-                path.display()
+                "Couldn\u{2019}t save your changes: Nerda Studio isn\u{2019}t allowed to write to {folder}."
             )
-            .into(),
-        );
+        } else if error.kind() == ErrorKind::StorageFull {
+            "Couldn\u{2019}t save your changes: the disk is full. Free some space; the next \
+             change saves them all."
+                .to_owned()
+        } else {
+            format!("Couldn\u{2019}t save your changes to {folder}; the next change tries again.")
+        };
+        self.notice = Some(notice.into());
     }
+}
+
+/// Whether the system refused access, as opposed to something going wrong.
+fn is_denied(error: &std::io::Error) -> bool {
+    matches!(
+        error.kind(),
+        ErrorKind::PermissionDenied | ErrorKind::ReadOnlyFilesystem
+    )
+}
+
+/// The folder holding `path`, as a person reads it: `~` for home.
+fn folder_of(path: &Path) -> String {
+    workspace::home_relative(path.parent().unwrap_or(path))
 }
 
 #[cfg(test)]
