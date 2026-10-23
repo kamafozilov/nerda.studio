@@ -205,6 +205,7 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   button `FIELD_TARGET_SIZE` (24) high, the cap sits 2 px from its top, bottom and right.
 - **The sidebar's** header, session cards, messages, empty states and footer follow
   [sidebar.md](sidebar.md).
+- **The composer**, where a session's message is written, follows [composer.md](composer.md).
 - **Pages** are empty for now: a page on screen leaves the main area blank.
 - **Palettes** are dialogs of one field over a list:
   `PALETTE_WIDTH` (576) centered a tenth of the way down the window and never above the
