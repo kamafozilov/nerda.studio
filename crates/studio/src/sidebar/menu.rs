@@ -58,7 +58,7 @@ impl Sidebar {
         let sort = workspace.sort();
         let scope = workspace.scope();
         let mut entries = vec![
-            Entry::Section("Sort by"),
+            Entry::Section("Sort by".into()),
             choice(
                 "sort-activity",
                 "Last activity",
@@ -72,7 +72,7 @@ impl Sidebar {
                 |workspace| workspace.set_sort(SessionSort::Created),
             ),
             Entry::Separator,
-            Entry::Section("Project"),
+            Entry::Section("Project".into()),
             choice(
                 "scope-all",
                 "All projects",

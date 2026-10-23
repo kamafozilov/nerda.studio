@@ -5,6 +5,7 @@
 //! its project; once the session has seen work, the composer docks to the
 //! card's bottom, leaving the space above for the messages.
 
+mod pickers;
 mod toolbar;
 
 use gpui::{
@@ -20,6 +21,7 @@ use workspace::{Head, SessionId};
 
 use crate::{
     assets::Icon,
+    menu::Menu,
     store::Store,
     text_input::{Lines, TextInput, TextInputEvent},
 };
@@ -43,6 +45,8 @@ pub struct Composer {
     store: Entity<Store>,
     session: SessionId,
     input: Entity<TextInput>,
+    /// The picker open over the toolbar, if one is.
+    menu: Menu<Composer, pickers::Picker>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -66,6 +70,7 @@ impl Composer {
             store,
             session,
             input,
+            menu: Menu::new(|composer| &mut composer.menu, cx),
             _subscriptions: subscriptions,
         }
     }
@@ -84,6 +89,7 @@ impl Composer {
         let colors = Theme::of(cx).colors;
         let input_focus = self.input.focus_handle(cx);
         let focused = input_focus.contains_focused(window, cx);
+        let toolbar = self.render_toolbar(window, cx);
         div()
             .id("composer-box")
             .w_full()
@@ -104,7 +110,7 @@ impl Composer {
                 cx.listener(move |_, _: &ClickEvent, window, cx| window.focus(&input_focus, cx)),
             )
             .child(self.input.clone())
-            .child(toolbar::toolbar(self.has_message(cx), cx))
+            .child(toolbar)
     }
 
     /// Where the session runs, under the box and in line with its text: the

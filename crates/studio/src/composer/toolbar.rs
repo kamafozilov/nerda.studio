@@ -1,89 +1,114 @@
 //! The composer's toolbar: Attach, the session's choices as pills, and Send.
-//! None of them acts until agents come; the pills show the values a session
-//! will start with.
+//! Attach and Send don't act until agents come; each pill opens its picker.
 
-use gpui::{App, IntoElement, ParentElement, Styled, div, prelude::*, svg};
+use gpui::{
+    Anchor, ClickEvent, Context, Focusable, IntoElement, ParentElement, Styled, Window, div,
+    prelude::*, svg,
+};
 use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, Colors, DISABLED_OPACITY, ICON_SIZE, ICON_SIZE_SMALL, SPACE_1,
     SPACE_2, Theme,
 };
 
-use super::Send;
+use super::{Composer, Send, pickers::Picker};
 use crate::{
     assets::Icon,
+    menu::Placement,
     sidebar::icon_button,
     tooltip::{TooltipExt, WithTooltip},
 };
 
-/// A choice a session makes before it starts: its pill's element id and the
-/// value it starts at.
-struct Choice {
-    id: &'static str,
-    value: &'static str,
-}
+impl Composer {
+    pub(super) fn render_toolbar(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
+        let colors = Theme::of(cx).colors;
+        let has_message = self.has_message(cx);
+        let pills: Vec<_> = Picker::ALL
+            .into_iter()
+            .map(|picker| self.render_pill(picker, window, cx))
+            .collect();
+        div()
+            .h(CONTROL_SIZE)
+            .flex()
+            .items_center()
+            .gap(SPACE_1)
+            .cursor_default()
+            .child(icon_button(
+                "composer-attach",
+                Icon::NewTab,
+                "Attachments come with agents",
+                false,
+                colors,
+                |button| button,
+            ))
+            .children(pills)
+            .child(div().flex_1())
+            .child(send_button(has_message, colors))
+    }
 
-/// The agent that runs the session, how hard it thinks, and what it may do
-/// without asking.
-const CHOICES: [Choice; 3] = [
-    Choice {
-        id: "composer-agent",
-        value: "Claude Code",
-    },
-    Choice {
-        id: "composer-effort",
-        value: "High",
-    },
-    Choice {
-        id: "composer-access",
-        value: "Ask first",
-    },
-];
-
-pub(super) fn toolbar(has_message: bool, cx: &App) -> impl IntoElement {
-    let colors = Theme::of(cx).colors;
-    div()
-        .h(CONTROL_SIZE)
-        .flex()
-        .items_center()
-        .gap(SPACE_1)
-        .cursor_default()
-        .child(icon_button(
-            "composer-attach",
-            Icon::NewTab,
-            "Attachments come with agents",
-            false,
-            colors,
-            |button| button,
-        ))
-        .children(CHOICES.iter().map(|choice| pill(choice, colors)))
-        .child(div().flex_1())
-        .child(send_button(has_message, colors))
-}
-
-/// A choice's current value and a chevron, filled only under the pointer, as
-/// an icon button is. Its tooltip says why it opens nothing yet.
-fn pill(choice: &Choice, colors: Colors) -> WithTooltip {
-    div()
-        .id(choice.id)
-        .flex_none()
-        .h(CONTROL_SIZE)
-        .px(SPACE_2)
-        .flex()
-        .items_center()
-        .gap(SPACE_1)
-        .rounded(CONTROL_RADIUS)
-        .hover(|pill| pill.bg(colors.hover))
-        .text_color(colors.text_secondary)
-        .whitespace_nowrap()
-        .child(choice.value)
-        .child(
-            svg()
-                .path(Icon::ChevronDown.path())
-                .flex_none()
-                .size(ICON_SIZE_SMALL)
-                .text_color(colors.text_secondary),
-        )
-        .with_tooltip("Choosing comes with agents")
+    /// A choice's current value and a chevron, filled under the pointer and
+    /// while its menu is open. The menu opens upward from the pill's leading
+    /// edge: the composer sits low in the card, and a menu that never covers
+    /// its pill can't take the next click on it as a pick.
+    fn render_pill(
+        &self,
+        picker: Picker,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
+        let colors = Theme::of(cx).colors;
+        let open = self.menu.opened() == Some(&picker);
+        let menu = if open {
+            let entries = self.picker_entries(picker, cx);
+            let placement = Placement::Hang(Anchor::BottomLeft);
+            self.menu
+                .render(picker.menu_id(), entries, placement, window, cx)
+        } else {
+            None
+        };
+        let pill = div()
+            .id(picker.id())
+            .min_w_0()
+            .h(CONTROL_SIZE)
+            .px(SPACE_2)
+            .flex()
+            .items_center()
+            .gap(SPACE_1)
+            .rounded(CONTROL_RADIUS)
+            .hover(|pill| pill.bg(colors.hover))
+            .when(open, |pill| pill.bg(colors.hover))
+            .text_color(colors.text_secondary)
+            .whitespace_nowrap()
+            .on_click(cx.listener(move |composer, _: &ClickEvent, window, cx| {
+                // The box's own click would take focus back to the text.
+                cx.stop_propagation();
+                let text = composer.input.focus_handle(cx);
+                composer.menu.open_from(picker, Some(text), window, cx);
+            }))
+            .child(
+                div()
+                    .min_w_0()
+                    .overflow_hidden()
+                    .text_ellipsis()
+                    .child(picker.value(&self.choice(cx))),
+            )
+            .child(
+                svg()
+                    .path(Icon::ChevronDown.path())
+                    .flex_none()
+                    .size(ICON_SIZE_SMALL)
+                    .text_color(colors.text_secondary),
+            )
+            .with_tooltip(picker.name());
+        div()
+            .relative()
+            .min_w_0()
+            .child(pill)
+            .children(menu.map(|menu| div().absolute().top_0().left_0().child(menu)))
+    }
 }
 
 /// A round button in `text_primary` with an arrow cut in the card's color.
