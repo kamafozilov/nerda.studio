@@ -7,7 +7,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use agent::protocol::{INITIALIZE, parse};
-use agent::{Command, Conversation, ConversationId, Event, Events, Launch, Message, Transcript};
+use agent::{
+    Command, Conversation, ConversationId, Event, Events, Launch, Message, Status, Transcript,
+};
 use serde_json::Value;
 use workspace::{AgentChoice, ModelId};
 
@@ -208,6 +210,14 @@ pub fn written(dir: &TempDir) -> Vec<Value> {
 pub fn arguments(dir: &TempDir) -> Vec<String> {
     let text = std::fs::read_to_string(dir.path().join("fake-agent.args")).unwrap();
     text.lines().map(str::to_owned).collect()
+}
+
+pub fn status_is(status: Status) -> impl Fn(&Transcript, &[Event]) -> bool {
+    move |transcript, _| transcript.status() == &status
+}
+
+pub fn exited(transcript: &Transcript, _: &[Event]) -> bool {
+    matches!(transcript.status(), Status::Exited { .. })
 }
 
 /// Drains a session's events into a transcript, as the screen would.
