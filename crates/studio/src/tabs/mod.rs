@@ -1,9 +1,10 @@
-//! The top row's tabs: the sessions open in the project on screen, then a New
-//! session button. Tabs share the row up to `TAB_MAX_WIDTH` each; an opened tab's
-//! slot grows from nothing and a closed one collapses in place before it leaves.
-//! A tab can be dragged along the row, closed by its button, a middle click or
-//! its menu, and the selected one by `Cmd-W`. A project's unused draft alone in
-//! the row has no close button: closing it would only open it again.
+//! The top row's tabs: the pages and the sessions open in the project on
+//! screen, then a New session button. Tabs share the row up to `TAB_MAX_WIDTH`
+//! each; an opened tab's slot grows from nothing and a closed one collapses in
+//! place before it leaves. A tab can be dragged along the row, closed by its
+//! button, a middle click or its menu, and the selected one by `Cmd-W`. A
+//! project's unused draft alone in the row has no close button: closing it
+//! would only open it again.
 //!
 //!
 //! The strip redraws on every frame of a drag or a tab's motion, so a frame only
@@ -29,7 +30,7 @@ use theme::{
     MAIN_INSET, TAB_GAP, Theme,
     motion::{PHASE_EPSILON, TAB_EXIT},
 };
-use workspace::SessionId;
+use workspace::Tab;
 
 use crate::{accessibility, assets::Icon, sidebar::icon_button, store::Store};
 
@@ -54,26 +55,26 @@ pub struct TabStrip {
     /// The workspace changed since the strip last read it.
     stale: bool,
     has_projects: bool,
-    selected: Option<SessionId>,
+    selected: Option<Tab>,
     /// The tabs as last drawn, live and closing, in row order.
-    order: Vec<SessionId>,
+    order: Vec<Tab>,
     /// The tabs on screen when the row last changed.
-    live: Vec<SessionId>,
+    live: Vec<Tab>,
     /// Opened since the row last changed: their slots grow from nothing.
-    opening: HashSet<SessionId>,
+    opening: HashSet<Tab>,
     /// Closed tabs collapsing in place, drawn from what they last showed.
-    closing: HashMap<SessionId, Closing>,
+    closing: HashMap<Tab, Closing>,
     /// Each drawn tab's title and element names, made when the workspace changes.
-    labels: HashMap<SessionId, Label>,
+    labels: HashMap<Tab, Label>,
     /// Where each slot was laid out last frame, for dragging and for whether a
     /// tab is wide enough for its close button.
-    bounds: Rc<RefCell<HashMap<SessionId, Bounds<Pixels>>>>,
+    bounds: Rc<RefCell<HashMap<Tab, Bounds<Pixels>>>>,
     drag: Option<drag::TabDrag>,
     /// Names the tabs' glide springs; renamed on each drop, so every spring
     /// starts again from where its tab was drawn, kept in `settle_from`.
     settle: SharedString,
     drops: usize,
-    settle_from: HashMap<SessionId, f32>,
+    settle_from: HashMap<Tab, f32>,
     /// The press that ended a drag also ends in a click; that click is not a choice.
     skip_click: bool,
     menu: Option<menu::TabMenu>,
@@ -133,19 +134,22 @@ impl TabStrip {
         }
         let workspace = self.store.read(cx).workspace();
         let live = workspace.open_tabs();
-        self.selected = workspace.selected_session();
+        self.selected = workspace.selected_tab();
         self.has_projects = workspace.has_projects();
-        let labels: HashMap<SessionId, Label> = live
+        let labels: HashMap<Tab, Label> = live
             .iter()
             .map(|&id| {
-                let title = workspace
-                    .session(id)
-                    .map(|session| SharedString::from(session.title.clone()))
-                    .unwrap_or_default();
+                let title = match id {
+                    Tab::Session(session) => workspace
+                        .session(session)
+                        .map(|session| SharedString::from(session.title.clone()))
+                        .unwrap_or_default(),
+                    Tab::Page(page) => page.title().into(),
+                };
                 let label = Label {
                     title,
-                    group: format!("tab-{}", id.0).into(),
-                    close: format!("close-tab-{}", id.0).into(),
+                    group: format!("tab-{}", id.key()).into(),
+                    close: format!("close-tab-{}", id.key()).into(),
                     closable: workspace.can_close_tab(id),
                 };
                 (id, label)
@@ -159,7 +163,7 @@ impl TabStrip {
     /// Brings the row up to the workspace's tabs: a tab that left starts
     /// collapsing where it was, one that arrived starts growing. Switching to
     /// another project replaces the row at once; that is not a close.
-    fn sync(&mut self, live: Vec<SessionId>, cx: &mut Context<Self>) {
+    fn sync(&mut self, live: Vec<Tab>, cx: &mut Context<Self>) {
         if live == self.live {
             return;
         }
@@ -214,20 +218,20 @@ impl TabStrip {
 
     /// What a tab that just left the row keeps showing while it collapses:
     /// what it showed last.
-    fn labels_for_closing(&self, id: SessionId) -> Option<Label> {
+    fn labels_for_closing(&self, id: Tab) -> Option<Label> {
         self.closing
             .get(&id)
             .map(|closing| closing.label.clone())
             .or_else(|| self.labels.get(&id).cloned())
     }
 
-    fn open(&mut self, id: SessionId, cx: &mut Context<Self>) {
+    fn open(&mut self, id: Tab, cx: &mut Context<Self>) {
         self.store.update(cx, |store, cx| {
-            store.update(cx, |workspace| workspace.open_session(id))
+            store.update(cx, |workspace| workspace.open_tab(id))
         });
     }
 
-    fn close(&mut self, id: SessionId, cx: &mut Context<Self>) {
+    fn close(&mut self, id: Tab, cx: &mut Context<Self>) {
         self.store.update(cx, |store, cx| {
             store.update(cx, |workspace| {
                 workspace.close_tab(id, workspace::Timestamp::now())

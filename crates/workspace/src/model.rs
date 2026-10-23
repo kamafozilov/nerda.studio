@@ -68,16 +68,6 @@ pub enum SessionSort {
     Created,
 }
 
-/// How the session list is laid out.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SessionView {
-    /// Each project a header over its own sessions.
-    #[default]
-    Projects,
-    /// One list of every session, each naming its project.
-    Sessions,
-}
-
 /// Which projects' sessions the session list shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProjectScope {
@@ -91,4 +81,65 @@ pub enum ProjectScope {
 pub enum AddedProject {
     Added(ProjectId),
     Existing(ProjectId),
+}
+
+/// A part of the app beside the sessions, not tied to a project. There is one
+/// of each: opening it again shows its tab instead of adding another.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Page {
+    Notes,
+    Design,
+    Routines,
+}
+
+impl Page {
+    /// Every page, in the order the sidebar lists them.
+    pub const ALL: [Page; 3] = [Page::Notes, Page::Design, Page::Routines];
+
+    pub fn title(self) -> &'static str {
+        match self {
+            Page::Notes => "Notes",
+            Page::Design => "Design",
+            Page::Routines => "Routines",
+        }
+    }
+
+    /// The name the saved workspace knows the page by; never changes once shipped.
+    pub(crate) fn key(self) -> &'static str {
+        match self {
+            Page::Notes => "notes",
+            Page::Design => "design",
+            Page::Routines => "routines",
+        }
+    }
+
+    /// The page saved under `key`; `None` for one this build doesn't know.
+    pub(crate) fn from_key(key: &str) -> Option<Page> {
+        Page::ALL.into_iter().find(|page| page.key() == key)
+    }
+}
+
+/// What a tab shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Tab {
+    Session(SessionId),
+    Page(Page),
+}
+
+impl Tab {
+    /// A number no other tab shares, to name its elements by: a session's id,
+    /// which a loaded workspace keeps at most 2^53, else one past every id.
+    pub fn key(self) -> u64 {
+        match self {
+            Tab::Session(id) => id.0,
+            Tab::Page(page) => u64::MAX - page as u64,
+        }
+    }
+
+    pub fn session(self) -> Option<SessionId> {
+        match self {
+            Tab::Session(id) => Some(id),
+            Tab::Page(_) => None,
+        }
+    }
 }

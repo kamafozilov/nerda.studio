@@ -12,7 +12,7 @@ use theme::{
     SPACE_2, TAB_CLOSE_MIN_WIDTH, TAB_GAP, TAB_MAX_WIDTH, TAB_SELECTED_MIN_WIDTH,
     motion::{PHASE_EPSILON, PIXEL_EPSILON, TAB_ENTER, TAB_EXIT},
 };
-use workspace::SessionId;
+use workspace::Tab;
 
 use super::{Label, TabStrip};
 use crate::{assets::Icon, tooltip::TooltipExt};
@@ -24,7 +24,7 @@ const MIN_OPEN: f32 = 0.05;
 impl TabStrip {
     pub(super) fn render_slot(
         &mut self,
-        id: SessionId,
+        id: Tab,
         colors: Colors,
         cx: &mut Context<Self>,
     ) -> AnyElement {
@@ -68,7 +68,7 @@ impl TabStrip {
             .items_center()
             .overflow_hidden()
             .child(measure)
-            .with_spring(("tab-slot", id.0), open, move |slot, open: f32| {
+            .with_spring(("tab-slot", id.key()), open, move |slot, open: f32| {
                 let open = open.clamp(0., 1.);
                 slot.flex_basis(TAB_MAX_WIDTH * open)
                     // A collapsing slot gives back its gap too.
@@ -97,7 +97,7 @@ impl TabStrip {
         }
         let from = self.settle_from.get(&id).copied().unwrap_or(0.);
         slot.with_spring(
-            ElementId::NamedInteger(self.settle.clone(), id.0),
+            ElementId::NamedInteger(self.settle.clone(), id.key()),
             SpringAnimation::new(TAB_ENTER)
                 .to(shift.as_f32())
                 .from(from)
@@ -109,7 +109,7 @@ impl TabStrip {
 
     fn live_tab(
         &self,
-        id: SessionId,
+        id: Tab,
         label: &Label,
         selected: bool,
         can_close: bool,
@@ -148,9 +148,9 @@ impl TabStrip {
 }
 
 /// The tab's plate and title; the selected one sits on the selection's fill.
-fn tab_face(id: SessionId, label: &Label, selected: bool, colors: Colors) -> Stateful<gpui::Div> {
+fn tab_face(id: Tab, label: &Label, selected: bool, colors: Colors) -> Stateful<gpui::Div> {
     div()
-        .id(("tab", id.0))
+        .id(("tab", id.key()))
         .group(label.group.clone())
         .relative()
         .h(CONTROL_SIZE)
@@ -175,7 +175,7 @@ fn tab_face(id: SessionId, label: &Label, selected: bool, colors: Colors) -> Sta
 /// still takes its clicks, but only a pointer over the tab, which shows it, can
 /// reach it.
 fn close_button(
-    id: SessionId,
+    id: Tab,
     label: &Label,
     colors: Colors,
     cx: &mut Context<TabStrip>,

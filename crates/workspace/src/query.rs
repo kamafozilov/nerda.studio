@@ -1,16 +1,6 @@
-use std::{cmp::Reverse, collections::HashMap, path::Component};
+use std::{cmp::Reverse, path::Component};
 
 use crate::{Project, ProjectId, ProjectScope, Session, SessionSort, Timestamp, Workspace};
-
-/// One project in the session list: its header and the sessions shown under it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SessionGroup<'a> {
-    pub project: &'a Project,
-    /// In sort order, listed even while the project is collapsed so its count shows.
-    pub sessions: Vec<&'a Session>,
-    /// Folded to its header. Never while searching, so no match hides.
-    pub collapsed: bool,
-}
 
 impl Workspace {
     /// Projects, most recently active first; ties by title ignoring case, then by id.
@@ -54,65 +44,10 @@ impl Workspace {
         sessions
     }
 
-    /// The session list by project: each project in scope with its sessions matching
-    /// `query`, in sort order. A project ranks by its newest session under the sort,
-    /// or its creation when it has none, newest first; ties by title ignoring case,
-    /// then id. The rank ignores the query, so projects hold still while it is typed.
-    /// While searching, projects without a match drop out.
-    pub fn session_groups(&self, query: &str) -> Vec<SessionGroup<'_>> {
-        let searching = !query.trim().is_empty();
-        let mut ranks: HashMap<ProjectId, Timestamp> = HashMap::new();
-        for session in &self.sessions {
-            let rank = ranks.entry(session.project).or_insert(Timestamp(0));
-            *rank = (*rank).max(self.sort_key(session));
-        }
-        let mut ranked: Vec<(Timestamp, String, SessionGroup)> = self
-            .projects
-            .iter()
-            .filter(|project| match self.scope {
-                ProjectScope::All => true,
-                ProjectScope::Project(id) => project.id == id,
-            })
-            .map(|project| {
-                let rank = ranks
-                    .get(&project.id)
-                    .copied()
-                    .unwrap_or(project.created_at);
-                let group = SessionGroup {
-                    project,
-                    sessions: Vec::new(),
-                    collapsed: !searching && self.collapsed.contains(&project.id),
-                };
-                (rank, project.title.to_lowercase(), group)
-            })
-            .collect();
-        ranked.sort_by(|(a_rank, a_title, a), (b_rank, b_title, b)| {
-            b_rank
-                .cmp(a_rank)
-                .then_with(|| a_title.cmp(b_title))
-                .then_with(|| a.project.id.cmp(&b.project.id))
-        });
-        let mut groups: Vec<SessionGroup> = ranked.into_iter().map(|(.., group)| group).collect();
-        let index: HashMap<ProjectId, usize> = groups
-            .iter()
-            .enumerate()
-            .map(|(position, group)| (group.project.id, position))
-            .collect();
-        for session in self.visible_sessions(query) {
-            if let Some(&at) = index.get(&session.project) {
-                groups[at].sessions.push(session);
-            }
-        }
-        if searching {
-            groups.retain(|group| !group.sessions.is_empty());
-        }
-        groups
-    }
-
-    /// The project a new session should go to: the selected session's, the scoped one, else the most recently active.
+    /// The project a new session should go to: the one on screen, the scoped one, else the most recently active.
     pub fn context_project(&self) -> Option<ProjectId> {
-        if let Some(session) = self.selected_session.and_then(|id| self.session(id)) {
-            return Some(session.project);
+        if let Some(project) = self.project_on_screen {
+            return Some(project);
         }
         if let ProjectScope::Project(id) = self.scope {
             return Some(id);

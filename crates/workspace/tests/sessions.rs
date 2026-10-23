@@ -2,7 +2,7 @@ mod support;
 
 use support::{TempDir, load_json};
 use workspace::{
-    AddedProject, ProjectId, ProjectScope, SessionId, SessionSort, Timestamp, Workspace,
+    AddedProject, ProjectId, ProjectScope, SessionId, SessionSort, Tab, Timestamp, Workspace,
 };
 
 /// Two projects (1, 2) with sessions of mixed activity; ids 3..=7.
@@ -113,7 +113,7 @@ fn opening_an_unknown_session_changes_nothing() {
     workspace.open_session(SessionId(5));
     workspace.open_session(SessionId(99));
     assert_eq!(workspace.selected_session(), Some(SessionId(5)));
-    assert_eq!(workspace.tabs(), [SessionId(5)]);
+    assert_eq!(workspace.tabs(), [Tab::Session(SessionId(5))]);
 }
 
 #[test]

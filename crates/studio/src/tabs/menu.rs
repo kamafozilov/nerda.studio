@@ -6,7 +6,7 @@ use gpui::{
     Point, Styled, Window, anchored, deferred, div, point, prelude::*, px,
 };
 use theme::{CONTROL_RADIUS, MENU_WIDTH, ROW_HEIGHT, SPACE_1, SPACE_2, SPACE_3, Theme};
-use workspace::{SessionId, Timestamp, Workspace};
+use workspace::{Tab, Timestamp, Workspace};
 
 use super::{DismissMenu, TabStrip};
 
@@ -16,7 +16,7 @@ const DISABLED_OPACITY: f32 = 0.4;
 const MAC: bool = cfg!(target_os = "macos");
 
 pub(super) struct TabMenu {
-    pub tab: SessionId,
+    pub tab: Tab,
     position: Point<Pixels>,
     /// Where focus was before the menu opened, to give it back.
     focus_before: Option<FocusHandle>,
@@ -28,13 +28,13 @@ struct Choice {
     label: &'static str,
     shortcut: Option<&'static str>,
     enabled: bool,
-    run: fn(&mut Workspace, SessionId, Timestamp),
+    run: fn(&mut Workspace, Tab, Timestamp),
 }
 
 impl TabStrip {
     pub(super) fn open_menu(
         &mut self,
-        tab: SessionId,
+        tab: Tab,
         position: Point<Pixels>,
         window: &mut Window,
         cx: &mut Context<Self>,

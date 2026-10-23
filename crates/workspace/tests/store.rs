@@ -2,8 +2,8 @@ mod support;
 
 use support::{TempDir, load_json};
 use workspace::{
-    AddedProject, LoadError, ProjectId, ProjectScope, SessionId, SessionSort, SessionView,
-    Timestamp, Workspace,
+    AddedProject, LoadError, ProjectId, ProjectScope, SessionId, SessionSort, Tab, Timestamp,
+    Workspace,
 };
 
 #[test]
@@ -70,8 +70,6 @@ fn round_trip_keeps_state_and_the_id_counter() {
     workspace.set_sort(SessionSort::Created);
     workspace.set_scope(ProjectScope::Project(project));
     workspace.open_session(session);
-    workspace.set_collapsed(project, true);
-    workspace.set_view(SessionView::Sessions);
     workspace.save(&path).unwrap();
 
     let mut loaded = Workspace::load(&path).unwrap();
@@ -80,9 +78,10 @@ fn round_trip_keeps_state_and_the_id_counter() {
     assert_eq!(loaded.sort(), SessionSort::Created);
     assert_eq!(loaded.scope(), ProjectScope::Project(project));
     assert_eq!(loaded.selected_session(), Some(session));
-    assert_eq!(loaded.tabs(), [elsewhere, session]);
-    assert!(loaded.is_collapsed(project));
-    assert_eq!(loaded.view(), SessionView::Sessions);
+    assert_eq!(
+        loaded.tabs(),
+        [Tab::Session(elsewhere), Tab::Session(session)]
+    );
 
     let other = temp.dir("other");
     let AddedProject::Added(next) = loaded.add_project(&other, Timestamp(7)).unwrap() else {
@@ -111,8 +110,7 @@ fn loading_repairs_dangling_references_and_the_counter() {
             ],
             "scope": {"Project": 4},
             "selected_session": 9,
-            "tabs": [9, 8, 8, 77],
-            "collapsed": [1, 4]}"#,
+            "tabs": [9, 8, 8, 77]}"#,
     );
     let titles: Vec<&str> = workspace
         .projects()
@@ -128,15 +126,28 @@ fn loading_repairs_dangling_references_and_the_counter() {
     assert_eq!(sessions, ["kept"]);
     assert_eq!(workspace.scope(), ProjectScope::All);
     assert_eq!(workspace.selected_session(), None);
-    assert_eq!(workspace.tabs(), [SessionId(8)]);
+    assert_eq!(workspace.tabs(), [Tab::Session(SessionId(8))]);
     assert!(workspace.session(SessionId(9)).is_none());
-    assert!(workspace.is_collapsed(ProjectId(1)));
-    assert!(!workspace.is_collapsed(ProjectId(4)));
 
     // The counter moves above id 8 even though the file said 2.
     let mut workspace = workspace;
     let draft = workspace.new_session(ProjectId(1), Timestamp(3)).unwrap();
     assert_eq!(draft, SessionId(9));
+}
+
+#[test]
+fn a_file_from_when_the_list_grouped_by_project_still_loads() {
+    let workspace = load_json(
+        r#"{"version": 1, "next_id": 3,
+            "projects": [{"id": 1, "title": "one", "path": "/one", "created_at": 0}],
+            "sessions": [{"id": 2, "project": 1, "title": "kept", "created_at": 1, "last_activity_at": 2}],
+            "view": "Projects",
+            "collapsed": [1],
+            "tabs": [2],
+            "selected_session": 2}"#,
+    );
+    assert_eq!(workspace.visible_sessions("").len(), 1);
+    assert_eq!(workspace.selected_session(), Some(SessionId(2)));
 }
 
 #[test]

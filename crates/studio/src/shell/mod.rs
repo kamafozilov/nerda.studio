@@ -13,7 +13,7 @@ use gpui::{
     actions, div, prelude::*,
 };
 use theme::{MAIN_INSET, MAIN_RADIUS, SIDEBAR_WIDTH, TEXT_BODY, Theme, motion};
-use workspace::{Timestamp, Visits};
+use workspace::{Tab, Timestamp, Visits};
 
 use crate::{
     accessibility, add_project::AddProjectPalette, app_menu, instance::Screen, sidebar::Sidebar,
@@ -43,9 +43,9 @@ actions!(
         NextTab,
         /// Selects the tab before the selected one, wrapping.
         PreviousTab,
-        /// Shows the session shown before.
+        /// Shows the tab shown before.
         GoBack,
-        /// Shows the session Back left.
+        /// Shows the tab Back left.
         GoForward,
         /// Cmd-Q in the window: the first press asks for a second, which quits.
         RequestQuit,
@@ -57,7 +57,7 @@ pub struct Shell {
     store: Entity<Store>,
     sidebar: Entity<Sidebar>,
     tabs: Entity<TabStrip>,
-    /// Back and Forward through the sessions shown.
+    /// Back and Forward through the tabs shown.
     visits: Visits,
     sidebar_open: bool,
     /// The left button went down on the titlebar; the next move drags the window.
@@ -97,10 +97,10 @@ impl Shell {
         // until something inside it takes it.
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
-        // A project on screen always shows a session.
+        // A project on screen always shows something.
         let nothing_open = {
             let workspace = store.read(cx).workspace();
-            workspace.has_projects() && workspace.selected_session().is_none()
+            workspace.has_projects() && workspace.selected_tab().is_none()
         };
         if nothing_open {
             store.update(cx, |store, cx| {
@@ -109,11 +109,11 @@ impl Shell {
                 })
             });
         }
-        // Every way a session comes on screen counts as a visit; a closed tab
-        // drops out of Back and Forward.
+        // Every way a tab comes on screen counts as a visit; a closed tab drops
+        // out of Back and Forward.
         cx.observe(&store, |shell, store, cx| {
             let workspace = store.read(cx).workspace();
-            let selected = workspace.selected_session();
+            let selected = workspace.selected_tab();
             shell.visits.prune(workspace.tabs(), selected);
             if let Some(selected) = selected {
                 shell.visits.record(selected);
@@ -122,7 +122,7 @@ impl Shell {
         })
         .detach();
         let mut visits = Visits::default();
-        if let Some(selected) = store.read(cx).workspace().selected_session() {
+        if let Some(selected) = store.read(cx).workspace().selected_tab() {
             visits.record(selected);
         }
         let sidebar = cx.new(|cx| Sidebar::new(store.clone(), cx));
@@ -244,9 +244,13 @@ impl Shell {
 
     /// The main area: a rounded card with a hairline, `MAIN_INSET` clear of the
     /// window's right and bottom edges and, as the sidebar closes, of its left.
+    /// Before the first project it welcomes, unless a page is on screen; the
+    /// pages and the sessions show nothing in it yet.
     fn main_area(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
-        let has_projects = self.store.read(cx).workspace().has_projects();
+        let workspace = self.store.read(cx).workspace();
+        let page_open = matches!(workspace.selected_tab(), Some(Tab::Page(_)));
+        let welcome = !page_open && !workspace.has_projects();
         let card = div()
             .flex_1()
             .min_w_0()
@@ -258,7 +262,7 @@ impl Shell {
             .border_1()
             .border_color(colors.border)
             .bg(colors.panel_background)
-            .when(!has_projects, |card| {
+            .when(welcome, |card| {
                 card.child(welcome::no_projects(
                     cx.listener(|shell, _: &ClickEvent, window, cx| {
                         shell.open_add_project(window, cx)

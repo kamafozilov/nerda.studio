@@ -1,7 +1,7 @@
 mod support;
 
 use support::load_json;
-use workspace::{ProjectId, SessionId, Timestamp, Visits, Workspace};
+use workspace::{ProjectId, SessionId, Tab, Timestamp, Visits, Workspace};
 
 /// Project 1 holds sessions 3, 4, 5 and 6, all with activity; project 2 holds 7
 /// and its draft 8.
@@ -19,8 +19,12 @@ const FIXTURE: &str = r#"{"version": 1, "next_id": 20,
         {"id": 8, "project": 2, "title": "New session", "created_at": 6, "last_activity_at": null}
     ]}"#;
 
-fn ids(raw: &[u64]) -> Vec<SessionId> {
-    raw.iter().copied().map(SessionId).collect()
+fn ids(raw: &[u64]) -> Vec<Tab> {
+    raw.iter().copied().map(tab).collect()
+}
+
+fn tab(id: u64) -> Tab {
+    Tab::Session(SessionId(id))
 }
 
 /// Project 1's sessions 3..=6 open in order with `selected` on screen, and
@@ -46,9 +50,9 @@ fn only_the_selected_projects_tabs_show() {
 #[test]
 fn closing_the_selection_selects_the_right_neighbor_then_the_left() {
     let mut workspace = with_tabs(5);
-    workspace.close_tab(SessionId(5), Timestamp(100));
+    workspace.close_tab(tab(5), Timestamp(100));
     assert_eq!(workspace.selected_session(), Some(SessionId(6)));
-    workspace.close_tab(SessionId(6), Timestamp(100));
+    workspace.close_tab(tab(6), Timestamp(100));
     assert_eq!(workspace.selected_session(), Some(SessionId(4)));
     assert_eq!(workspace.open_tabs(), ids(&[3, 4]));
 }
@@ -56,9 +60,9 @@ fn closing_the_selection_selects_the_right_neighbor_then_the_left() {
 #[test]
 fn closing_another_tab_keeps_the_selection() {
     let mut workspace = with_tabs(4);
-    workspace.close_tab(SessionId(6), Timestamp(100));
+    workspace.close_tab(tab(6), Timestamp(100));
     assert_eq!(workspace.selected_session(), Some(SessionId(4)));
-    workspace.close_tab(SessionId(99), Timestamp(100));
+    workspace.close_tab(tab(99), Timestamp(100));
     assert_eq!(workspace.open_tabs(), ids(&[3, 4, 5]));
 }
 
@@ -70,45 +74,45 @@ fn closing_the_last_tab_opens_the_projects_draft() {
     let draft = workspace.selected_session().unwrap();
     assert_eq!(workspace.session(draft).unwrap().project, ProjectId(1));
     assert!(workspace.session(draft).unwrap().is_empty());
-    assert_eq!(workspace.open_tabs(), [draft]);
-    assert_eq!(workspace.tabs(), [SessionId(7), draft]);
+    assert_eq!(workspace.open_tabs(), [Tab::Session(draft)]);
+    assert_eq!(workspace.tabs(), [tab(7), Tab::Session(draft)]);
 
     // The draft alone can't close: closing it would only open it again.
-    assert!(!workspace.can_close_tab(draft));
-    workspace.close_tab(draft, Timestamp(200));
-    assert_eq!(workspace.open_tabs(), [draft]);
+    assert!(!workspace.can_close_tab(Tab::Session(draft)));
+    workspace.close_tab(Tab::Session(draft), Timestamp(200));
+    assert_eq!(workspace.open_tabs(), [Tab::Session(draft)]);
     workspace.close_all_tabs(Timestamp(200));
-    assert_eq!(workspace.open_tabs(), [draft]);
+    assert_eq!(workspace.open_tabs(), [Tab::Session(draft)]);
 }
 
 #[test]
 fn a_draft_closes_beside_another_tab_and_a_used_tab_closes_alone() {
     let mut workspace = with_tabs(3);
     workspace.open_session(SessionId(8));
-    assert!(workspace.can_close_tab(SessionId(8)));
-    assert!(workspace.can_close_tab(SessionId(7)));
+    assert!(workspace.can_close_tab(tab(8)));
+    assert!(workspace.can_close_tab(tab(7)));
     // Off screen, nothing to close.
-    assert!(!workspace.can_close_tab(SessionId(3)));
+    assert!(!workspace.can_close_tab(tab(3)));
 
-    workspace.close_tab(SessionId(8), Timestamp(100));
+    workspace.close_tab(tab(8), Timestamp(100));
     assert_eq!(workspace.open_tabs(), ids(&[7]));
-    assert!(workspace.can_close_tab(SessionId(7)));
+    assert!(workspace.can_close_tab(tab(7)));
 }
 
 #[test]
 fn close_others_and_either_side_keep_the_chosen_tab_selected() {
     let mut workspace = with_tabs(3);
-    workspace.close_tabs_before(SessionId(5), Timestamp(100));
+    workspace.close_tabs_before(tab(5), Timestamp(100));
     assert_eq!(workspace.open_tabs(), ids(&[5, 6]));
     assert_eq!(workspace.selected_session(), Some(SessionId(5)));
 
     let mut workspace = with_tabs(6);
-    workspace.close_tabs_after(SessionId(4), Timestamp(100));
+    workspace.close_tabs_after(tab(4), Timestamp(100));
     assert_eq!(workspace.open_tabs(), ids(&[3, 4]));
     assert_eq!(workspace.selected_session(), Some(SessionId(4)));
 
     let mut workspace = with_tabs(3);
-    workspace.close_other_tabs(SessionId(5), Timestamp(100));
+    workspace.close_other_tabs(tab(5), Timestamp(100));
     assert_eq!(workspace.open_tabs(), ids(&[5]));
     assert_eq!(workspace.selected_session(), Some(SessionId(5)));
     assert_eq!(workspace.tabs(), ids(&[7, 5]));
@@ -117,22 +121,22 @@ fn close_others_and_either_side_keep_the_chosen_tab_selected() {
 #[test]
 fn moving_a_tab_leaves_other_projects_tabs_in_place() {
     let mut workspace = with_tabs(3);
-    workspace.move_tab(SessionId(3), 2);
+    workspace.move_tab(tab(3), 2);
     assert_eq!(workspace.open_tabs(), ids(&[4, 5, 3, 6]));
     assert_eq!(workspace.tabs(), ids(&[4, 5, 7, 3, 6]));
-    workspace.move_tab(SessionId(6), 0);
+    workspace.move_tab(tab(6), 0);
     assert_eq!(workspace.open_tabs(), ids(&[6, 4, 5, 3]));
     // Past the end means last.
-    workspace.move_tab(SessionId(6), 99);
+    workspace.move_tab(tab(6), 99);
     assert_eq!(workspace.open_tabs(), ids(&[4, 5, 3, 6]));
 }
 
 #[test]
 fn stepping_through_tabs_wraps_at_either_end() {
     let workspace = with_tabs(6);
-    assert_eq!(workspace.adjacent_tab(1), Some(SessionId(3)));
-    assert_eq!(workspace.adjacent_tab(-1), Some(SessionId(5)));
-    assert_eq!(workspace.tab_at(1), Some(SessionId(4)));
+    assert_eq!(workspace.adjacent_tab(1), Some(tab(3)));
+    assert_eq!(workspace.adjacent_tab(-1), Some(tab(5)));
+    assert_eq!(workspace.tab_at(1), Some(tab(4)));
     assert_eq!(workspace.tab_at(4), None);
     assert_eq!(load_json(FIXTURE).adjacent_tab(1), None);
 }
@@ -166,31 +170,31 @@ fn a_workspace_with_nothing_open_opens_the_latest_tab_or_the_draft() {
 fn back_and_forward_retrace_visits_and_a_new_visit_drops_forward() {
     let mut visits = Visits::default();
     for id in [3, 4, 5] {
-        visits.record(SessionId(id));
+        visits.record(tab(id));
     }
     assert!(!visits.can_go_forward());
-    assert_eq!(visits.step(true), Some(SessionId(4)));
-    assert_eq!(visits.step(true), Some(SessionId(3)));
+    assert_eq!(visits.step(true), Some(tab(4)));
+    assert_eq!(visits.step(true), Some(tab(3)));
     assert_eq!(visits.step(true), None);
-    assert_eq!(visits.step(false), Some(SessionId(4)));
-    visits.record(SessionId(6));
+    assert_eq!(visits.step(false), Some(tab(4)));
+    visits.record(tab(6));
     assert!(!visits.can_go_forward());
-    assert_eq!(visits.step(true), Some(SessionId(4)));
+    assert_eq!(visits.step(true), Some(tab(4)));
 }
 
 #[test]
 fn closed_tabs_drop_out_of_the_history() {
     let mut visits = Visits::default();
     for id in [3, 4, 3, 5] {
-        visits.record(SessionId(id));
+        visits.record(tab(id));
     }
     // 4 closed: Back goes 5, then 3 once, not 3 twice.
-    visits.prune(&ids(&[3, 5]), Some(SessionId(5)));
-    assert_eq!(visits.step(true), Some(SessionId(3)));
+    visits.prune(&ids(&[3, 5]), Some(tab(5)));
+    assert_eq!(visits.step(true), Some(tab(3)));
     assert!(!visits.can_go_back());
 
     // The current session closed: the new selection takes its place.
-    visits.prune(&ids(&[5]), Some(SessionId(5)));
+    visits.prune(&ids(&[5]), Some(tab(5)));
     assert!(!visits.can_go_back());
     assert_eq!(visits.step(false), None);
 }

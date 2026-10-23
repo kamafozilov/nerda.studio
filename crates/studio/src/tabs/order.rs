@@ -1,14 +1,12 @@
 //! Where closing tabs sit in the row while their slots collapse.
 
-use workspace::SessionId;
-
 /// The row to draw: the live tabs in order, each closing one kept after the
 /// tab that preceded it in `old`, or first if none of those is left.
-pub fn with_closing(
-    old: &[SessionId],
-    live: &[SessionId],
-    closing: impl Fn(&SessionId) -> bool,
-) -> Vec<SessionId> {
+pub fn with_closing<T: Copy + PartialEq>(
+    old: &[T],
+    live: &[T],
+    closing: impl Fn(&T) -> bool,
+) -> Vec<T> {
     let mut order = live.to_vec();
     for (old_index, id) in old.iter().enumerate() {
         if !closing(id) || order.contains(id) {
@@ -26,6 +24,8 @@ pub fn with_closing(
 
 #[cfg(test)]
 mod tests {
+    use workspace::SessionId;
+
     use super::*;
 
     fn ids(raw: &[u64]) -> Vec<SessionId> {

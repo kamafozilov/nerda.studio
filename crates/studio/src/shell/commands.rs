@@ -2,7 +2,7 @@
 //! as the tab menu and the top row's buttons do, so every way in moves the same.
 
 use gpui::{Context, Div, InteractiveElement, Window};
-use workspace::{SessionId, Timestamp, Workspace};
+use workspace::{Tab, Timestamp, Workspace};
 
 use super::{
     CloseAllTabs, CloseOtherTabs, CloseTab, GoBack, GoForward, NextTab, PreviousTab, Shell,
@@ -44,13 +44,13 @@ impl Shell {
         .on_action(cx.listener(|shell, _: &GoForward, window, cx| shell.go(false, window, cx)))
     }
 
-    /// Runs `change` on the selected tab, if a session is on screen.
+    /// Runs `change` on the selected tab, if one is on screen.
     fn with_selected(
         &mut self,
         cx: &mut Context<Self>,
-        change: impl FnOnce(&mut Workspace, SessionId, Timestamp),
+        change: impl FnOnce(&mut Workspace, Tab, Timestamp),
     ) {
-        let Some(selected) = self.store.read(cx).workspace().selected_session() else {
+        let Some(selected) = self.store.read(cx).workspace().selected_tab() else {
             return;
         };
         self.store.update(cx, |store, cx| {
@@ -67,15 +67,15 @@ impl Shell {
     }
 
     fn go(&mut self, back: bool, _: &mut Window, cx: &mut Context<Self>) {
-        if let Some(session) = self.visits.step(back) {
-            self.show(session, cx);
+        if let Some(tab) = self.visits.step(back) {
+            self.show(tab, cx);
         }
         cx.notify();
     }
 
-    fn show(&mut self, session: SessionId, cx: &mut Context<Self>) {
+    fn show(&mut self, tab: Tab, cx: &mut Context<Self>) {
         self.store.update(cx, |store, cx| {
-            store.update(cx, |workspace| workspace.open_session(session))
+            store.update(cx, |workspace| workspace.open_tab(tab))
         });
     }
 }

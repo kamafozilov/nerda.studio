@@ -6,7 +6,7 @@ use gpui::{
     AnyElement, Bounds, Context, DispatchPhase, MouseButton, MouseMoveEvent, MouseUpEvent, Pixels,
     canvas, prelude::*, px,
 };
-use workspace::SessionId;
+use workspace::Tab;
 
 use super::TabStrip;
 
@@ -14,7 +14,7 @@ use super::TabStrip;
 const DRAG_THRESHOLD: Pixels = px(4.);
 
 pub(super) struct TabDrag {
-    pub id: SessionId,
+    pub id: Tab,
     /// Becomes true once the pointer passes the threshold.
     pub active: bool,
     from: usize,
@@ -26,7 +26,7 @@ pub(super) struct TabDrag {
 }
 
 impl TabStrip {
-    pub(super) fn start_drag(&mut self, id: SessionId, x: Pixels, cx: &mut Context<Self>) {
+    pub(super) fn start_drag(&mut self, id: Tab, x: Pixels, cx: &mut Context<Self>) {
         self.skip_click = false;
         let bounds = self.bounds.borrow();
         let slots: Option<Vec<_>> = self
@@ -55,7 +55,7 @@ impl TabStrip {
     }
 
     /// How far the tab is drawn from its slot.
-    pub(super) fn shift(&self, id: SessionId) -> Pixels {
+    pub(super) fn shift(&self, id: Tab) -> Pixels {
         let Some(drag) = self.drag.as_ref().filter(|drag| drag.active) else {
             return px(0.);
         };
@@ -124,7 +124,7 @@ impl TabStrip {
             return;
         }
         // Where each tab is drawn now, so its glide starts there.
-        let drawn: Vec<(SessionId, Pixels)> = self
+        let drawn: Vec<(Tab, Pixels)> = self
             .live
             .iter()
             .enumerate()

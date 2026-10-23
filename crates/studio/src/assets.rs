@@ -11,28 +11,27 @@ use gpui::{AssetSource, Result, SharedString};
 /// An icon the app draws. GPUI paints an SVG in its own `text_color` only.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Icon {
-    /// Back to the session shown before.
+    /// Back to the tab shown before.
     Back,
     Check,
     Close,
-    /// A folded project in the session list.
-    Collapsed,
-    /// An unfolded project in the session list.
-    Expanded,
-    /// Forward to the session Back left.
+    /// The Design page.
+    Design,
+    /// Forward to the tab Back left.
     Forward,
     Folder,
     FolderAdd,
     FolderUp,
-    /// The list grouped by project: off, then on as the same shape filled.
-    GroupByProject,
-    GroupByProjectOn,
     NewSession,
     /// A new tab in the top row.
     NewTab,
+    /// The Notes page.
+    Notes,
     PullRequests,
     /// The Return key, shown in a key cap.
     Return,
+    /// The Routines page.
+    Routines,
     Search,
     Settings,
     Sort,
@@ -45,18 +44,17 @@ impl Icon {
             Self::Back => "icons/arrow-left-01.svg",
             Self::Check => "icons/tick-02.svg",
             Self::Close => "icons/cancel-01.svg",
-            Self::Collapsed => "icons/arrow-right-01.svg",
-            Self::Expanded => "icons/arrow-down-01.svg",
+            Self::Design => "icons/pen-tool-03.svg",
             Self::Forward => "icons/arrow-right-01.svg",
             Self::Folder => "icons/folder-01.svg",
             Self::FolderAdd => "icons/folder-add.svg",
             Self::FolderUp => "icons/folder-upload.svg",
-            Self::GroupByProject => "icons/layers-01.svg",
-            Self::GroupByProjectOn => "icons/layers-01-filled.svg",
             Self::NewSession => "icons/pencil-edit-02.svg",
             Self::NewTab => "icons/add-01.svg",
+            Self::Notes => "icons/note-01.svg",
             Self::PullRequests => "icons/git-pull-request.svg",
             Self::Return => "icons/arrow-turn-backward.svg",
+            Self::Routines => "icons/repeat.svg",
             Self::Search => "icons/search.svg",
             Self::Settings => "icons/gear.svg",
             Self::Sort => "icons/list-filter.svg",
@@ -69,10 +67,6 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/add-01.svg",
         include_bytes!("../assets/icons/add-01.svg"),
-    ),
-    (
-        "icons/arrow-down-01.svg",
-        include_bytes!("../assets/icons/arrow-down-01.svg"),
     ),
     (
         "icons/arrow-left-01.svg",
@@ -112,20 +106,24 @@ const FILES: &[(&str, &[u8])] = &[
         include_bytes!("../assets/icons/git-pull-request.svg"),
     ),
     (
-        "icons/layers-01.svg",
-        include_bytes!("../assets/icons/layers-01.svg"),
-    ),
-    (
-        "icons/layers-01-filled.svg",
-        include_bytes!("../assets/icons/layers-01-filled.svg"),
-    ),
-    (
         "icons/list-filter.svg",
         include_bytes!("../assets/icons/list-filter.svg"),
     ),
     (
+        "icons/note-01.svg",
+        include_bytes!("../assets/icons/note-01.svg"),
+    ),
+    (
         "icons/pencil-edit-02.svg",
         include_bytes!("../assets/icons/pencil-edit-02.svg"),
+    ),
+    (
+        "icons/pen-tool-03.svg",
+        include_bytes!("../assets/icons/pen-tool-03.svg"),
+    ),
+    (
+        "icons/repeat.svg",
+        include_bytes!("../assets/icons/repeat.svg"),
     ),
     (
         "icons/search.svg",

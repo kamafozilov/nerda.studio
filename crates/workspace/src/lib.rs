@@ -10,39 +10,38 @@ mod query;
 mod store;
 mod tabs;
 
-use std::{collections::BTreeSet, path::Path};
+use std::path::Path;
 
 pub use age::compact_age;
 pub use error::{AddProjectError, LoadError};
 pub use history::Visits;
 pub use model::{
-    AddedProject, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, SessionView,
+    AddedProject, Page, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, Tab,
     Timestamp,
 };
-pub use query::SessionGroup;
 pub use store::{default_data_dir, default_instance_lock_path, default_state_path, write_state};
 
 /// Title given to every freshly created session.
 const NEW_SESSION_TITLE: &str = "New session";
 
-/// All projects and sessions plus the sidebar's view, sort, scope and selection,
-/// and the sessions open as tabs.
+/// All projects and sessions plus the sidebar's sort, scope and selection, and the
+/// sessions and pages open as tabs.
 #[derive(Clone, Debug, Default)]
 pub struct Workspace {
     /// Next id to hand out; shared by projects and sessions and only ever increased.
     next_id: u64,
     projects: Vec<Project>,
     sessions: Vec<Session>,
-    view: SessionView,
     sort: SessionSort,
     scope: ProjectScope,
-    /// The session on screen; always one of `tabs`.
-    selected_session: Option<SessionId>,
-    /// Sessions open as tabs, in order. Every project's tabs share this list, and
-    /// the selected session's project is the one whose tabs show.
-    tabs: Vec<SessionId>,
-    /// Projects folded to their header in the session list.
-    collapsed: BTreeSet<ProjectId>,
+    /// The tab on screen; always one of `tabs`.
+    selected: Option<Tab>,
+    /// The project whose sessions' tabs show: the selected session's, kept
+    /// while a page is on screen.
+    project_on_screen: Option<ProjectId>,
+    /// Open tabs, in order. Every project's sessions share this list with the
+    /// pages, which show beside whichever project is on screen.
+    tabs: Vec<Tab>,
 }
 
 impl Workspace {
@@ -103,14 +102,6 @@ impl Workspace {
         self.sessions.iter().find(|session| session.id == id)
     }
 
-    pub fn view(&self) -> SessionView {
-        self.view
-    }
-
-    pub fn set_view(&mut self, view: SessionView) {
-        self.view = view;
-    }
-
     pub fn sort(&self) -> SessionSort {
         self.sort
     }
@@ -131,22 +122,14 @@ impl Workspace {
         };
     }
 
+    /// The tab on screen.
+    pub fn selected_tab(&self) -> Option<Tab> {
+        self.selected
+    }
+
+    /// The session on screen; `None` while a page is.
     pub fn selected_session(&self) -> Option<SessionId> {
-        self.selected_session
-    }
-
-    /// Whether the project is folded to its header in the session list.
-    pub fn is_collapsed(&self, project: ProjectId) -> bool {
-        self.collapsed.contains(&project)
-    }
-
-    /// Folds or unfolds a project in the session list; an unknown project is ignored.
-    pub fn set_collapsed(&mut self, project: ProjectId, collapsed: bool) {
-        if !collapsed {
-            self.collapsed.remove(&project);
-        } else if self.project(project).is_some() {
-            self.collapsed.insert(project);
-        }
+        self.selected.and_then(Tab::session)
     }
 
     fn allocate_id(&mut self) -> u64 {

@@ -1,5 +1,5 @@
-//! The header: the search field on its own row, then the list's view (grouped by
-//! project or one list), filter and sort, add project, new session.
+//! The header: the pages, then the search field on its own row, then the
+//! list's title, filter and sort, add project, new session.
 
 use gpui::{
     ClickEvent, Context, Div, Focusable, FontWeight, IntoElement, ParentElement, SharedString,
@@ -9,8 +9,7 @@ use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, ICON_SIZE, ICON_SIZE_SMALL, SPACE_1,
     SPACE_2, Theme,
 };
-
-use workspace::SessionView;
+use workspace::ProjectScope;
 
 use super::Sidebar;
 use crate::{
@@ -65,21 +64,27 @@ impl Sidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let has_projects = self.store.read(cx).workspace().has_projects();
-        let new_session_label = if !has_projects {
-            "New session: add a project first"
-        } else if cfg!(target_os = "macos") {
-            "New session (⌘N)"
-        } else {
-            "New session (Ctrl+N)"
+        let workspace = self.store.read(cx).workspace();
+        let has_projects = workspace.has_projects();
+        // Filtered to one project, the button starts the session there, and says so.
+        let new_session_label: SharedString = match workspace.scope() {
+            _ if !has_projects => "New session: add a project first".into(),
+            ProjectScope::Project(project) => match workspace.display_name(project) {
+                Some(name) => format!("New session in {name}").into(),
+                None => "New session".into(),
+            },
+            ProjectScope::All if cfg!(target_os = "macos") => "New session (⌘N)".into(),
+            ProjectScope::All => "New session (Ctrl+N)".into(),
         };
-        // Search spans the sidebar on its own row; under it, the list's view at the
-        // leading edge and the actions on it at the trailing edge.
+        // The pages first; then search spans the sidebar on its own row; under it,
+        // the list's title at the leading edge and the actions on it at the
+        // trailing edge.
         div()
             .mx(SPACE_2)
             .flex()
             .flex_col()
             .gap(SPACE_2)
+            .child(self.render_pages(cx))
             .child(self.render_search_field(window, cx))
             .child(
                 div()
@@ -87,10 +92,10 @@ impl Sidebar {
                     .flex()
                     .items_center()
                     .gap(SPACE_1)
-                    // Grouping and filtering show only once there is something to
-                    // group or filter.
+                    // The title and the filter show only once there is something to
+                    // list or filter.
                     .when(has_projects, |row| {
-                        row.child(self.render_view_toggle(cx))
+                        row.child(self.render_title(cx))
                             .child(div().flex_1())
                             .child(self.render_menu_button(window, cx))
                     })
@@ -99,54 +104,20 @@ impl Sidebar {
             )
     }
 
-    /// Switches the list between grouped by project and one list. The label names
-    /// the view shown, so the button needs no tooltip; the icon is filled while
-    /// grouped.
-    fn render_view_toggle(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let colors = Theme::of(cx).colors;
-        let grouped = self.store.read(cx).workspace().view() == SessionView::Projects;
-        let (icon, label, next) = if grouped {
-            (Icon::GroupByProjectOn, "Projects", SessionView::Sessions)
-        } else {
-            (Icon::GroupByProject, "Sessions", SessionView::Projects)
-        };
+    /// Names the list; its text lines up with the sessions' titles below.
+    fn render_title(&self, cx: &mut Context<Self>) -> impl IntoElement {
         div()
-            .id("group-by-project")
-            .group("group-by-project")
             .flex_none()
-            .h(CONTROL_SIZE)
-            // The icon sits where an icon button's would; the label keeps a row's inset.
-            .pl((CONTROL_SIZE - ICON_SIZE) / 2.)
-            .pr(SPACE_2)
-            .flex()
-            .items_center()
-            .gap(SPACE_2)
-            .rounded(CONTROL_RADIUS)
+            .pl(SPACE_2)
             .font_weight(FontWeight::MEDIUM)
-            .text_color(colors.text_primary)
-            .hover(|button| button.bg(colors.hover))
-            .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
-                sidebar.store.update(cx, |store, cx| {
-                    store.update(cx, |workspace| workspace.set_view(next))
-                });
-            }))
-            .child(
-                svg()
-                    .path(icon.path())
-                    .size(ICON_SIZE)
-                    .flex_none()
-                    .text_color(colors.text_secondary)
-                    .group_hover("group-by-project", |icon| {
-                        icon.text_color(colors.text_primary)
-                    }),
-            )
-            .child(label)
+            .text_color(Theme::of(cx).colors.text_primary)
+            .child("Sessions")
     }
 
     fn render_action_buttons(
         &self,
         has_projects: bool,
-        new_session_label: &'static str,
+        new_session_label: SharedString,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
@@ -173,9 +144,9 @@ impl Sidebar {
                 colors,
                 |button| {
                     button.when(has_projects, |button| {
-                        button.on_click(
-                            cx.listener(|sidebar, _: &ClickEvent, _, cx| sidebar.new_session(cx)),
-                        )
+                        button.on_click(cx.listener(|sidebar, _: &ClickEvent, _, cx| {
+                            sidebar.new_session_in_view(cx)
+                        }))
                     })
                 },
             ))

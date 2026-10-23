@@ -109,29 +109,33 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   within `TOOLTIP_WARM` (300 ms) of another, at once. A press hides it.
 - **Rows** are `ROW_HEIGHT` (28), spanning the list with `SPACE_2` sides and a rounded
   surface inside: `row_selected` under the selection, `hover` under the pointer or the
-  keyboard highlight. In the sidebar list, where a filled header and a selected session
-  can be neighbors, each row's slot is `ROW_GAP` (2) taller and centers the surface, so
-  neighboring surfaces stand 2 apart while a project's guide runs through the gap. Text
-  truncates with an ellipsis; secondary labels truncate first.
-- **Tabs** in the top row are the sessions open in the project on screen
-  (`crates/studio/src/tabs/`). Each project keeps its own, saved with the workspace;
-  showing another project's session switches the row to that project's tabs. A tab is
-  `CONTROL_SIZE` high, its title in `text_primary` on `row_selected` when selected and on
-  `hover` under the pointer. Tabs share the row up to `TAB_MAX_WIDTH` (224) each,
-  `TAB_GAP` apart, however many there are; the selected one keeps `TAB_SELECTED_MIN_WIDTH`
-  (112). Under the pointer a tab shows its close button if it is at least
-  `TAB_CLOSE_MIN_WIDTH` (72) wide or selected. New session follows the last tab.
+  keyboard highlight. In the sidebar list, where a selected session and a hovered one can
+  be neighbors, each row's slot is `ROW_GAP` (2) taller and centers the surface, so
+  neighboring surfaces stand 2 apart. Text truncates with an ellipsis; secondary labels
+  truncate first.
+- **Tabs** in the top row are the pages open, Notes, Design and Routines, and the
+  sessions open in the project on screen (`crates/studio/src/tabs/`). Each project keeps
+  its own session tabs, saved with the workspace; showing another project's session
+  switches the row to that project's tabs, and the pages stay in it. A page on screen
+  keeps its project's tabs beside it. A tab is `CONTROL_SIZE` high, its title in
+  `text_primary` on `row_selected` when selected and on `hover` under the pointer. Tabs
+  share the row up to `TAB_MAX_WIDTH` (224) each, `TAB_GAP` apart, however many there
+  are; the selected one keeps `TAB_SELECTED_MIN_WIDTH` (112). Under the pointer a tab
+  shows its close button if it is at least `TAB_CLOSE_MIN_WIDTH` (72) wide or selected.
+  New session follows the last tab.
 - **Opening and closing tabs.** A session opened from the sidebar, a shortcut or New
-  session gets a tab at the end unless it has one. Closing the selected tab selects its
-  right neighbor, else its left; closing a project's last tab opens the project's draft, so
-  a project on screen always shows a session. A tab closes from its button, a middle
-  click, `Cmd-W`, or its menu (a right click): Close Tab, Close Other Tabs, Close Tabs to
-  the Right or to the Left, Close All Tabs. Dragged along the row, a tab reorders.
+  session gets a tab at the end unless it has one; so does a page, which has one tab at
+  most, however often it is opened. Closing the selected tab selects its right neighbor,
+  else its left; closing the last tab on screen opens the project's draft, so a project on
+  screen always shows something, and before the first project leaves the welcome. A tab
+  closes from its button, a middle click, `Cmd-W`, or its menu (a right click): Close
+  Tab, Close Other Tabs, Close Tabs to the Right or to the Left, Close All Tabs. Dragged
+  along the row, a tab reorders.
 - **Tab shortcuts** (Ctrl for Cmd elsewhere): `Cmd-T` or `Cmd-N` new session, `Cmd-W`
   close, `Cmd-Alt-T` close the others, `Cmd-Shift-W` close all, `Ctrl-Tab` or
   `Cmd-Shift-]` the next tab and `Ctrl-Shift-Tab` or `Cmd-Shift-[` the previous, wrapping,
   `Cmd-1` to `Cmd-8` by place and `Cmd-9` the last.
-- **Back and Forward** (`Cmd-[`, `Cmd-]`) retrace the sessions shown, as a browser's
+- **Back and Forward** (`Cmd-[`, `Cmd-]`) retrace the tabs shown, as a browser's
   history does; a closed tab drops out of them, and a new visit clears Forward.
 - **The menu bar** (macOS, `crates/studio/src/app_menu.rs`) lists every command beside
   its shortcut: Nerda Studio (Services, Hide `Cmd-H`, Hide Others `Cmd-Alt-H`, Show All,
@@ -160,29 +164,26 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   high and at least as wide, `key_background` fill with no hairline, `SPACE_1` corners,
   the key in `text_secondary`. Return is an icon, other keys text (⌘, `esc`). Inside a
   button `FIELD_TARGET_SIZE` (24) high, the cap sits 2 px from its top, bottom and right.
-- **The sidebar header** is two rows: the search field across the sidebar, then the view
-  toggle at the leading edge, with filter and sort, Add project and New session at the
-  trailing edge. The toggle switches between the Projects and Sessions views: its icon
-  fills while grouped by project, and beside it the view's name in medium-weight
-  `text_primary` takes the place of a tooltip; `hover` fills the whole button. The toggle
-  and the filter show once there is a project. The view, like the sort and the filter, is
-  saved. A filter to one project keeps the filter button on `hover`.
-- **Projects** lists each project as a header over its sessions, which hang from a
-  `border` hairline under the header's icon. A header shows a folder and the medium-weight
-  name; folded, the name turns `text_secondary` with the session count at the trailing
-  edge. Under the pointer the folder becomes the chevron a click acts on, and the count a
-  New session button for that project. A project lists its 5 latest sessions, then
-  "Show N more" (and "Show less"); the selected session always shows. Search unfolds
-  every project and hides those without a match. Folding is saved; Show more is not.
-- **Sessions** lists every session in one list, each naming its project in
-  `text_secondary` while more than one project is in view.
+- **The sidebar header** is three parts: the pages, Notes, Design and Routines, as rows
+  with their icon, `row_selected` under the one on screen, flush with the top; then the
+  search field across the sidebar, `SPACE_2` under them; then the title "Sessions" in
+  medium-weight `text_primary` at the leading edge, lined up with the sessions' titles,
+  with filter and sort, Add project and New session at the trailing edge. The title and
+  the filter show once there is a project. The sort and the filter are saved. A filter
+  to one project keeps the filter button on `hover`, and New session
+  then starts the session in that project, its tooltip naming it ("New session in web");
+  the shortcut starts it in the project on screen.
+- **Sessions** are one list, newest first under the sort, each naming its project in
+  `text_secondary` while more than one project is in view. Projects are not a level of
+  the list: the filter narrows it to one.
 - GPUI shapes text before hover is known, so hover never changes a text color: it changes
   a fill or an icon.
 - **Problems** show as a message under the sidebar header until dismissed: what failed and
   what to do next, without parser or error-code detail the reader can't act on. A problem
   inside a dialog shows in the dialog, under its field, until the next edit.
 - **Before the first project** the sidebar stays blank under its header; the main area
-  says what a project is and offers "Add project", centered.
+  says what a project is and offers "Add project", centered, unless a page is on screen.
+- **Pages** are empty for now: a page on screen leaves the main area blank.
 - **Palettes** are dialogs of one field over a list:
   `PALETTE_WIDTH` (576) centered a tenth of the way down the window and never above the
   top row, `popover_background` with a hairline, a large shadow and `DIALOG_RADIUS` (12),

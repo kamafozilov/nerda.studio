@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::HashSet;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    LoadError, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, SessionView,
+    LoadError, Page, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, Tab,
     Workspace,
 };
 
@@ -47,14 +47,26 @@ struct FileRef<'a> {
     next_id: u64,
     projects: &'a [Project],
     sessions: &'a [Session],
-    view: SessionView,
     sort: SessionSort,
     scope: ProjectScope,
     selected_session: Option<SessionId>,
-    tabs: &'a [SessionId],
-    collapsed: &'a BTreeSet<ProjectId>,
+    selected_page: Option<&'static str>,
+    project_on_screen: Option<ProjectId>,
+    /// The sessions' tabs in order, without the pages, so a build from before
+    /// pages still reads them.
+    tabs: Vec<SessionId>,
+    pages: Vec<PageTabRef>,
 }
 
+/// A page's tab and its index among all tabs.
+#[derive(Serialize)]
+struct PageTabRef {
+    page: &'static str,
+    at: usize,
+}
+
+/// Keys this build no longer reads, such as `view` and `collapsed` from when the
+/// list could group by project, are ignored, so those files still load.
 #[derive(Deserialize)]
 struct FileV1 {
     #[serde(default)]
@@ -63,21 +75,28 @@ struct FileV1 {
     projects: Vec<Project>,
     #[serde(default)]
     sessions: Vec<Session>,
-    /// Files written before the view could change have none.
-    #[serde(default)]
-    view: SessionView,
     #[serde(default)]
     sort: SessionSort,
     #[serde(default)]
     scope: ProjectScope,
     #[serde(default)]
     selected_session: Option<SessionId>,
+    /// Pages are named, so one a newer build added is skipped, not corrupt.
+    #[serde(default)]
+    selected_page: Option<String>,
+    #[serde(default)]
+    project_on_screen: Option<ProjectId>,
     /// Files written before sessions opened as tabs have none.
     #[serde(default)]
     tabs: Vec<SessionId>,
-    /// Files written before projects could fold have none.
     #[serde(default)]
-    collapsed: Vec<ProjectId>,
+    pages: Vec<PageTab>,
+}
+
+#[derive(Deserialize)]
+struct PageTab {
+    page: String,
+    at: usize,
 }
 
 impl Workspace {
@@ -111,12 +130,24 @@ impl Workspace {
             next_id: self.next_id,
             projects: &self.projects,
             sessions: &self.sessions,
-            view: self.view,
             sort: self.sort,
             scope: self.scope,
-            selected_session: self.selected_session,
-            tabs: &self.tabs,
-            collapsed: &self.collapsed,
+            selected_session: self.selected_session(),
+            selected_page: match self.selected {
+                Some(Tab::Page(page)) => Some(page.key()),
+                _ => None,
+            },
+            project_on_screen: self.project_on_screen,
+            tabs: self.tabs.iter().filter_map(|tab| tab.session()).collect(),
+            pages: (self.tabs.iter().enumerate())
+                .filter_map(|(at, tab)| match tab {
+                    Tab::Page(page) => Some(PageTabRef {
+                        page: page.key(),
+                        at,
+                    }),
+                    Tab::Session(_) => None,
+                })
+                .collect(),
         };
         serde_json::to_vec_pretty(&file).map_err(io::Error::other)
     }
@@ -154,22 +185,36 @@ impl Workspace {
             next_id,
             projects,
             sessions,
-            view: file.view,
             sort: file.sort,
             ..Workspace::default()
         };
         workspace.set_scope(file.scope);
-        for tab in file.tabs {
-            if workspace.session(tab).is_some() && !workspace.tabs.contains(&tab) {
+        for id in file.tabs {
+            let tab = Tab::Session(id);
+            if workspace.session(id).is_some() && !workspace.tabs.contains(&tab) {
                 workspace.tabs.push(tab);
             }
         }
+        // Inserted by index, lowest first, each page lands where it was.
+        let mut pages = file.pages;
+        pages.sort_by_key(|page| page.at);
+        for PageTab { page, at } in pages {
+            let Some(tab) = Page::from_key(&page).map(Tab::Page) else {
+                continue;
+            };
+            if !workspace.tabs.contains(&tab) {
+                let at = at.min(workspace.tabs.len());
+                workspace.tabs.insert(at, tab);
+            }
+        }
+        workspace.project_on_screen = file
+            .project_on_screen
+            .filter(|&project| workspace.project(project).is_some());
         // An older file's selection becomes its one tab.
         if let Some(selected) = file.selected_session {
             workspace.open_session(selected);
-        }
-        for project in file.collapsed {
-            workspace.set_collapsed(project, true);
+        } else if let Some(page) = file.selected_page.as_deref().and_then(Page::from_key) {
+            workspace.open_page(page);
         }
         Ok(workspace)
     }
