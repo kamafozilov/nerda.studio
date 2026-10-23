@@ -224,6 +224,14 @@ impl Watch {
         }
     }
 
+    /// Applies the events that have come so far.
+    pub fn drain(&mut self) {
+        while let Ok(event) = self.events.try_recv() {
+            self.transcript.apply(&event);
+            self.seen.push(event);
+        }
+    }
+
     /// Applies events until `done` holds; fails after ten seconds.
     pub fn until(&mut self, what: &str, done: impl Fn(&Transcript, &[Event]) -> bool) {
         self.until_within(Duration::from_secs(10), what, done);

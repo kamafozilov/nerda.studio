@@ -403,6 +403,76 @@ fn an_agent_that_ignores_its_input_closing_is_killed() {
     assert!(!runs(pid), "process {pid} still runs");
 }
 
+#[cfg(unix)]
+fn pid(dir: &TempDir, name: &str) -> u32 {
+    let file = dir.path().join(format!("{name}.pid"));
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if let Some(pid) = std::fs::read_to_string(&file)
+            .ok()
+            .and_then(|text| text.parse().ok())
+        {
+            return pid;
+        }
+        assert!(Instant::now() < deadline, "{name} never started");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+/// Kills what a failed test leaves behind.
+#[cfg(unix)]
+struct Reap(Vec<u32>);
+
+#[cfg(unix)]
+impl Drop for Reap {
+    fn drop(&mut self) {
+        for pid in &self.0 {
+            let _ = std::process::Command::new("kill")
+                .args(["-9", &pid.to_string()])
+                .status();
+        }
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn dropping_a_session_ends_what_the_agent_started_in_its_group_and_outside_it() {
+    let dir = project(&[
+        "initialize.jsonl",
+        r#"{"agent": "spawn", "name": "tool"}"#,
+        r#"{"agent": "spawn", "name": "server", "group": "own"}"#,
+    ]);
+    let (session, events) = Session::start(&fake(&dir)).unwrap();
+    let mut watch = Watch::new(events);
+    watch.until("ready", status_is(Status::Ready));
+    let started = [pid(&dir, "tool"), pid(&dir, "server")];
+    let _reap = Reap(started.to_vec());
+    assert!(started.iter().all(|&pid| runs(pid)));
+    drop(session);
+    watch.until("the exit", exited);
+    assert_eq!(watch.transcript.status(), &Status::Exited { code: Some(0) });
+    for pid in started {
+        assert!(!runs(pid), "process {pid} outlived the session");
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn an_agent_that_quits_on_its_own_takes_its_group_with_it() {
+    let dir = project(&[
+        "initialize.jsonl",
+        r#"{"agent": "spawn", "name": "tool"}"#,
+        r#"{"agent": "exit", "code": 0}"#,
+    ]);
+    let (session, events) = Session::start(&fake(&dir)).unwrap();
+    let mut watch = Watch::new(events);
+    let tool = pid(&dir, "tool");
+    let _reap = Reap(vec![tool]);
+    watch.until("the exit", exited);
+    assert!(!runs(tool), "process {tool} outlived the agent");
+    drop(session);
+}
+
 fn runs(pid: u32) -> bool {
     #[cfg(unix)]
     let runs = std::process::Command::new("kill")

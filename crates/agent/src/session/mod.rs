@@ -1,5 +1,9 @@
 //! A session's agent as a process: started in the project folder, fed
-//! commands on stdin, read on threads, and ended when the session is dropped.
+//! commands on stdin, read on threads, and ended when the session is dropped,
+//! together with every process it started.
+
+mod refresh_lock;
+mod tree;
 
 use std::ffi::OsString;
 use std::fmt;
@@ -16,6 +20,7 @@ use workspace::{Agent, AgentChoice, AgentId};
 use crate::event::Event;
 use crate::protocol::{self, Command, ConversationId, Incoming, RequestId};
 use crate::{program, spawning};
+use tree::Tree;
 
 /// What makes the agent read and write one JSON object per line, stream its
 /// reply, echo the messages it takes up, and ask the app before a tool runs.
@@ -32,9 +37,14 @@ const STREAM_JSON: &[&str] = &[
     "stdio",
 ];
 
-/// How long a dropped session's agent has to quit on its own before it is
-/// killed. Closing its input is enough for an idle one.
+/// How long an agent whose input closed has to quit before it is sent
+/// SIGTERM, and then how long it has before it is killed. Closing its input
+/// is enough for an idle one.
 const GRACE: Duration = Duration::from_secs(2);
+
+/// How long what the agent started has, once it has quit, to end on SIGTERM
+/// before it is killed.
+const LEFTOVERS: Duration = Duration::from_secs(1);
 
 /// How often the session looks whether its agent still runs.
 const WATCH: Duration = Duration::from_millis(50);
@@ -67,12 +77,12 @@ pub struct Launch {
 /// A session's events, oldest first; drained by one task.
 pub type Events = Receiver<Event>;
 
-/// A running agent. Dropping it closes the agent's input and kills the
-/// agent if it hasn't quit within a moment.
+/// A running agent. Dropping it ends the agent and what it started: see
+/// `watch`.
 pub struct Session {
     commands: mpsc::Sender<Outgoing>,
-    /// When the agent has to be gone by; set once the session is dropped.
-    kill_at: Arc<OnceLock<Instant>>,
+    /// Set once the session is dropped.
+    closing: Arc<OnceLock<()>>,
     pid: u32,
 }
 
@@ -159,11 +169,17 @@ impl Session {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::CommandExt;
+            process.process_group(0);
+        }
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-            process.creation_flags(CREATE_NO_WINDOW);
+            const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+            process.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP);
         }
         let mut child = spawning::spawn(&mut process).map_err(|error| match error.kind() {
             io::ErrorKind::NotFound => not_found(),
@@ -180,7 +196,7 @@ impl Session {
             unreachable!("all three are piped");
         };
         let pid = child.id();
-        let kill_at = Arc::new(OnceLock::new());
+        let closing = Arc::new(OnceLock::new());
         let (commands, inbox) = mpsc::channel();
 
         spawn("agent stdin", {
@@ -198,13 +214,19 @@ impl Session {
             }),
         ];
         spawn("agent watch", {
-            let kill_at = Arc::clone(&kill_at);
-            move || watch(child, &kill_at, readers, &events)
+            let watching = Watching {
+                closing: Arc::clone(&closing),
+                commands: commands.clone(),
+                readers,
+                events,
+                config_dir: refresh_lock::config_dir(),
+            };
+            move || watch(child, watching)
         });
         Ok((
             Session {
                 commands,
-                kill_at,
+                closing,
                 pid,
             },
             receiver,
@@ -226,8 +248,7 @@ impl Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        let _ = self.commands.send(Outgoing::Close);
-        let _ = self.kill_at.set(Instant::now() + GRACE);
+        let _ = self.closing.set(());
     }
 }
 
@@ -297,33 +318,74 @@ fn received(line: String, commands: &mpsc::Sender<Outgoing>) -> Event {
     }
 }
 
-/// Waits for the agent to quit, killing it once `kill_at` passes, then
-/// reports its exit after the last of what it wrote.
-fn watch(
-    mut child: Child,
-    kill_at: &OnceLock<Instant>,
+struct Watching {
+    closing: Arc<OnceLock<()>>,
+    commands: mpsc::Sender<Outgoing>,
     readers: [JoinHandle<()>; 2],
-    events: &Sender<Event>,
-) {
+    events: Sender<Event>,
+    /// Where the agent keeps its sign-in.
+    config_dir: PathBuf,
+}
+
+/// How far ending the agent has gone.
+#[derive(Clone, Copy)]
+enum Shutdown {
+    Running,
+    /// Its input is closed; SIGTERM follows at the instant.
+    Closed(Instant),
+    /// SIGTERM was sent; SIGKILL follows at the instant.
+    Terminated(Instant),
+    Killed,
+}
+
+/// Waits for the agent to quit, then ends what is left of what it started
+/// and reports the exit after the last of what it wrote.
+///
+/// Once the session is dropped, it notes what the agent has started, closes
+/// the agent's input, sends SIGTERM to the agent's group if the agent hasn't
+/// quit within `GRACE`, and SIGKILL after another. Before closing the input
+/// and before each signal it waits, a bounded time, while the agent is
+/// refreshing its sign-in, so ending it never signs the person out.
+fn watch(mut child: Child, watching: Watching) {
+    let mut tree = Tree::new(child.id());
+    let mut shutdown = Shutdown::Running;
+    let settle = || refresh_lock::settle(&watching.config_dir, refresh_lock::SETTLE);
     let code = loop {
         match child.try_wait() {
             Ok(Some(status)) => break status.code(),
             Ok(None) => {}
             Err(_) => break None,
         }
-        if kill_at
-            .get()
-            .is_some_and(|&deadline| Instant::now() >= deadline)
-        {
-            let _ = child.kill();
-        }
+        let now = Instant::now();
+        shutdown = match shutdown {
+            Shutdown::Running if watching.closing.get().is_some() => {
+                tree.snapshot();
+                settle();
+                let _ = watching.commands.send(Outgoing::Close);
+                Shutdown::Closed(Instant::now() + GRACE)
+            }
+            Shutdown::Closed(at) if now >= at => {
+                tree.snapshot();
+                settle();
+                tree.terminate();
+                Shutdown::Terminated(Instant::now() + GRACE)
+            }
+            Shutdown::Terminated(at) if now >= at => {
+                settle();
+                tree.kill();
+                let _ = child.kill();
+                Shutdown::Killed
+            }
+            shutdown => shutdown,
+        };
         thread::sleep(WATCH);
     };
+    tree.end_leftovers(LEFTOVERS);
     let deadline = Instant::now() + TAIL;
-    while readers.iter().any(|reader| !reader.is_finished()) && Instant::now() < deadline {
+    while watching.readers.iter().any(|reader| !reader.is_finished()) && Instant::now() < deadline {
         thread::sleep(Duration::from_millis(5));
     }
-    send(events, Event::Exited { code });
+    send(&watching.events, Event::Exited { code });
 }
 
 /// Each non-blank line, bytes that aren't UTF-8 replaced, until the end or a

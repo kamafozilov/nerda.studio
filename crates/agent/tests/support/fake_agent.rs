@@ -8,7 +8,10 @@
 //! "stderr", "text": …}` writes to stderr; `{"agent": "raw", "text": …}`
 //! writes text that needn't be JSON; `{"agent": "hang"}` stops reading and
 //! never quits; `{"agent": "orphan"}` starts a process that holds its stderr
-//! open for five seconds. It writes its arguments to `fake-agent.args`, one a line, its
+//! open for five seconds; `{"agent": "spawn", "name": N, "group": "own"}`
+//! starts a process that sleeps a minute, in a process group of its own as
+//! the agent's background shells are, or in the agent's without `group`, and
+//! writes its pid to `N.pid`. It writes its arguments to `fake-agent.args`, one a line, its
 //! PATH to `fake-agent.path`, and each line it reads to `fake-agent.stdin.jsonl`.
 
 use std::io::{BufRead, Write};
@@ -21,6 +24,10 @@ fn main() {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     if arguments == ["--linger"] {
         std::thread::sleep(Duration::from_secs(5));
+        return;
+    }
+    if arguments == ["--sleep"] {
+        std::thread::sleep(Duration::from_secs(60));
         return;
     }
     std::fs::write("fake-agent.args", arguments.join("\n")).unwrap();
@@ -76,6 +83,23 @@ fn main() {
                     .stdout(std::process::Stdio::null())
                     .spawn()
                     .unwrap();
+            }
+            Some("spawn") => {
+                let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+                command
+                    .arg("--sleep")
+                    .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null());
+                #[cfg(unix)]
+                if step["group"] == "own" {
+                    use std::os::unix::process::CommandExt;
+                    command.process_group(0);
+                }
+                #[expect(clippy::zombie_processes, reason = "the session has to end it")]
+                let child = command.spawn().unwrap();
+                let name = step["name"].as_str().unwrap();
+                std::fs::write(format!("{name}.pid"), child.id().to_string()).unwrap();
             }
             Some("hang") => loop {
                 std::thread::sleep(Duration::from_secs(60));
