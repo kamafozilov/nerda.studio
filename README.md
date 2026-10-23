@@ -57,7 +57,8 @@ the front.
 ## Layout
 
 - `crates/studio`: the app binary: the main window, its shell (the top row with its tabs,
-  the sidebar and the main area's card), a session's composer and the Add project palette.
+  the sidebar and the main area's card), a session's composer, its agent and its
+  conversation ([docs/session.md](docs/session.md)), and the Add project palette.
 - `crates/theme`: the look every crate shares: materials, colors and sizes. The rules are in
   [docs/design.md](docs/design.md).
 - `crates/workspace`: projects, sessions, the agents a session can run and its choice

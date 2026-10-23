@@ -2,8 +2,8 @@
 
 Where a message to a session's agent is written, in the main area's card whenever a
 session's tab is on screen (`crates/studio/src/composer/`). The materials, colors and
-controls it uses are in [design.md](design.md). Nothing is sent yet: the composer is its
-look, its editing, its attachments and its choices, ahead of the agents.
+controls it uses are in [design.md](design.md). What sending does, Stop, and the
+conversation over a docked composer are in [session.md](session.md).
 
 - **Placement.** One column, at most `COMPOSER_MAX_WIDTH` (720) wide, centered in the
   card and `SPACE_3` clear of its sides when the card is narrower. A draft session, one
@@ -11,8 +11,7 @@ look, its editing, its attachments and its choices, ahead of the agents.
   project, "What should we work on in web?", in semibold `TEXT_HEADING` (18)
   `text_primary`, 24 above the box; a long name truncates and the question mark stays.
   A session that has seen work docks the column to the card's bottom, `SPACE_3` above
-  its edge, leaving the space above for its messages. Pages and the welcome are as they
-  were.
+  its edge, under its conversation. Pages and the welcome are as they were.
 - **The box** reads as a text field: `field_background`, a `border` hairline that turns
   `focus_ring` while the text has focus, and `COMPOSER_RADIUS` (12) corners, rounder than
   a field's since it holds a toolbar too. Its content stands `SPACE_3` in, less the
@@ -45,11 +44,12 @@ look, its editing, its attachments and its choices, ahead of the agents.
   - Send is a `CONTROL_SIZE` circle of `text_primary` with an up arrow in
     `panel_background`: at 40% with "Type a message to send" while there is no
     attachment and the text is empty or only whitespace, full with "Send (↩)" otherwise.
+    While the agent works and there is nothing to send, it is Stop, "Stop" its tooltip.
 - **Attachments** are files and folders held as their paths, never their bytes, each
   once, in the order added, at most 20 (`crates/studio/src/composer/attachments.rs`).
   Each is an image (by its extension: png, jpg, jpeg, gif, webp), a folder or a file,
-  decided when it is attached. Sending will give the agent an image as an image and
-  anything else as its path in the text. They come in three ways:
+  decided when it is attached. Sending gives the agent an image as an image and anything
+  else as its path in the text. They come in three ways:
   - **The picker**, from Attach.
   - **A drop** of files or folders from the Finder on the box. While a drag with paths
     hovers the box, its hairline turns `focus_ring` and "Drop to attach" in
@@ -91,7 +91,11 @@ look, its editing, its attachments and its choices, ahead of the agents.
   the file until another is picked; an effort or access it doesn't know reads as the
   default. The agents and their options are a table in `crates/workspace/src/agents.rs`,
   which turns a choice into the agent's arguments: `--model`, `--effort` and
-  `--permission-mode` (Ask first is `manual`, Full access `bypassPermissions`).
+  `--permission-mode` (Ask first is `manual`, Full access `bypassPermissions`). A choice
+  made while the agent runs goes to it at once.
+- **The problem line** under the box, in `TEXT_SMALL` `text_primary` in line with the
+  text, also says why a message couldn't be sent or a choice was refused, a command in
+  backticks in the monospaced font, until the next edit.
 - **The context row**, `SPACE_2` under the box and in line with its text: the project's
   folder, `~` for home and cut at its start, then the branch its checkout is on, or the
   commit, cut in the middle, each after its `ICON_SIZE_SMALL` icon, in `TEXT_SMALL`

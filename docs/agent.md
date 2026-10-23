@@ -1,7 +1,8 @@
 # Agent sessions
 
 `crates/agent` runs a session's coding agent as a process and turns what the agent writes
-into a transcript the screen can draw. It has no UI, and the studio doesn't use it yet. The
+into a transcript the screen can draw. It has no UI; the studio runs it as
+[session.md](session.md) says. The
 agents a session can run, and the choice of model, effort and access, are the table in
 `crates/workspace/src/agents.rs`. Prompts, the agent's questions and plans are in
 [agent-prompts.md](agent-prompts.md).
@@ -194,9 +195,9 @@ app wrote. Among them are a refused API key, a model that doesn't exist, a turn 
 thinking streams a summary, and a plan-mode turn that asks a question, proposes a plan
 and writes a file once approved. The transcript tests play them line by line. The
 session tests run `fake-agent`, a binary of this crate in `tests/support/fake_agent.rs`,
-which plays a fixture as the agent, records what the app wrote to it, and can start
-processes in its group or outside it. `tests/sign_in.rs` is its own binary, since it sets
-the sign-in folder through the environment.
+which plays a fixture as the agent, records what the app wrote to it, pauses between
+lines, and can start processes in its group or outside it. `tests/sign_in.rs` is its own
+binary, since it sets the sign-in folder through the environment.
 
 The agent's task lines are read in the shapes its documented types give; no recorded run
 has them yet.

@@ -95,5 +95,8 @@ The agent's terminal has no Accessibility permission, so macOS drops synthetic O
   For contrast, run with `--front` and put a solid borderless window behind the app.
 - Light appearance without touching the system:
   `cargo run -p dev -- try -- -NSRequiresAquaSystemAppearance YES`.
+- Agents: `NERDA_AGENT_PROGRAM=<repo>/target/debug/fake-agent` (`cargo build -p agent
+  --bin fake-agent`) runs the fake agent in place of claude, playing `fake-agent.jsonl`
+  from the project folder (`crates/agent/tests/support/fake_agent.rs` has the format).
 - Windows code: `cargo check --target x86_64-pc-windows-msvc` on the changed file in a
   scratch crate; GPUI's Windows backend builds only on Windows.

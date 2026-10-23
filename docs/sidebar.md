@@ -53,7 +53,9 @@ are in [design.md](design.md).
 - **An empty list** ("No sessions yet", "No sessions in web yet" under a filter, "No
   sessions match …") is one `text_secondary` line in the cards' title column, `SPACE_2`
   under the header.
-- **Titles** show as one line: line breaks, tabs and runs of spaces read as one space,
+- **Titles** come from a session's first message, its first line that isn't blank, cut
+  to 200 characters, unless the session has a title of its own. They show as one line:
+  line breaks, tabs and runs of spaces read as one space,
   and a blank title reads "Untitled session", in the cards and the tabs alike. Search
   matches them ignoring case, е for ё, and a plain apostrophe for ʻ, ʼ and the curly
   ones.
