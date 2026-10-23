@@ -67,6 +67,9 @@ the front.
   and Forward is saved as JSON in the platform's data folder
   (`Nerda Studio/workspace.json`), beside `instance.lock`, held by the instance that
   saves.
+- `crates/agent`: a session's coding agent run as a process, with no UI: what it says
+  parsed into typed events and reduced into a transcript of turns, and the session's
+  status. [docs/agent.md](docs/agent.md) has the lifecycle and the model.
 - `crates/dev`: the live-reload runner and `install`; one instance taking over from
   another is `crates/studio/src/instance`.
 - `crates/app_bundle`: the macOS app bundle, its `Info.plist` and its icon, made from
