@@ -32,6 +32,11 @@ pub use store::{default_data_dir, default_instance_lock_path, default_state_path
 /// Title given to every freshly created session.
 const NEW_SESSION_TITLE: &str = "New session";
 
+/// Longest title a first message gives its session, in characters: the
+/// sidebar and the tabs show far less, and the file needn't hold a whole
+/// pasted page.
+const TITLE_MAX_CHARS: usize = 200;
+
 /// All projects and sessions plus the sidebar's sort, scope and selection, and the
 /// sessions and pages open as tabs.
 #[derive(Clone, Debug, Default)]
@@ -115,6 +120,22 @@ impl Workspace {
             session.choice = choice.clone();
             self.last_choice = choice;
         }
+    }
+
+    /// Records a message sent in `session` at `now`, so the session has seen
+    /// work: it joins the list and the projects' order. The first message
+    /// titles a session still called what it was created as, or blank, by its
+    /// first line that isn't blank. Does nothing for an unknown session.
+    pub fn record_message(&mut self, session: SessionId, text: &str, now: Timestamp) {
+        let Some(session) = self.sessions.iter_mut().find(|item| item.id == session) else {
+            return;
+        };
+        let untitled = session.title.trim().is_empty() || session.title == NEW_SESSION_TITLE;
+        let first_line = text.lines().map(str::trim).find(|line| !line.is_empty());
+        if let (true, true, Some(line)) = (session.is_empty(), untitled, first_line) {
+            session.title = line.chars().take(TITLE_MAX_CHARS).collect();
+        }
+        session.last_activity_at = Some(now);
     }
 
     /// Records the agent's conversation `session` runs, which a later
