@@ -44,7 +44,7 @@ fn new_session_reuses_the_empty_draft() {
         ),
         ("New session", Timestamp(1), None)
     );
-    assert_eq!(workspace.visible_sessions("").len(), 1);
+    assert!(workspace.visible_sessions("").is_empty());
     assert_eq!(workspace.selected_session(), None);
 }
 
@@ -69,7 +69,7 @@ fn new_session_creates_a_fresh_id_once_sessions_have_activity() {
 fn new_session_for_an_unknown_project_creates_nothing() {
     let mut workspace = load_json(FIXTURE);
     assert_eq!(workspace.new_session(ProjectId(99), Timestamp(1)), None);
-    assert_eq!(workspace.visible_sessions("").len(), 5);
+    assert!(workspace.session(SessionId(20)).is_none());
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn search_is_trimmed_and_unicode_case_insensitive() {
         ids(workspace.visible_sessions("nothing")),
         Vec::<u64>::new()
     );
-    assert_eq!(workspace.visible_sessions("   ").len(), 5);
+    assert_eq!(workspace.visible_sessions("   ").len(), 4);
 }
 
 #[test]
@@ -107,21 +107,53 @@ fn search_matches_the_spellings_people_type() {
 fn sorts_newest_first_with_ties_by_id() {
     let mut workspace = load_json(FIXTURE);
     assert_eq!(workspace.sort(), SessionSort::LastActivity);
-    assert_eq!(ids(workspace.visible_sessions("")), [4, 3, 5, 7, 6]);
+    assert_eq!(ids(workspace.visible_sessions("")), [4, 3, 5, 7]);
 
     workspace.set_sort(SessionSort::Created);
-    assert_eq!(ids(workspace.visible_sessions("")), [6, 5, 4, 3, 7]);
+    assert_eq!(ids(workspace.visible_sessions("")), [5, 4, 3, 7]);
 }
 
 #[test]
 fn scope_filters_and_unknown_projects_fall_back_to_all() {
     let mut workspace = load_json(FIXTURE);
     workspace.set_scope(ProjectScope::Project(ProjectId(2)));
-    assert_eq!(ids(workspace.visible_sessions("")), [5, 6]);
+    assert_eq!(ids(workspace.visible_sessions("")), [5]);
 
     workspace.set_scope(ProjectScope::Project(ProjectId(99)));
     assert_eq!(workspace.scope(), ProjectScope::All);
-    assert_eq!(workspace.visible_sessions("").len(), 5);
+    assert_eq!(workspace.visible_sessions("").len(), 4);
+}
+
+#[test]
+fn a_draft_stays_out_of_the_list_until_its_first_message() {
+    let mut workspace = load_json(FIXTURE);
+    let draft = workspace.new_session(ProjectId(1), Timestamp(900)).unwrap();
+    workspace.open_session(draft);
+
+    assert_eq!(workspace.selected_session(), Some(draft));
+    assert!(!ids(workspace.visible_sessions("")).contains(&draft.0));
+    assert_eq!(
+        ids(workspace.visible_sessions("new session")),
+        Vec::<u64>::new()
+    );
+    // A draft is not activity: it doesn't move its project ahead of one with later work.
+    let order = |workspace: &Workspace| -> Vec<u64> {
+        workspace
+            .projects()
+            .iter()
+            .map(|project| project.id.0)
+            .collect()
+    };
+    let worked =
+        load_json(&FIXTURE.replace("\"last_activity_at\": 300", "\"last_activity_at\": 40"));
+    let mut drafted = worked.clone();
+    drafted.new_session(ProjectId(1), Timestamp(900));
+    assert_eq!(order(&worked), [2, 1]);
+    assert_eq!(order(&drafted), [2, 1]);
+
+    let active =
+        load_json(&FIXTURE.replace("\"last_activity_at\": null", "\"last_activity_at\": 400"));
+    assert_eq!(ids(active.visible_sessions(""))[0], 6);
 }
 
 #[test]

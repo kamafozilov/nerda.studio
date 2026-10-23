@@ -28,8 +28,9 @@ impl Workspace {
             .collect()
     }
 
-    /// Sessions in the current scope whose title, as shown, contains the
-    /// query, in sort order. Matching ignores case, runs of whitespace and the
+    /// Sessions in the current scope that have seen work and whose title, as
+    /// shown, contains the query, in sort order. A draft stays out until its
+    /// first message: an open tab alone is not work. Matching ignores case, runs of whitespace and the
     /// spellings people type for each other: е for ё, and a plain apostrophe
     /// for the Uzbek ʻ and ʼ.
     pub fn visible_sessions(&self, query: &str) -> Vec<&Session> {
@@ -37,6 +38,7 @@ impl Workspace {
         let mut sessions: Vec<&Session> = self
             .sessions
             .iter()
+            .filter(|session| !session.is_empty())
             .filter(|session| match self.scope {
                 ProjectScope::All => true,
                 ProjectScope::Project(id) => session.project == id,
@@ -91,12 +93,13 @@ impl Workspace {
         Some(tail.display().to_string())
     }
 
-    /// The latest activity among the project's sessions, or its creation time when it has none.
+    /// The latest activity among the project's sessions, or its creation time
+    /// when none has any; opening a draft is not activity.
     fn project_activity(&self, project: &Project) -> Timestamp {
         self.sessions
             .iter()
             .filter(|session| session.project == project.id)
-            .map(Session::activity)
+            .filter_map(|session| session.last_activity_at)
             .max()
             .unwrap_or(project.created_at)
     }

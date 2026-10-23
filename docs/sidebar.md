@@ -47,6 +47,9 @@ are in [design.md](design.md).
   lines so the list and the footer keep their place, and its Dismiss takes clicks over
   `FIELD_TARGET_SIZE`. A problem inside a dialog shows in the dialog, under its field,
   until the next edit.
+- **Only sessions that have seen work** are listed. A new session is a draft in its tab
+  until its first message, and stays out of the list, search and the projects' order;
+  New session in its project opens the same draft again.
 - **An empty list** ("No sessions yet", "No sessions in web yet" under a filter, "No
   sessions match …") is one `text_secondary` line in the cards' title column, `SPACE_2`
   under the header.
