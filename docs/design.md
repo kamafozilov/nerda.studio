@@ -189,9 +189,13 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   opens the window again on the same projects. Elsewhere closing it quits.
 - **Menus** are `popover_background` (opaque) with a hairline, a large shadow,
   `MENU_RADIUS` (10: the items' `CONTROL_RADIUS` plus the `SPACE_1` between them and the
-  menu's outer edge, so the corners nest) and `MENU_WIDTH` (220), growing to 360 before
-  they scroll. A window-wide backdrop under the menu takes the click that closes it, so
-  that click presses nothing else; Escape closes it too.
+  menu's outer edge, so the corners nest), at least `MENU_WIDTH` (220) wide, growing to
+  fit their widest line up to 320, and to 360 tall before they scroll
+  (`crates/studio/src/menu.rs`). Arrows move the highlight, as the pointer does; Enter or a
+  click picks. A window-wide backdrop under the menu takes the click that closes it, so
+  that click presses nothing else, the second press of a double-click excepted; Escape
+  closes it too, and so does focus going elsewhere. Supporting text under the highlight
+  is `text_secondary_on_surface`.
 - **Text fields** look like a place to type before they're focused: `field_background`
   fill, a `border` hairline, `CONTROL_RADIUS`; focus turns the hairline `focus_ring`. That
   is text primary at 48% (dark) and 53% (light), the faintest that keeps 3:1 against the

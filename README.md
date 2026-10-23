@@ -60,8 +60,9 @@ the front.
   the sidebar and the main area's card), a session's composer and the Add project palette.
 - `crates/theme`: the look every crate shares: materials, colors and sizes. The rules are in
   [docs/design.md](docs/design.md).
-- `crates/workspace`: projects, sessions, and the sessions and pages (Notes, Design,
-  Routines) open as tabs, with no UI: adding folders, browsing them by a typed path,
+- `crates/workspace`: projects, sessions, the agents a session can run and its choice
+  among them, and the sessions and pages (Notes, Design, Routines) open as tabs, with no
+  UI: adding folders, browsing them by a typed path,
   search, sort and filter, opening and closing tabs, and Back and Forward. All but Back
   and Forward is saved as JSON in the platform's data folder
   (`Nerda Studio/workspace.json`), beside `instance.lock`, held by the instance that
