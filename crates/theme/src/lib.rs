@@ -68,6 +68,11 @@ pub struct Colors {
     /// Supporting text on a row's `hover` or `row_selected` surface, where
     /// `text_secondary` would fall under 4.5:1 over the worst desktop.
     pub text_secondary_on_surface: Hsla,
+    /// Fill of the button that does something that can't be taken back, such
+    /// as Quit; its text uses `text_on_danger`.
+    pub danger: Hsla,
+    /// Text and icons on `danger`: 5.18:1.
+    pub text_on_danger: Hsla,
     /// The badges that tell projects apart by color; a project keeps its hue.
     pub badges: [BadgeColors; 8],
 }
@@ -118,6 +123,8 @@ impl Theme {
                 text_primary: rgba(palette.text_primary).into(),
                 text_secondary: rgba(palette.text_secondary).into(),
                 text_secondary_on_surface: rgba(palette.text_secondary_on_surface).into(),
+                danger: rgba(palette.danger).into(),
+                text_on_danger: rgba(palette.text_on_danger).into(),
                 badges: palette.badges.map(|(fill, text)| BadgeColors {
                     fill: rgba(fill).into(),
                     text: rgba(text).into(),
