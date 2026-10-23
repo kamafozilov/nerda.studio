@@ -4,9 +4,11 @@
 
 use gpui::{
     AnimationExt, ClickEvent, Context, IntoElement, MouseButton, ParentElement, StyleRefinement,
-    Styled, div, prelude::*,
+    Styled, Window, div, prelude::*,
 };
-use theme::{CONTROL_RADIUS, CONTROL_SIZE, HEADER_HEIGHT, MAIN_INSET, SIDEBAR_WIDTH, Theme};
+use theme::{
+    CONTROL_RADIUS, CONTROL_SIZE, HEADER_HEIGHT, MAIN_INSET, SIDEBAR_WIDTH, SPACE_2, Theme,
+};
 
 use super::{GoBack, GoForward, Shell};
 use crate::{
@@ -22,8 +24,22 @@ fn closed_width() -> gpui::Pixels {
     traffic_lights::content_start() + CONTROL_SIZE * 3.
 }
 
+/// The tab strip's width beside the open sidebar, its narrower: the window
+/// less the open navigation and the inset at the right.
+fn open_strip_width(window: &Window) -> gpui::Pixels {
+    window.viewport_size().width - SIDEBAR_WIDTH - MAIN_INSET
+}
+
 impl Shell {
-    pub(super) fn top_row(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    pub(super) fn top_row(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // Held while the sidebar slides; see `toggle_sidebar`.
+        let strip = match self.tabs_held {
+            Some(_) => StyleRefinement::default()
+                .flex_none()
+                .w(open_strip_width(window))
+                .h_full(),
+            None => StyleRefinement::default().flex_1().min_w_0().h_full(),
+        };
         div()
             .relative()
             .flex_none()
@@ -34,11 +50,7 @@ impl Shell {
             .when(MAC, |row| row.child(self.titlebar(cx)))
             .child(self.navigation(cx))
             // Cached: a drag or a tab's motion redraws the tabs alone.
-            .child(
-                self.tabs
-                    .clone()
-                    .cached(StyleRefinement::default().flex_1().min_w_0().h_full()),
-            )
+            .child(self.tabs.clone().cached(strip))
             .child(div().flex_none().w(MAIN_INSET))
     }
 
@@ -128,10 +140,11 @@ impl Shell {
                 move |navigation, phase: f32| {
                     let phase = phase.clamp(0., 1.);
                     let closed = closed_width();
-                    // Open, the arrows sit `MAIN_INSET` inside the sidebar's edge.
+                    // Open, the arrows end `SPACE_2` inside the sidebar's edge, in
+                    // line with the sidebar's own trailing controls.
                     navigation
                         .w(closed + (SIDEBAR_WIDTH - closed) * phase)
-                        .pr(MAIN_INSET * phase)
+                        .pr(SPACE_2 * phase)
                 },
             )
     }
@@ -155,7 +168,9 @@ impl Shell {
             .justify_center()
             .rounded(CONTROL_RADIUS)
             .hover(|button| button.bg(colors.hover))
-            .on_click(cx.listener(|shell, _: &ClickEvent, _, cx| shell.toggle_sidebar(cx)))
+            .on_click(
+                cx.listener(|shell, _: &ClickEvent, window, cx| shell.toggle_sidebar(window, cx)),
+            )
             .child(div().with_spring(
                 "sidebar-glyph",
                 self.sidebar_spring(),

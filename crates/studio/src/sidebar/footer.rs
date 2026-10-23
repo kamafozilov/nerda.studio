@@ -2,7 +2,7 @@
 //! They open nothing yet; each names its future place.
 
 use gpui::{Context, IntoElement, ParentElement, Styled, div};
-use theme::{SPACE_1, SPACE_2, Theme};
+use theme::{MAIN_INSET, SPACE_1, SPACE_2, Theme};
 
 use super::{Sidebar, header::icon_button};
 use crate::assets::Icon;
@@ -10,9 +10,12 @@ use crate::assets::Icon;
 impl Sidebar {
     pub(super) fn render_footer(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
+        // The buttons' bottom sits on the card's bottom edge, `MAIN_INSET` up.
         div()
             .flex_none()
-            .p(SPACE_2)
+            .px(SPACE_2)
+            .pt(SPACE_2)
+            .pb(MAIN_INSET)
             .flex()
             .items_center()
             .justify_end()

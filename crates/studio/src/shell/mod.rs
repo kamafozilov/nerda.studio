@@ -7,10 +7,12 @@ mod commands;
 mod quit;
 mod top_row;
 
+use std::time::{Duration, Instant};
+
 use gpui::{
     AnimationExt, ClickEvent, Context, DismissEvent, Entity, FocusHandle, IntoElement,
-    ParentElement, Render, SpringAnimation, StyleRefinement, Styled, Subscription, Task, Window,
-    actions, div, prelude::*,
+    ParentElement, Render, SpringAnimation, SpringConfig, SpringState, StyleRefinement, Styled,
+    Subscription, Task, Window, actions, div, prelude::*,
 };
 use theme::{MAIN_INSET, MAIN_RADIUS, SIDEBAR_WIDTH, TEXT_BODY, Theme, motion};
 use workspace::{Tab, Timestamp, Visits};
@@ -29,6 +31,9 @@ actions!(
     studio,
     [
         ToggleSidebar,
+        /// Puts the cursor in the sidebar's search field, opening the sidebar
+        /// first if it is closed.
+        SearchSessions,
         /// Starts a session in the current project, as the sidebar's button does.
         NewSession,
         /// Opens the add-project palette, as the sidebar's button does.
@@ -65,6 +70,12 @@ pub struct Shell {
     add_project: Option<OpenPalette>,
     /// The timer of the hint Cmd-Q put up, while it is up; see `quit`.
     quit_hint: Option<Task<()>>,
+    /// Where the sidebar's spring stood at the last toggle, to know when it
+    /// settles: GPUI keeps the spring itself out of reach.
+    sidebar_motion: SidebarMotion,
+    /// While the sidebar slides, the tabs keep the width they have beside the
+    /// open sidebar; this lets them follow the strip again when it settles.
+    tabs_held: Option<Task<()>>,
 }
 
 /// The add-project palette while it is open.
@@ -85,14 +96,29 @@ impl Shell {
         // A change made in System Settings shows up when the app comes back to
         // front, so the theme is re-read then as well as on an appearance switch.
         let refresh = |_: &mut Self, window: &mut Window, cx: &mut Context<Self>| {
+            // Every spring reads Reduce motion from GPUI's flag, which no
+            // platform sets: it is read here, so a hover that glides from the
+            // start already follows it.
+            cx.set_reduce_motion(accessibility::reduce_motion());
             // Redraws every view: the sidebar and the tabs keep a cached frame
             // that a new theme must not reuse.
             if system_theme::refresh(window, cx) {
                 window.refresh();
             }
         };
+        cx.set_reduce_motion(accessibility::reduce_motion());
         cx.observe_window_appearance(window, refresh).detach();
         cx.observe_window_activation(window, refresh).detach();
+        // A branch switched in another app, or ages that went on while the Mac
+        // slept, show once the window is back in front.
+        cx.observe_window_activation(window, |shell, window, cx| {
+            if window.is_window_active() {
+                shell
+                    .sidebar
+                    .update(cx, |sidebar, cx| sidebar.window_returned(cx));
+            }
+        })
+        .detach();
         // Key bindings dispatch from the focused element, so the shell holds focus
         // until something inside it takes it.
         let focus_handle = cx.focus_handle();
@@ -125,7 +151,15 @@ impl Shell {
         if let Some(selected) = store.read(cx).workspace().selected_tab() {
             visits.record(selected);
         }
-        let sidebar = cx.new(|cx| Sidebar::new(store.clone(), cx));
+        let sidebar = cx.new(|cx| {
+            Sidebar::new(
+                store.clone(),
+                focus_handle.clone(),
+                sidebar_open,
+                window,
+                cx,
+            )
+        });
         let tabs = cx.new(|cx| TabStrip::new(store.clone(), cx));
         Self {
             focus_handle,
@@ -137,6 +171,8 @@ impl Shell {
             titlebar_pressed: false,
             add_project: None,
             quit_hint: None,
+            sidebar_motion: SidebarMotion::at_rest(sidebar_open),
+            tabs_held: None,
         }
     }
 
@@ -189,9 +225,29 @@ impl Shell {
 
     /// Every way in slides the sidebar, the click and `Cmd-B` alike, so the
     /// same action always looks the same.
-    fn toggle_sidebar(&mut self, cx: &mut Context<Self>) {
+    ///
+    /// While it slides, the tabs keep the width they have beside the open
+    /// sidebar, the narrower of their two, so their titles truncate once
+    /// instead of on every frame and none passes the window's edge; they follow
+    /// the strip again the moment the sidebar settles.
+    fn toggle_sidebar(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         cx.set_reduce_motion(accessibility::reduce_motion());
         self.sidebar_open = !self.sidebar_open;
+        let open = self.sidebar_open;
+        self.sidebar
+            .update(cx, |sidebar, cx| sidebar.set_open(open, window, cx));
+        let settle = self.sidebar_motion.retarget(open);
+        self.tabs_held = (!cx.reduce_motion()).then(|| {
+            cx.spawn(async move |shell, cx| {
+                cx.background_executor().timer(settle).await;
+                shell
+                    .update(cx, |shell, cx| {
+                        shell.tabs_held = None;
+                        cx.notify();
+                    })
+                    .ok();
+            })
+        });
         cx.notify();
     }
 
@@ -287,21 +343,39 @@ impl Shell {
 }
 
 impl Render for Shell {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
-        let root = div()
-            .key_context(CONTEXT)
-            .track_focus(&self.focus_handle)
-            .on_action(cx.listener(|shell, _: &ToggleSidebar, _, cx| shell.toggle_sidebar(cx)))
-            .on_action(cx.listener(|shell, _: &NewSession, _, cx| {
-                shell
-                    .sidebar
-                    .update(cx, |sidebar, cx| sidebar.new_session(cx))
-            }))
-            .on_action(
-                cx.listener(|shell, _: &AddProject, window, cx| shell.open_add_project(window, cx)),
-            )
-            .on_action(cx.listener(|shell, _: &RequestQuit, _, cx| shell.request_quit(cx)));
+        let root =
+            div()
+                .key_context(CONTEXT)
+                .track_focus(&self.focus_handle)
+                .on_action(cx.listener(|shell, _: &ToggleSidebar, window, cx| {
+                    shell.toggle_sidebar(window, cx)
+                }))
+                .on_action(cx.listener(|shell, _: &SearchSessions, window, cx| {
+                    // The palette keeps focus while it is open over the window.
+                    if shell.add_project.is_some() {
+                        return;
+                    }
+                    if !shell.sidebar_open {
+                        shell.toggle_sidebar(window, cx);
+                    }
+                    shell
+                        .tabs
+                        .update(cx, |tabs, cx| tabs.dismiss_menu(window, cx));
+                    shell
+                        .sidebar
+                        .update(cx, |sidebar, cx| sidebar.focus_search(window, cx))
+                }))
+                .on_action(cx.listener(|shell, _: &NewSession, _, cx| {
+                    shell
+                        .sidebar
+                        .update(cx, |sidebar, cx| sidebar.new_session(cx))
+                }))
+                .on_action(cx.listener(|shell, _: &AddProject, window, cx| {
+                    shell.open_add_project(window, cx)
+                }))
+                .on_action(cx.listener(|shell, _: &RequestQuit, _, cx| shell.request_quit(cx)));
         let root = app_menu::on_window_actions(root);
         self.on_tab_actions(root, cx)
             .relative()
@@ -311,7 +385,7 @@ impl Render for Shell {
             .bg(colors.window_background)
             .text_color(colors.text_primary)
             .text_size(TEXT_BODY)
-            .child(self.top_row(cx))
+            .child(self.top_row(window, cx))
             .child(
                 div()
                     .flex_1()
@@ -323,5 +397,45 @@ impl Render for Shell {
             // Over everything, the top row included, while it is open.
             .children(self.add_project.as_ref().map(|open| open.palette.clone()))
             .children(self.quit_hint(cx))
+    }
+}
+
+/// The sidebar's spring as the shell last set it, worked out with the same
+/// math GPUI runs, so the shell knows when it settles.
+struct SidebarMotion {
+    state: SpringState,
+    target: f32,
+    config: SpringConfig,
+    since: Instant,
+}
+
+impl SidebarMotion {
+    fn at_rest(open: bool) -> Self {
+        let target = if open { 1. } else { 0. };
+        Self {
+            state: SpringState {
+                position: target,
+                velocity: 0.,
+            },
+            target,
+            config: motion::PANEL_ENTER,
+            since: Instant::now(),
+        }
+    }
+
+    /// Turns the spring toward open or closed from where it is now, keeping its
+    /// speed as GPUI does; returns how long it takes to settle there.
+    fn retarget(&mut self, open: bool) -> Duration {
+        let now = Instant::now();
+        let elapsed = now.duration_since(self.since).as_secs_f32();
+        self.state = self.config.step(self.state, self.target, elapsed);
+        (self.target, self.config) = if open {
+            (1., motion::PANEL_ENTER)
+        } else {
+            (0., motion::PANEL_EXIT)
+        };
+        self.since = now;
+        self.config
+            .settle_time(self.state, self.target, motion::PHASE_EPSILON)
     }
 }

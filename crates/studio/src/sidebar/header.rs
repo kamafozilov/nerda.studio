@@ -1,19 +1,20 @@
-//! The header: the pages, then the search field on its own row, then the
+//! The header: the search field across the sidebar, then the pages, then the
 //! list's title, filter and sort, add project, new session.
 
 use gpui::{
-    ClickEvent, Context, Div, Focusable, FontWeight, IntoElement, ParentElement, SharedString,
+    App, ClickEvent, Context, Div, Focusable, FontWeight, IntoElement, ParentElement, SharedString,
     Stateful, Styled, Window, div, prelude::*, svg,
 };
 use theme::{
-    CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, ICON_SIZE, ICON_SIZE_SMALL, SPACE_1,
-    SPACE_2, Theme,
+    CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, HAIRLINE, ICON_SIZE, ICON_SIZE_SMALL,
+    SPACE_1, SPACE_2, Theme,
 };
 use workspace::ProjectScope;
 
 use super::Sidebar;
 use crate::{
     assets::Icon,
+    key_cap::{Key, key_cap},
     tooltip::{TooltipExt, WithTooltip},
 };
 
@@ -58,9 +59,48 @@ pub(crate) fn icon_button(
     build(button).with_tooltip(label)
 }
 
+/// A close button inside a field or a message: 16 pt visible, taking clicks over
+/// WCAG's 24 pt minimum, the negative margin keeping it where the padding puts
+/// it.
+pub(super) fn close_button(
+    id: &'static str,
+    label: &'static str,
+    colors: Colors,
+    on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+) -> WithTooltip {
+    div()
+        .id(id)
+        .group(id)
+        .flex_none()
+        .size(FIELD_TARGET_SIZE)
+        .m(-(FIELD_TARGET_SIZE - ICON_SIZE) / 2.)
+        .flex()
+        .items_center()
+        .justify_center()
+        .cursor_pointer()
+        .on_click(on_click)
+        .child(
+            div()
+                .size(ICON_SIZE)
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded(CONTROL_RADIUS)
+                .group_hover(id, |button| button.bg(colors.hover))
+                .child(
+                    svg()
+                        .path(Icon::Close.path())
+                        .size(ICON_SIZE_SMALL)
+                        .text_color(colors.text_secondary)
+                        .group_hover(id, |icon| icon.text_color(colors.text_primary)),
+                ),
+        )
+        .with_tooltip(label)
+}
+
 impl Sidebar {
     pub(super) fn render_header(
-        &self,
+        &mut self,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
@@ -76,16 +116,15 @@ impl Sidebar {
             ProjectScope::All if cfg!(target_os = "macos") => "New session (⌘N)".into(),
             ProjectScope::All => "New session (Ctrl+N)".into(),
         };
-        // The pages first; then search spans the sidebar on its own row; under it,
-        // the list's title at the leading edge and the actions on it at the
-        // trailing edge.
+        // Search first, across the sidebar; then the pages; under them, the list's
+        // title at the leading edge and the actions on it at the trailing edge.
         div()
             .mx(SPACE_2)
             .flex()
             .flex_col()
             .gap(SPACE_2)
-            .child(self.render_pages(cx))
             .child(self.render_search_field(window, cx))
+            .child(self.render_pages(cx))
             .child(
                 div()
                     .h(CONTROL_SIZE)
@@ -158,6 +197,7 @@ impl Sidebar {
         let focused = input_focus.contains_focused(window, cx);
         div()
             .id("search-field")
+            .group("search-field")
             .key_context("SidebarSearch")
             .on_action(cx.listener(Self::select_next))
             .on_action(cx.listener(Self::select_previous))
@@ -165,7 +205,9 @@ impl Sidebar {
             .on_action(cx.listener(Self::dismiss))
             .w_full()
             .h(CONTROL_SIZE)
-            .px(SPACE_2)
+            // The hairline comes out of the padding, so the magnifier and the
+            // text stand in the pages' icon and title columns.
+            .px(SPACE_2 - HAIRLINE)
             .flex()
             .items_center()
             .gap(SPACE_2)
@@ -190,46 +232,36 @@ impl Sidebar {
                     .text_color(colors.text_secondary),
             )
             .child(div().flex_1().min_w_0().child(self.search.clone()))
-            .when(!self.query.is_empty(), |field| {
+            // The shortcut shows while the field is focused or under the pointer,
+            // so at rest the placeholder has the field to itself. The cap sits
+            // as far in from the field's edges as from its top and bottom.
+            .when(self.query.is_empty(), |field| {
+                let modifier = if cfg!(target_os = "macos") {
+                    "⌘"
+                } else {
+                    "Ctrl"
+                };
                 field.child(
-                    // The target is WCAG's 24 pt minimum around a 16 pt visible button;
-                    // the negative margin keeps the button where the field's padding puts it.
-                    div()
-                        .id("clear-search")
-                        .group("clear-search")
-                        .flex_none()
-                        .size(FIELD_TARGET_SIZE)
-                        .mx(-(FIELD_TARGET_SIZE - ICON_SIZE) / 2.)
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .cursor_pointer()
-                        // Clearing keeps the field focused, so typing goes on.
-                        .on_click(cx.listener(|sidebar, _: &ClickEvent, window, cx| {
-                            cx.stop_propagation();
-                            sidebar.clear_search(cx);
-                            window.focus(&sidebar.search.focus_handle(cx), cx);
-                        }))
-                        .child(
-                            div()
-                                .size(ICON_SIZE)
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .rounded(CONTROL_RADIUS)
-                                .group_hover("clear-search", |button| button.bg(colors.hover))
-                                .child(
-                                    svg()
-                                        .path(Icon::Close.path())
-                                        .size(ICON_SIZE_SMALL)
-                                        .text_color(colors.text_secondary)
-                                        .group_hover("clear-search", |icon| {
-                                            icon.text_color(colors.text_primary)
-                                        }),
-                                ),
-                        )
-                        .with_tooltip("Clear search"),
+                    key_cap(&[Key::Text(modifier), Key::Text("K")], colors)
+                        .mr(-SPACE_1)
+                        .when(!focused, |cap| {
+                            cap.opacity(0.)
+                                .group_hover("search-field", |cap| cap.opacity(1.))
+                        }),
                 )
+            })
+            .when(!self.query.is_empty(), |field| {
+                // Clearing keeps the field focused, so typing goes on.
+                field.child(close_button(
+                    "clear-search",
+                    "Clear search",
+                    colors,
+                    cx.listener(|sidebar, _: &ClickEvent, window, cx| {
+                        cx.stop_propagation();
+                        sidebar.clear_search(cx);
+                        window.focus(&sidebar.search.focus_handle(cx), cx);
+                    }),
+                ))
             })
     }
 }

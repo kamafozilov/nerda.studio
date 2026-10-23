@@ -126,6 +126,11 @@ impl TabStrip {
         }
     }
 
+    /// Closes the tab menu, as when Cmd-K takes focus to the search.
+    pub fn dismiss_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.close_menu(window, cx);
+    }
+
     /// Reads the workspace again after it changed: the tabs on screen, the
     /// selection and the titles.
     fn refresh(&mut self, cx: &mut Context<Self>) {
@@ -142,7 +147,7 @@ impl TabStrip {
                 let title = match id {
                     Tab::Session(session) => workspace
                         .session(session)
-                        .map(|session| SharedString::from(session.title.clone()))
+                        .map(|session| SharedString::from(session.display_title()))
                         .unwrap_or_default(),
                     Tab::Page(page) => page.title().into(),
                 };

@@ -8,7 +8,7 @@ use gpui::{App, Div, InteractiveElement, KeyBinding, Menu, MenuItem, OsAction, a
 use crate::{
     shell::{
         AddProject, CloseAllTabs, CloseOtherTabs, CloseTab, GoBack, GoForward, NewSession, NextTab,
-        PreviousTab, RequestQuit, ToggleSidebar,
+        PreviousTab, RequestQuit, SearchSessions, ToggleSidebar,
     },
     text_input::keys::{Copy, Cut, Paste, SelectAll},
 };
@@ -97,6 +97,7 @@ fn menus() -> Vec<Menu> {
         ]),
         Menu::new("View").items([
             MenuItem::action("Toggle Sidebar", ToggleSidebar),
+            MenuItem::action("Search Sessions", SearchSessions),
             MenuItem::separator(),
             MenuItem::action("Back", GoBack),
             MenuItem::action("Forward", GoForward),

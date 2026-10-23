@@ -24,6 +24,12 @@ pub(crate) struct Palette {
     pub key: u32,
     pub text_primary: u32,
     pub text_secondary: u32,
+    pub text_secondary_on_surface: u32,
+    /// Project badges as (fill, initials), one per hue: red, orange, yellow,
+    /// green, teal, blue, violet, pink. Fill at L 0.38 C 0.075 (dark) or L 0.91
+    /// C 0.045 (light), initials at L 0.87 C 0.10 or L 0.43 C 0.12, chroma cut to
+    /// stay in sRGB: the initials keep at least 6.7:1 (dark) and 5.98:1 (light).
+    pub badges: [(u32, u32); 8],
 }
 
 pub(crate) const DARK: Palette = Palette {
@@ -41,6 +47,17 @@ pub(crate) const DARK: Palette = Palette {
     key: 0xeff2f81a,
     text_primary: 0xeff2f8ff,
     text_secondary: 0xaeb1b7ff,
+    text_secondary_on_surface: 0xc7cad0ff,
+    badges: [
+        (0x64312eff, 0xfec4beff),
+        (0x5f3813ff, 0xffc79bff),
+        (0x4f4105ff, 0xe9d487ff),
+        (0x264d28ff, 0xabe6acff),
+        (0x004e47ff, 0x81eaddff),
+        (0x0b4864ff, 0xa5ddfeff),
+        (0x3f3c68ff, 0xcfcfffff),
+        (0x583355ff, 0xfabdf4ff),
+    ],
 };
 
 pub(crate) const LIGHT: Palette = Palette {
@@ -58,4 +75,15 @@ pub(crate) const LIGHT: Palette = Palette {
     key: 0x191b1f1a,
     text_primary: 0x191b1fff,
     text_secondary: 0x505358ff,
+    text_secondary_on_surface: 0x45474cff,
+    badges: [
+        (0xfed6d2ff, 0x852e2cff),
+        (0xf9dbc4ff, 0x764002ff),
+        (0xeae2c0ff, 0x5f4f01ff),
+        (0xd0eacfff, 0x176020ff),
+        (0xc1ece5ff, 0x065d55ff),
+        (0xc5e7fbff, 0x03577aff),
+        (0xdddeffff, 0x4b438eff),
+        (0xf3d7f0ff, 0x73336fff),
+    ],
 };

@@ -25,7 +25,7 @@ use gpui::{
 use gpui_platform::application;
 use shell::{
     ActivateTab, CloseAllTabs, CloseOtherTabs, CloseTab, GoBack, GoForward, NewSession, NextTab,
-    PreviousTab, Shell, ToggleSidebar,
+    PreviousTab, SearchSessions, Shell, ToggleSidebar,
 };
 use store::Store;
 use theme::Theme;
@@ -149,6 +149,7 @@ fn bind_keys(cx: &mut App) {
     };
     cx.bind_keys([
         KeyBinding::new(key("cmd-b", "ctrl-b"), ToggleSidebar, None),
+        KeyBinding::new(key("cmd-k", "ctrl-k"), SearchSessions, None),
         KeyBinding::new(key("cmd-n", "ctrl-n"), NewSession, None),
         KeyBinding::new(key("cmd-t", "ctrl-t"), NewSession, None),
         KeyBinding::new(key("cmd-w", "ctrl-w"), CloseTab, None),

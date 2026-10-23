@@ -22,6 +22,8 @@ pub enum Icon {
     Folder,
     FolderAdd,
     FolderUp,
+    /// The branch a session's project is on.
+    GitBranch,
     NewSession,
     /// A new tab in the top row.
     NewTab,
@@ -49,6 +51,7 @@ impl Icon {
             Self::Folder => "icons/folder-01.svg",
             Self::FolderAdd => "icons/folder-add.svg",
             Self::FolderUp => "icons/folder-upload.svg",
+            Self::GitBranch => "icons/git-branch.svg",
             Self::NewSession => "icons/pencil-edit-02.svg",
             Self::NewTab => "icons/add-01.svg",
             Self::Notes => "icons/note-01.svg",
@@ -101,6 +104,10 @@ const FILES: &[(&str, &[u8])] = &[
         include_bytes!("../assets/icons/gauge.svg"),
     ),
     ("icons/gear.svg", include_bytes!("../assets/icons/gear.svg")),
+    (
+        "icons/git-branch.svg",
+        include_bytes!("../assets/icons/git-branch.svg"),
+    ),
     (
         "icons/git-pull-request.svg",
         include_bytes!("../assets/icons/git-pull-request.svg"),

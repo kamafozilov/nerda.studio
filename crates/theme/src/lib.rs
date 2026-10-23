@@ -65,6 +65,18 @@ pub struct Colors {
     pub text_primary: Hsla,
     /// Supporting text and icons at rest.
     pub text_secondary: Hsla,
+    /// Supporting text on a row's `hover` or `row_selected` surface, where
+    /// `text_secondary` would fall under 4.5:1 over the worst desktop.
+    pub text_secondary_on_surface: Hsla,
+    /// The badges that tell projects apart by color; a project keeps its hue.
+    pub badges: [BadgeColors; 8],
+}
+
+/// One project badge: its fill and the initials on it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BadgeColors {
+    pub fill: Hsla,
+    pub text: Hsla,
 }
 
 /// The active theme, one per app, held as a GPUI global.
@@ -105,6 +117,11 @@ impl Theme {
                 key_background: rgba(palette.key).into(),
                 text_primary: rgba(palette.text_primary).into(),
                 text_secondary: rgba(palette.text_secondary).into(),
+                text_secondary_on_surface: rgba(palette.text_secondary_on_surface).into(),
+                badges: palette.badges.map(|(fill, text)| BadgeColors {
+                    fill: rgba(fill).into(),
+                    text: rgba(text).into(),
+                }),
             },
         }
     }

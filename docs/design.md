@@ -46,8 +46,10 @@ Every value comes from OKLCH with one cool neutral hue (h 265, C 0.006; text C 0
 | `hover` | text primary at 6% | text primary at 6% | Hovered control |
 | `text_primary` | `eff2f8` (L 0.96) | `191b1f` (L 0.22) | Titles, body, hovered icons |
 | `text_secondary` | `aeb1b7` (L 0.76) | `505358` (L 0.44) | Supporting text, icons at rest |
+| `text_secondary_on_surface` | `c7cad0` (L 0.837) | `45474c` (L 0.399) | Supporting text on a row's `hover` or `row_selected` surface |
 | `scrim` | `151619` at 64% | `fbfdff` at 60% | Dims the window under a dialog; nothing is read on it |
 | `key_background` | text primary at 10% | text primary at 10% | Key cap fill; `text_secondary` on it keeps 4.92 / 5.51 even under `hover` |
+| `badges` | fill L 0.38 C 0.075, initials L 0.87 C 0.10 | fill L 0.91 C 0.045, initials L 0.43 C 0.12 | Project badges, eight hues (25, 60, 95, 145, 185, 235, 285, 330), chroma cut to stay in sRGB; the initials keep at least 6.73:1 (dark) and 5.98:1 (light) on their fill, 5.27 and 5.39 under a row's surface |
 
 ### Contrast on glass
 
@@ -61,11 +63,18 @@ over a white and a black desktop (dark / light):
 | `text_primary` | 8.72 / 10.08 | 14.06 / 14.79 |
 | `text_primary` on `hover` | 7.40 / 9.04 | 11.91 / 13.16 |
 | `text_secondary` | 4.55 / 4.51 | 7.34 / 6.62 |
+| `text_secondary` on `hover` / `row_selected` | 4.04 / 4.27, 3.71 / 4.09 | — |
+| `text_secondary_on_surface` on `row_selected` | 4.70 / 4.83 | — |
 
 The composite was checked on screen against this arithmetic: over a white backdrop the
 dark sidebar renders 67, 68, 70 (predicted 67), the light one over black 196, 198, 201
 (predicted 196). Changing a tint or a text color means recomputing this table. There is
 no tertiary text color: one light enough to look tertiary falls near 3:1 on the sidebar.
+Under a row's surface `text_secondary` falls short, so a row whose surface is drawn
+because of state (the selection, or the sidebar's hover, which redraws the row) puts its
+supporting text in `text_secondary_on_surface`, the faintest gray that keeps 4.5:1 on
+either surface over the worst desktop (4.51 / 4.50 with the wash under the text; 4.70 /
+4.83 as the session list draws it, over the text).
 
 ## Layout and type
 
@@ -77,11 +86,19 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   card. Everything in it centers on it.
 - The sidebar is `SIDEBAR_WIDTH` (260), under the top row, and meets the card. `Cmd-B`
   (`Ctrl-B` elsewhere) or its toggle hides it: the toggle stays in place, Back and Forward
-  ride the sidebar's edge, `MAIN_INSET` inside it, and come to rest after the toggle.
+  ride the sidebar's edge, `SPACE_2` inside it in line with the sidebar's own trailing
+  controls, and come to rest after the toggle.
 - An icon button is `CONTROL_SIZE` (28) square with `CONTROL_RADIUS` (6), its icon
   `ICON_SIZE` (16) in `text_secondary`, turning `text_primary` on `hover`.
-- Text is the platform's UI font (GPUI's `.SystemUIFont`; SF Pro on macOS) at
-  `TEXT_BODY` (13), the size of macOS controls. Emphasis is weight, not size.
+- Text is the platform's UI font (GPUI's `.SystemUIFont`; SF Pro on macOS) at `TEXT_BODY`
+  (13), the size of macOS controls. Emphasis is weight, not size. Two sizes are smaller:
+  `TEXT_SMALL` (12), for a session card's supporting lines, in `text_secondary`, whose
+  contrast does not depend on size; and `BADGE_TEXT` (9), for a project badge's two
+  initials, which keep at least 5.27:1.
+- A field or a message with a hairline pads its content `HAIRLINE` (1) less, so the
+  content stands in the same columns as the unbordered rows around it: the search field's
+  magnifier and text over the pages' icons and titles. A menu does too, so its items
+  stand `SPACE_1` in from its outer edge and their corners nest in its own.
 
 ## Icons
 
@@ -94,7 +111,9 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   same set; take one from elsewhere only when the set has nothing close, at the same
   stroke. The search field's magnifier keeps its ring to 15 of the 24 units: one that
   fills the box looks oversized beside 13 pt text.
-  GPUI paints an SVG in its own `text_color` only, never its parent's.
+  GPUI paints an SVG in its own `text_color` only, never its parent's. The branch on a
+  session card is the pull request icon's set's branch without its arrow, which is lost
+  at `ICON_SIZE_SMALL`.
 - **A toggle** shows the set's outline icon while off and the same outline with its main
   shape filled while on, in the icon button's colors.
 
@@ -105,15 +124,22 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
 - **Tooltips** sit centered above their control, or below it in the top row, where there
   is no room above; `SPACE_1` clear of it, never at the pointer, so they don't cover the
   controls beside it (`crates/studio/src/tooltip.rs`; GPUI's `.tooltip()` follows the
-  pointer and isn't used). One is `TOOLTIP_HEIGHT` (24) high, hairline included. It
-  shows after the pointer rests `TOOLTIP_DELAY` (500 ms);
-  within `TOOLTIP_WARM` (300 ms) of another, at once. A press hides it.
+  pointer and isn't used). One is `TOOLTIP_HEIGHT` (24) high, hairline included. It shows
+  after the pointer rests `TOOLTIP_DELAY` (500 ms); within `TOOLTIP_WARM` (300 ms) of
+  another, at once. A press hides it.
 - **Rows** are `ROW_HEIGHT` (28), spanning the list with `SPACE_2` sides and a rounded
   surface inside: `row_selected` under the selection, `hover` under the pointer or the
-  keyboard highlight. In the sidebar list, where a selected session and a hovered one can
-  be neighbors, each row's slot is `ROW_GAP` (2) taller and centers the surface, so
-  neighboring surfaces stand 2 apart. Text truncates with an ellipsis; secondary labels
-  truncate first.
+  keyboard highlight. In the sidebar, where a selected row and a hovered one can be
+  neighbors, each row's slot is `ROW_GAP` (2) taller and centers the surface, so
+  neighboring surfaces stand 2 apart. A sidebar list draws one selection surface and one
+  hover surface, which glide from row to row (see Motion), rather than a fill per row;
+  the slot, gap included, tracks the pointer, so no gap is dead. In the session list the
+  surfaces are drawn over the rows, in their scrolled space: both washes are text
+  primary at a low alpha, so text primary under them reads as it was. Text truncates
+  with an ellipsis; secondary labels truncate first.
+- GPUI shapes text before hover is known, so a `.hover()` style never changes a text
+  color: it changes a fill or an icon. The sidebar's lists track the pointer in their own
+  state and redraw, so a row there may change its text color under the pointer.
 - **Tabs** in the top row are the pages open, Notes, Design and Routines, and the
   sessions open in the project on screen (`crates/studio/src/tabs/`). Each project keeps
   its own session tabs, saved with the workspace; showing another project's session
@@ -140,10 +166,11 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   history does; a closed tab drops out of them, and a new visit clears Forward.
 - **The menu bar** (macOS, `crates/studio/src/app_menu.rs`) lists every command beside
   its shortcut: Nerda Studio (Services, Hide `Cmd-H`, Hide Others `Cmd-Alt-H`, Show All,
-  Quit), File (New Session, Add Project…, the Close Tab commands), Edit (Cut, Copy, Paste,
-  Select All, enabled in a text field), View (Toggle Sidebar, Back, Forward, Toggle Full
-  Screen `Ctrl-Cmd-F`) and Window (Minimize `Cmd-M`, Zoom, the next and previous tab). A
-  new command goes into its menu as it gets a shortcut.
+  Quit), File (New Session, Add Project…, the Close Tab commands), Edit (Cut, Copy,
+  Paste, Select All, enabled in a text field), View (Toggle Sidebar, Search Sessions
+  `Cmd-K`, Back, Forward, Toggle Full Screen `Ctrl-Cmd-F`) and Window (Minimize `Cmd-M`,
+  Zoom, the next and previous tab). A new command goes into its menu as it gets a
+  shortcut.
 - **Quit.** `Cmd-Q` (`Ctrl-Q` elsewhere) in the window quits on a second press within 2 s:
   the first shows "Press ⌘ Q again to quit", centered, in `popover_background` with key
   caps, taking no clicks. Held down, the key's repeat is the second press. The menu's
@@ -152,9 +179,9 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   opens the window again on the same projects. Elsewhere closing it quits.
 - **Menus** are `popover_background` (opaque) with a hairline, a large shadow,
   `MENU_RADIUS` (10: the items' `CONTROL_RADIUS` plus the `SPACE_1` between them and the
-  menu's outer edge, the hairline included, so the corners nest) and `MENU_WIDTH` (220),
-  growing to 360 before they scroll. A window-wide backdrop under the menu takes the
-  click that closes it, so that click presses nothing else; Escape closes it too.
+  menu's outer edge, so the corners nest) and `MENU_WIDTH` (220), growing to 360 before
+  they scroll. A window-wide backdrop under the menu takes the click that closes it, so
+  that click presses nothing else; Escape closes it too.
 - **Text fields** look like a place to type before they're focused: `field_background`
   fill, a `border` hairline, `CONTROL_RADIUS`; focus turns the hairline `focus_ring`. That
   is text primary at 48% (dark) and 53% (light), the faintest that keeps 3:1 against the
@@ -166,25 +193,8 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   high and at least as wide, `key_background` fill with no hairline, `SPACE_1` corners,
   the key in `text_secondary`. Return is an icon, other keys text (⌘, `esc`). Inside a
   button `FIELD_TARGET_SIZE` (24) high, the cap sits 2 px from its top, bottom and right.
-- **The sidebar header** is three parts: the pages, Notes, Design and Routines, as rows
-  with their icon, `row_selected` under the one on screen, flush with the top; then the
-  search field across the sidebar, `SPACE_2` under them; then the title "Sessions" in
-  medium-weight `text_primary` at the leading edge, lined up with the sessions' titles,
-  with filter and sort, Add project and New session at the trailing edge. The title and
-  the filter show once there is a project. The sort and the filter are saved. A filter
-  to one project keeps the filter button on `hover`, and New session
-  then starts the session in that project, its tooltip naming it ("New session in web");
-  the shortcut starts it in the project on screen.
-- **Sessions** are one list, newest first under the sort, each naming its project in
-  `text_secondary` while more than one project is in view. Projects are not a level of
-  the list: the filter narrows it to one.
-- GPUI shapes text before hover is known, so hover never changes a text color: it changes
-  a fill or an icon.
-- **Problems** show as a message under the sidebar header until dismissed: what failed and
-  what to do next, without parser or error-code detail the reader can't act on. A problem
-  inside a dialog shows in the dialog, under its field, until the next edit.
-- **Before the first project** the sidebar stays blank under its header; the main area
-  says what a project is and offers "Add project", centered, unless a page is on screen.
+- **The sidebar's** header, session cards, messages, empty states and footer follow
+  [sidebar.md](sidebar.md).
 - **Pages** are empty for now: a page on screen leaves the main area blank.
 - **Palettes** are dialogs of one field over a list:
   `PALETTE_WIDTH` (576) centered a tenth of the way down the window and never above the
@@ -202,8 +212,6 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   highlighted, or with Cmd-Enter, it adds the typed path, as the button in the field does.
   The button reads "Create & Add" when the folder doesn't exist yet, and adding creates
   it. The footer offers the system's folder picker.
-- **The sidebar footer** holds Usage, Pull requests and Settings at its trailing edge. They
-  open nothing yet.
 
 ## Motion
 
@@ -218,13 +226,19 @@ toggle pressed again mid-flight turns back from where it is, keeping its speed. 
 - **No overshoot** where nothing was thrown: damping ratio 1. Exits are quicker than
   entrances: `PANEL_ENTER` responds in 0.3 s, `PANEL_EXIT` in 0.25 s.
 - **Reduce motion** in the system settings snaps every animation to its end.
-  `crates/studio/src/accessibility.rs` reads the setting on macOS and Windows on each
-  toggle and each change to the tabs, and hands it to GPUI, which does not read it itself;
-  Linux has no one setting.
+  `crates/studio/src/accessibility.rs` reads the setting on macOS and Windows when the
+  window opens, comes to front or changes appearance, on each toggle and each change to
+  the tabs, and hands it to GPUI, which does not read it itself; Linux has no one
+  setting. The cards' glide reads it as it starts.
 - **The sidebar** animates its width and fades with it. Its contents stay pinned to the
   window's left edge while the sidebar's edge sweeps over them, so nothing passes under the
   traffic lights or the toggle, which never move. On the same spring the card's left inset
-  grows and Back and Forward ride the sidebar's edge.
+  grows and Back and Forward ride the sidebar's edge. The tabs keep the width they have
+  beside the open sidebar, the narrower of their two, so their titles truncate once, not
+  on every frame, and no tab or New session passes the window's edge.
+- **The sidebar's lists** glide their selection and hover surfaces from row to row, and
+  their cards to new places when the list changes; [sidebar.md](sidebar.md) has the rules
+  and the springs.
 - **Tabs**: an opened tab's slot grows from nothing on `TAB_ENTER` (0.25 s) and a closed
   one collapses in place on `TAB_EXIT` (0.2 s) before it leaves, so its neighbors give way
   gradually; the tab inside keeps its settled width and the slot's edge cuts it. Reopened
