@@ -1,9 +1,10 @@
 //! The composer's toolbar: Attach, the session's choices as pills, and Send.
-//! Attach and Send don't act until agents come; each pill opens its picker.
+//! Attach opens the system's file picker and each pill its menu; Send doesn't
+//! act until agents come.
 
 use gpui::{
-    Anchor, ClickEvent, Context, Focusable, IntoElement, ParentElement, Styled, Window, div,
-    prelude::*, svg,
+    Anchor, ClickEvent, Context, Focusable, IntoElement, ParentElement, PathPromptOptions, Styled,
+    Window, div, prelude::*, svg,
 };
 use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, Colors, DISABLED_OPACITY, ICON_SIZE, ICON_SIZE_SMALL, SPACE_1,
@@ -39,14 +40,50 @@ impl Composer {
             .child(icon_button(
                 "composer-attach",
                 Icon::NewTab,
-                "Attachments come with agents",
-                false,
+                "Attach files",
+                true,
                 colors,
-                |button| button,
+                |button| button.on_click(cx.listener(Self::pick_attachments)),
             ))
             .children(pills)
             .child(div().flex_1())
             .child(send_button(has_message, colors))
+    }
+
+    /// Opens the system's picker for files and folders, several at once;
+    /// cancelling it changes nothing.
+    fn pick_attachments(&mut self, _: &ClickEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if self.picking {
+            return;
+        }
+        self.picking = true;
+        let picked = cx.prompt_for_paths(PathPromptOptions {
+            files: true,
+            directories: true,
+            multiple: true,
+            prompt: Some("Attach".into()),
+        });
+        cx.spawn_in(window, async move |composer, cx| {
+            let picked = picked.await;
+            composer
+                .update(cx, |composer, cx| {
+                    composer.picking = false;
+                    match picked {
+                        Ok(Ok(Some(paths))) => composer.attach(paths, cx),
+                        Ok(Err(error)) => {
+                            composer.problem = Some(
+                                format!("Couldn't open the file picker ({error}). Try again.")
+                                    .into(),
+                            );
+                            cx.notify();
+                        }
+                        // Cancelled, or the picker went away with the window.
+                        Ok(Ok(None)) | Err(_) => {}
+                    }
+                })
+                .ok();
+        })
+        .detach();
     }
 
     /// A choice's current value and a chevron, filled under the pointer and

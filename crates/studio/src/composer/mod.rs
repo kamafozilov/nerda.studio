@@ -5,8 +5,12 @@
 //! its project; once the session has seen work, the composer docks to the
 //! card's bottom, leaving the space above for the messages.
 
+mod attachments;
+mod chips;
 mod pickers;
 mod toolbar;
+
+use std::path::{Path, PathBuf};
 
 use gpui::{
     App, ClickEvent, Context, Entity, FocusHandle, Focusable, FontWeight, IntoElement, KeyBinding,
@@ -18,6 +22,8 @@ use theme::{
     HAIRLINE, ICON_SIZE_SMALL, SPACE_1, SPACE_2, SPACE_3, TEXT_HEADING, TEXT_SMALL, Theme,
 };
 use workspace::{Head, SessionId};
+
+use attachments::Attachments;
 
 use crate::{
     assets::Icon,
@@ -47,6 +53,12 @@ pub struct Composer {
     input: Entity<TextInput>,
     /// The picker open over the toolbar, if one is.
     menu: Menu<Composer, pickers::Picker>,
+    attachments: Attachments,
+    /// Why the last attempt to attach fell short, shown under the box until
+    /// the next edit.
+    problem: Option<SharedString>,
+    /// The system's file picker is open: a second click must not open another.
+    picking: bool,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -63,7 +75,10 @@ impl Composer {
             )
         });
         let subscriptions = vec![
-            cx.subscribe(&input, |_, _, TextInputEvent::Changed, cx| cx.notify()),
+            cx.subscribe(&input, |composer, _, TextInputEvent::Changed, cx| {
+                composer.problem = None;
+                cx.notify();
+            }),
             cx.observe(&store, |_, _, cx| cx.notify()),
         ];
         Self {
@@ -71,13 +86,30 @@ impl Composer {
             session,
             input,
             menu: Menu::new(|composer| &mut composer.menu, cx),
+            attachments: Attachments::default(),
+            problem: None,
+            picking: false,
             _subscriptions: subscriptions,
         }
     }
 
-    /// Whether there is something to send: whitespace alone is not.
+    /// Whether there is something to send: an attachment, or text that is
+    /// not whitespace alone.
     fn has_message(&self, cx: &App) -> bool {
-        !self.input.read(cx).text().trim().is_empty()
+        !self.attachments.is_empty() || !self.input.read(cx).text().trim().is_empty()
+    }
+
+    /// Attaches the paths not attached yet, and says so if some found no room.
+    fn attach(&mut self, paths: Vec<PathBuf>, cx: &mut Context<Self>) {
+        let refused = self.attachments.add(paths);
+        self.problem = (refused > 0).then(|| attachments::refused_text(refused).into());
+        cx.notify();
+    }
+
+    fn detach(&mut self, path: &Path, cx: &mut Context<Self>) {
+        self.attachments.remove(path);
+        self.problem = None;
+        cx.notify();
     }
 
     fn send(&mut self, _: &Send, _: &mut Window, _: &mut Context<Self>) {}
@@ -109,8 +141,22 @@ impl Composer {
             .on_click(
                 cx.listener(move |_, _: &ClickEvent, window, cx| window.focus(&input_focus, cx)),
             )
+            .children(self.render_chips(cx))
             .child(self.input.clone())
             .child(toolbar)
+    }
+
+    /// Why attaching fell short, under the box and in line with its text.
+    fn render_problem(&self, cx: &App) -> Option<impl IntoElement> {
+        let problem = self.problem.clone()?;
+        Some(
+            div()
+                .mt(SPACE_2)
+                .px(SPACE_3)
+                .text_size(TEXT_SMALL)
+                .text_color(Theme::of(cx).colors.text_primary)
+                .child(problem),
+        )
     }
 
     /// Where the session runs, under the box and in line with its text: the
@@ -211,6 +257,7 @@ impl Render for Composer {
             .flex_col()
             .when(draft, |column| column.children(self.render_heading(cx)))
             .child(self.render_box(window, cx))
+            .children(self.render_problem(cx))
             .children(self.render_context(cx));
         div()
             .key_context(CONTEXT)

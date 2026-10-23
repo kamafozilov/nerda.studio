@@ -61,6 +61,9 @@ pub struct Colors {
     /// Fill of a key cap, a shortcut shown beside a label; its text uses
     /// `text_secondary`.
     pub key_background: Hsla,
+    /// Fill of an attachment chip in the composer, at rest; its name uses
+    /// `text_primary`, its icon `text_secondary`.
+    pub chip_background: Hsla,
     /// Titles and body text.
     pub text_primary: Hsla,
     /// Supporting text and icons at rest.
@@ -120,6 +123,7 @@ impl Theme {
                 popover_background: rgba(palette.popover).into(),
                 scrim: rgba(palette.scrim).into(),
                 key_background: rgba(palette.key).into(),
+                chip_background: rgba(palette.chip).into(),
                 text_primary: rgba(palette.text_primary).into(),
                 text_secondary: rgba(palette.text_secondary).into(),
                 text_secondary_on_surface: rgba(palette.text_secondary_on_surface).into(),

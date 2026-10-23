@@ -19,6 +19,8 @@ pub enum Icon {
     Close,
     /// The Design page.
     Design,
+    /// An attached file that is neither an image nor a folder.
+    File,
     /// Forward to the tab Back left.
     Forward,
     Folder,
@@ -26,6 +28,8 @@ pub enum Icon {
     FolderUp,
     /// The branch a session's project is on.
     GitBranch,
+    /// An attached image.
+    Image,
     NewSession,
     /// A new tab in the top row.
     NewTab,
@@ -61,11 +65,13 @@ impl Icon {
             Self::ChevronDown => "icons/arrow-down-01.svg",
             Self::Close => "icons/cancel-01.svg",
             Self::Design => "icons/pen-tool-03.svg",
+            Self::File => "icons/file-02.svg",
             Self::Forward => "icons/arrow-right-01.svg",
             Self::Folder => "icons/folder-01.svg",
             Self::FolderAdd => "icons/folder-add.svg",
             Self::FolderUp => "icons/folder-upload.svg",
             Self::GitBranch => "icons/git-branch.svg",
+            Self::Image => "icons/image-01.svg",
             Self::NewSession => "icons/pencil-edit-02.svg",
             Self::NewTab => "icons/add-01.svg",
             Self::Notes => "icons/note-01.svg",
@@ -118,6 +124,10 @@ const FILES: &[(&str, &[u8])] = &[
         include_bytes!("../assets/icons/cancel-01.svg"),
     ),
     (
+        "icons/file-02.svg",
+        include_bytes!("../assets/icons/file-02.svg"),
+    ),
+    (
         "icons/folder-01.svg",
         include_bytes!("../assets/icons/folder-01.svg"),
     ),
@@ -141,6 +151,10 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/git-pull-request.svg",
         include_bytes!("../assets/icons/git-pull-request.svg"),
+    ),
+    (
+        "icons/image-01.svg",
+        include_bytes!("../assets/icons/image-01.svg"),
     ),
     (
         "icons/list-filter.svg",

@@ -95,6 +95,12 @@ pub const COMPOSER_RADIUS: Pixels = px(12.);
 pub const COMPOSER_MIN_LINES: usize = 2;
 /// Lines of text the composer grows to before it scrolls inside.
 pub const COMPOSER_MAX_LINES: usize = 10;
+/// Widest an attachment chip grows; a longer name truncates in the middle.
+pub const CHIP_MAX_WIDTH: Pixels = px(200.);
+/// Tallest the composer's row of chips grows before it scrolls: two rows and
+/// half a third, the half showing there is more, so a draft's composer with
+/// ten lines of text still fits the card at the window's minimum size.
+pub const CHIPS_MAX_HEIGHT: Pixels = px(78.);
 
 /// A heading over the main area's content, such as a draft session's question.
 pub const TEXT_HEADING: Pixels = px(18.);
