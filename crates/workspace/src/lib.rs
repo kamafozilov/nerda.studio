@@ -1,6 +1,7 @@
 //! Projects (folders on disk) and the agent sessions inside them, with persistence.
 
 mod age;
+mod agents;
 pub mod browse;
 mod error;
 mod git;
@@ -14,6 +15,10 @@ mod tabs;
 use std::path::Path;
 
 pub use age::{age_changes_in, compact_age};
+pub use agents::{
+    AGENTS, Access, AccessMode, Agent, AgentChoice, AgentId, Effort, EffortLevel, Model, ModelId,
+    agent,
+};
 pub use error::{AddProjectError, LoadError};
 pub use git::{Head, head};
 pub use history::Visits;
@@ -45,6 +50,8 @@ pub struct Workspace {
     /// Open tabs, in order. Every project's sessions share this list with the
     /// pages, which show beside whichever project is on screen.
     tabs: Vec<Tab>,
+    /// The choice last made in any session, which new sessions start from.
+    last_choice: AgentChoice,
 }
 
 impl Workspace {
@@ -70,15 +77,17 @@ impl Workspace {
     }
 
     /// Returns the project's unused draft session, or creates one; `None` if the project is unknown.
+    /// Either way it starts from the last choice made.
     ///
     /// Returns `Option` so a stale id cannot produce a session that belongs to nothing.
     pub fn new_session(&mut self, project: ProjectId, now: Timestamp) -> Option<SessionId> {
         self.project(project)?;
         if let Some(draft) = self
             .sessions
-            .iter()
+            .iter_mut()
             .find(|session| session.project == project && session.is_empty())
         {
+            draft.choice = self.last_choice.clone();
             return Some(draft.id);
         }
         let id = SessionId(self.allocate_id());
@@ -88,8 +97,23 @@ impl Workspace {
             title: NEW_SESSION_TITLE.to_owned(),
             created_at: now,
             last_activity_at: None,
+            choice: self.last_choice.clone(),
         });
         Some(id)
+    }
+
+    /// The choice last made in any session, which new sessions start from.
+    pub fn last_choice(&self) -> &AgentChoice {
+        &self.last_choice
+    }
+
+    /// Sets what runs `session`, and what new sessions start from; does
+    /// nothing for an unknown session.
+    pub fn set_choice(&mut self, session: SessionId, choice: AgentChoice) {
+        if let Some(session) = self.sessions.iter_mut().find(|item| item.id == session) {
+            session.choice = choice.clone();
+            self.last_choice = choice;
+        }
     }
 
     /// Whether any project exists; cheap enough to call on every render.

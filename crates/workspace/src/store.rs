@@ -7,8 +7,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    LoadError, Page, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, Tab,
-    Workspace,
+    AgentChoice, LoadError, Page, Project, ProjectId, ProjectScope, Session, SessionId,
+    SessionSort, Tab, Workspace,
 };
 
 /// Format version written by this build; files with any other version are refused.
@@ -63,6 +63,7 @@ struct FileRef<'a> {
     /// pages still reads them.
     tabs: Vec<SessionId>,
     pages: Vec<PageTabRef>,
+    last_choice: &'a AgentChoice,
 }
 
 /// A page's tab and its index among all tabs.
@@ -98,6 +99,9 @@ struct FileV1 {
     tabs: Vec<SessionId>,
     #[serde(default)]
     pages: Vec<PageTab>,
+    /// Files written before sessions had a choice have none.
+    #[serde(default)]
+    last_choice: AgentChoice,
 }
 
 #[derive(Deserialize)]
@@ -155,6 +159,7 @@ impl Workspace {
                     Tab::Session(_) => None,
                 })
                 .collect(),
+            last_choice: &self.last_choice,
         };
         serde_json::to_vec_pretty(&file).map_err(io::Error::other)
     }
@@ -193,6 +198,7 @@ impl Workspace {
             projects,
             sessions,
             sort: file.sort,
+            last_choice: file.last_choice,
             ..Workspace::default()
         };
         workspace.set_scope(file.scope);

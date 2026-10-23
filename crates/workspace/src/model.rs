@@ -3,6 +3,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
+use crate::AgentChoice;
+
 /// Identifies a project; never reused within one workspace.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ProjectId(pub u64);
@@ -49,6 +51,9 @@ pub struct Session {
     pub created_at: Timestamp,
     /// When the last message was sent; `None` until the first one.
     pub last_activity_at: Option<Timestamp>,
+    /// What runs the session; files from before there was a choice hold none.
+    #[serde(default)]
+    pub choice: AgentChoice,
 }
 
 impl Session {
