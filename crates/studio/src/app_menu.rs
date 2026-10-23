@@ -17,7 +17,7 @@ actions!(
     studio,
     [
         /// Quits at once: the menu's Quit, and Cmd-Q while no window is open.
-        /// Cmd-Q in the window asks for a second press; see `RequestQuit`.
+        /// Cmd-Q in the window asks first; see `RequestQuit`.
         Quit,
         /// Hides the app; a click on its Dock icon shows it again.
         Hide,
