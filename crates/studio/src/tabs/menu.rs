@@ -6,14 +6,12 @@ use gpui::{
     Point, Styled, Window, anchored, deferred, div, point, prelude::*, px,
 };
 use theme::{
-    CONTROL_RADIUS, HAIRLINE, MENU_RADIUS, MENU_WIDTH, ROW_HEIGHT, SPACE_1, SPACE_2, SPACE_3, Theme,
+    CONTROL_RADIUS, DISABLED_OPACITY, HAIRLINE, MENU_RADIUS, MENU_WIDTH, ROW_HEIGHT, SPACE_1,
+    SPACE_2, SPACE_3, Theme,
 };
 use workspace::{Tab, Timestamp, Workspace};
 
 use super::{DismissMenu, TabStrip};
-
-/// Opacity of a choice that can't apply here, as for disabled controls.
-const DISABLED_OPACITY: f32 = 0.4;
 
 const MAC: bool = cfg!(target_os = "macos");
 

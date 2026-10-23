@@ -6,8 +6,8 @@ use gpui::{
     Stateful, Styled, Window, div, prelude::*, svg,
 };
 use theme::{
-    CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, HAIRLINE, ICON_SIZE, ICON_SIZE_SMALL,
-    SPACE_1, SPACE_2, Theme,
+    CONTROL_RADIUS, CONTROL_SIZE, Colors, DISABLED_OPACITY, FIELD_TARGET_SIZE, HAIRLINE, ICON_SIZE,
+    ICON_SIZE_SMALL, SPACE_1, SPACE_2, Theme,
 };
 use workspace::ProjectScope;
 
@@ -17,10 +17,6 @@ use crate::{
     key_cap::{Key, key_cap},
     tooltip::{TooltipExt, WithTooltip},
 };
-
-/// Opacity of a control that can't be used yet; disabled controls are exempt
-/// from contrast minimums.
-const DISABLED_OPACITY: f32 = 0.4;
 
 /// A square icon-only control with a tooltip naming it. Chain listeners on
 /// `build`; the tooltip wraps the result.

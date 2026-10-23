@@ -7,9 +7,9 @@ use gpui::{
     prelude::*, px, svg, uniform_list,
 };
 use theme::{
-    CONTROL_RADIUS, CONTROL_SIZE, Colors, DIALOG_RADIUS, FIELD_TARGET_SIZE, HEADER_HEIGHT,
-    ICON_SIZE, KEY_CAP_SIZE, PALETTE_FIELD_HEIGHT, PALETTE_LIST_HEIGHT, PALETTE_WIDTH, ROW_HEIGHT,
-    SPACE_1, SPACE_2, SPACE_3, Theme,
+    CONTROL_RADIUS, CONTROL_SIZE, Colors, DIALOG_RADIUS, DISABLED_OPACITY, FIELD_TARGET_SIZE,
+    HEADER_HEIGHT, ICON_SIZE, KEY_CAP_SIZE, PALETTE_FIELD_HEIGHT, PALETTE_LIST_HEIGHT,
+    PALETTE_WIDTH, ROW_HEIGHT, SPACE_1, SPACE_2, SPACE_3, Theme,
 };
 use workspace::browse::{BrowseQuery, ListError, Target};
 
@@ -18,9 +18,6 @@ use crate::{
     assets::Icon,
     key_cap::{Key, key_cap},
 };
-
-/// Opacity of a control that can't be used yet, as in the sidebar.
-const DISABLED_OPACITY: f32 = 0.4;
 
 const MAC: bool = cfg!(target_os = "macos");
 

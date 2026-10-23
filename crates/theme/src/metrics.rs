@@ -27,6 +27,9 @@ pub const TAB_GAP: Pixels = px(2.);
 /// Side of a square icon button, which is also its hit area.
 pub const CONTROL_SIZE: Pixels = px(28.);
 pub const CONTROL_RADIUS: Pixels = px(6.);
+/// Opacity of a control or a menu item that can't act yet: it stays in view,
+/// its tooltip saying why. Disabled controls are exempt from contrast minimums.
+pub const DISABLED_OPACITY: f32 = 0.4;
 /// Side of an icon inside a control.
 pub const ICON_SIZE: Pixels = px(16.);
 /// Side of an icon inside a field, such as its clear button, or on a session
