@@ -5,7 +5,9 @@ use gpui::{
     AnyElement, ClickEvent, Context, FocusHandle, IntoElement, MouseButton, ParentElement, Pixels,
     Point, Styled, Window, anchored, deferred, div, point, prelude::*, px,
 };
-use theme::{CONTROL_RADIUS, MENU_WIDTH, ROW_HEIGHT, SPACE_1, SPACE_2, SPACE_3, Theme};
+use theme::{
+    CONTROL_RADIUS, HAIRLINE, MENU_RADIUS, MENU_WIDTH, ROW_HEIGHT, SPACE_1, SPACE_2, SPACE_3, Theme,
+};
 use workspace::{Tab, Timestamp, Workspace};
 
 use super::{DismissMenu, TabStrip};
@@ -196,10 +198,10 @@ impl TabStrip {
                                     }))
                                     .occlude()
                                     .w(MENU_WIDTH)
-                                    .p(SPACE_1)
+                                    .p(SPACE_1 - HAIRLINE)
                                     .flex()
                                     .flex_col()
-                                    .rounded(CONTROL_RADIUS)
+                                    .rounded(MENU_RADIUS)
                                     .border_1()
                                     .border_color(colors.border)
                                     .bg(colors.popover_background)

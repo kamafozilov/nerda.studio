@@ -12,7 +12,7 @@ use gpui::{
     SharedString, Stateful, Styled, Task, WeakEntity, Window, deferred, div, prelude::*,
 };
 use theme::{
-    CONTROL_RADIUS, SPACE_1, SPACE_2, TEXT_BODY, Theme,
+    CONTROL_RADIUS, SPACE_1, SPACE_2, TEXT_BODY, TOOLTIP_HEIGHT, Theme,
     motion::{TOOLTIP_DELAY, TOOLTIP_WARM},
 };
 
@@ -155,9 +155,11 @@ impl RenderOnce for WithTooltip {
                         .child(
                             div()
                                 .flex_none()
+                                .h(TOOLTIP_HEIGHT)
+                                .flex()
+                                .items_center()
                                 .whitespace_nowrap()
                                 .px(SPACE_2)
-                                .py(SPACE_1)
                                 .rounded(CONTROL_RADIUS)
                                 .border_1()
                                 .border_color(colors.border)

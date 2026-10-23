@@ -105,7 +105,8 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
 - **Tooltips** sit centered above their control, or below it in the top row, where there
   is no room above; `SPACE_1` clear of it, never at the pointer, so they don't cover the
   controls beside it (`crates/studio/src/tooltip.rs`; GPUI's `.tooltip()` follows the
-  pointer and isn't used). One shows after the pointer rests `TOOLTIP_DELAY` (500 ms);
+  pointer and isn't used). One is `TOOLTIP_HEIGHT` (24) high, hairline included. It
+  shows after the pointer rests `TOOLTIP_DELAY` (500 ms);
   within `TOOLTIP_WARM` (300 ms) of another, at once. A press hides it.
 - **Rows** are `ROW_HEIGHT` (28), spanning the list with `SPACE_2` sides and a rounded
   surface inside: `row_selected` under the selection, `hover` under the pointer or the
@@ -149,10 +150,11 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   Quit, and `Cmd-Q` with no window open, quit at once.
 - **Closing the window** leaves the app running, as Mac apps do; a click on its Dock icon
   opens the window again on the same projects. Elsewhere closing it quits.
-- **Menus** are `popover_background` (opaque) with a hairline, a large shadow and
-  `MENU_WIDTH` (220), growing to 360 before they scroll. A window-wide backdrop under the
-  menu takes the click that closes it, so that click presses nothing else; Escape closes
-  it too.
+- **Menus** are `popover_background` (opaque) with a hairline, a large shadow,
+  `MENU_RADIUS` (10: the items' `CONTROL_RADIUS` plus the `SPACE_1` between them and the
+  menu's outer edge, the hairline included, so the corners nest) and `MENU_WIDTH` (220),
+  growing to 360 before they scroll. A window-wide backdrop under the menu takes the
+  click that closes it, so that click presses nothing else; Escape closes it too.
 - **Text fields** look like a place to type before they're focused: `field_background`
   fill, a `border` hairline, `CONTROL_RADIUS`; focus turns the hairline `focus_ring`. That
   is text primary at 48% (dark) and 53% (light), the faintest that keeps 3:1 against the

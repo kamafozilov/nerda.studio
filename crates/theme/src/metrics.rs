@@ -41,6 +41,12 @@ pub const ROW_HEIGHT: Pixels = px(28.);
 pub const ROW_GAP: Pixels = px(2.);
 /// Width of a menu that opens from a control.
 pub const MENU_WIDTH: Pixels = px(220.);
+/// Corners of a menu: its items' `CONTROL_RADIUS` plus the `SPACE_1` between
+/// them and its outer edge, hairline included, so the corners nest.
+pub const MENU_RADIUS: Pixels = px(10.);
+/// A hairline: the 1 px border of a field, a card or a menu. Content inside a
+/// bordered box is padded this much less, so it lines up with unbordered rows.
+pub const HAIRLINE: Pixels = px(1.);
 
 /// Width of a palette: a dialog of one field over a list, such as Add project.
 pub const PALETTE_WIDTH: Pixels = px(576.);
@@ -50,6 +56,8 @@ pub const PALETTE_FIELD_HEIGHT: Pixels = px(44.);
 pub const PALETTE_LIST_HEIGHT: Pixels = px(288.);
 /// Corners of a dialog, rounder than a control's.
 pub const DIALOG_RADIUS: Pixels = px(12.);
+/// Height of a tooltip, hairline included.
+pub const TOOLTIP_HEIGHT: Pixels = px(24.);
 /// Height and least width of a key cap, the shortcut beside a button's label or in
 /// a hint: `FIELD_TARGET_SIZE` less a 2 px inset each side.
 pub const KEY_CAP_SIZE: Pixels = px(20.);

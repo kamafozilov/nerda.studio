@@ -5,7 +5,10 @@ use gpui::{
     Anchor, AnyElement, ClickEvent, Context, ElementId, IntoElement, MouseButton, ParentElement,
     SharedString, Styled, Window, anchored, deferred, div, point, prelude::*, px, svg,
 };
-use theme::{CONTROL_RADIUS, ICON_SIZE, MENU_WIDTH, ROW_HEIGHT, SPACE_1, SPACE_2, Theme};
+use theme::{
+    CONTROL_RADIUS, HAIRLINE, ICON_SIZE, MENU_RADIUS, MENU_WIDTH, ROW_HEIGHT, SPACE_1, SPACE_2,
+    Theme,
+};
 use workspace::{ProjectScope, SessionSort};
 
 use super::{Sidebar, header::icon_button};
@@ -107,10 +110,10 @@ impl Sidebar {
             .w(MENU_WIDTH)
             .max_h(MENU_MAX_HEIGHT)
             .overflow_y_scroll()
-            .p(SPACE_1)
+            .p(SPACE_1 - HAIRLINE)
             .flex()
             .flex_col()
-            .rounded(CONTROL_RADIUS)
+            .rounded(MENU_RADIUS)
             .border_1()
             .border_color(colors.border)
             .bg(colors.popover_background)
@@ -130,7 +133,7 @@ impl Sidebar {
                 cx,
                 |workspace| workspace.set_sort(SessionSort::Created),
             ))
-            .child(div().my(SPACE_1).h(px(1.)).bg(colors.border))
+            .child(div().my(SPACE_1).h(HAIRLINE).bg(colors.border))
             .child(self.section_label("Project", cx))
             .child(self.menu_item(
                 "scope-all",
