@@ -2,6 +2,7 @@
 
 use serde_json::Value;
 
+use crate::failure::Failure;
 use crate::protocol::{Command, Decision, Message, MessageId, PermissionRequest, ToolUseId, Usage};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -26,8 +27,7 @@ pub enum Ending {
     Finished(Finished),
     /// Stopped, before or while it ran.
     Interrupted,
-    /// In words to show.
-    Errored(String),
+    Failed(Failure),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -119,6 +119,12 @@ impl Turn {
         self.message
             .as_ref()
             .is_some_and(|message| message.id == *id)
+    }
+
+    /// Whether the agent wrote any text in reply.
+    pub(super) fn replied(&self) -> bool {
+        let text = |item: &Item| matches!(item, Item::Text(text) if !text.text.trim().is_empty());
+        self.items.iter().any(text)
     }
 }
 

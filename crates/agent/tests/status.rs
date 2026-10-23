@@ -2,7 +2,7 @@ mod support;
 
 use agent::protocol::parse;
 use agent::{
-    Command, Ending, Event, Incoming, Item, Message, PermissionState, Status, ToolStatus,
+    Command, Ending, Event, Failure, Incoming, Item, Message, PermissionState, Status, ToolStatus,
     Transcript, TurnState,
 };
 use support::{Line, Player, says};
@@ -26,9 +26,10 @@ fn the_agent_quitting_mid_turn_ends_what_it_had_open() {
     let turn = &player.transcript.turns()[0];
     assert_eq!(
         turn.state,
-        TurnState::Ended(Ending::Errored(
-            "The agent quit before it finished (exit code 1).".to_owned()
-        ))
+        TurnState::Ended(Ending::Failed(Failure::Crashed {
+            code: Some(1),
+            stderr: String::new()
+        }))
     );
     let [Item::Tool(call), Item::Permission(permission)] = &turn.items[..] else {
         panic!("items: {:?}", turn.items);
@@ -48,9 +49,7 @@ fn a_message_sent_after_the_agent_quit_shows_it_was_not_sent() {
     player.send(Command::Send(Message::new("still there?", Vec::new())));
     assert_eq!(
         player.transcript.turns()[0].state,
-        TurnState::Ended(Ending::Errored(
-            "The agent wasn't running, so the message wasn't sent.".to_owned()
-        ))
+        TurnState::Ended(Ending::Failed(Failure::NotSent))
     );
     assert_eq!(player.transcript.status(), &Status::Exited { code: None });
 }
@@ -83,7 +82,7 @@ fn a_new_process_picks_the_session_up_with_its_turns() {
 fn a_session_that_could_not_start_has_failed_and_stays_failed() {
     let mut transcript = Transcript::new();
     transcript.apply(&Event::Sent(Command::Send(Message::new("hi", Vec::new()))));
-    let message = "Couldn't start claude: it isn't installed, or isn't on PATH.".to_owned();
+    let message = "Couldn't find claude.".to_owned();
     transcript.apply(&Event::Failed(message.clone()));
     assert_eq!(
         transcript.status(),
@@ -93,7 +92,7 @@ fn a_session_that_could_not_start_has_failed_and_stays_failed() {
     );
     assert_eq!(
         transcript.turns()[0].state,
-        TurnState::Ended(Ending::Errored(message.clone()))
+        TurnState::Ended(Ending::Failed(Failure::Other(message.clone())))
     );
     transcript.apply(&Event::Exited { code: Some(1) });
     assert_eq!(transcript.status(), &Status::Failed { message });
@@ -176,5 +175,6 @@ fn lines_that_tell_nothing_about_turns_change_nothing() {
     ] {
         player.receive(line);
     }
-    assert_eq!(player.transcript, before);
+    assert_eq!(player.transcript.turns(), before.turns());
+    assert_eq!(player.transcript.status(), before.status());
 }

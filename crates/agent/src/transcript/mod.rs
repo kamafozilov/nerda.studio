@@ -14,6 +14,7 @@ pub use turn::{
 };
 
 use crate::event::Event;
+use crate::failure::{self, Failure, Signals, StderrTail};
 use crate::protocol::{
     Command, Decision, Incoming, MessageId, Outcome, RequestId, Stage, ToolUseId, TurnResult,
 };
@@ -26,6 +27,10 @@ pub struct Transcript {
     streaming: Option<Streaming>,
     /// What the process had cost when its last turn ended.
     spent: f64,
+    /// What the running turn ran into that may explain how it ends.
+    signals: Signals,
+    /// The last of what the process wrote on stderr.
+    stderr: StderrTail,
 }
 
 impl Default for Transcript {
@@ -42,6 +47,8 @@ impl Transcript {
             status: Status::Starting,
             streaming: None,
             spent: 0.0,
+            signals: Signals::default(),
+            stderr: StderrTail::default(),
         }
     }
 
@@ -71,12 +78,23 @@ impl Transcript {
             Event::Started => {
                 self.spent = 0.0;
                 self.streaming = None;
+                self.signals = Signals::default();
+                self.stderr = StderrTail::default();
             }
             Event::Sent(command) => self.sent(command),
             Event::Received(incoming) => self.received(incoming),
-            Event::Exited { code } => self.end_open(&Ending::Errored(quit_message(*code))),
-            Event::Failed(message) => self.end_open(&Ending::Errored(message.clone())),
-            Event::Unreadable { .. } | Event::Stderr(_) => {}
+            Event::Exited { code } => {
+                let stderr = self.stderr.text();
+                self.end_open(&Ending::Failed(Failure::Crashed {
+                    code: *code,
+                    stderr,
+                }));
+            }
+            Event::Failed(message) => {
+                self.end_open(&Ending::Failed(Failure::Other(message.clone())))
+            }
+            Event::Stderr(line) => self.stderr.push(line),
+            Event::Unreadable { .. } => {}
         }
         self.status = self.status.next(event, self.work());
     }
@@ -86,7 +104,7 @@ impl Transcript {
             Command::Send(message) => {
                 let gone = matches!(self.status, Status::Exited { .. } | Status::Failed { .. });
                 let state = if gone {
-                    TurnState::Ended(Ending::Errored(NOT_RUNNING.to_owned()))
+                    TurnState::Ended(Ending::Failed(Failure::NotSent))
                 } else {
                     TurnState::Queued
                 };
@@ -130,7 +148,22 @@ impl Transcript {
                 }
             }
             Incoming::Stream(stream) => self.stream(stream),
-            Incoming::Assistant(assistant) => self.assistant(assistant),
+            Incoming::Assistant(assistant) => match &assistant.error {
+                // The agent's own words about a failed request: they show as
+                // the turn's failure, not as a reply.
+                Some(error) => {
+                    let said = assistant.blocks.iter().filter_map(|block| match block {
+                        crate::protocol::Block::Text(text) => Some(text.as_str()),
+                        _ => None,
+                    });
+                    self.signals.api_error =
+                        Some((error.clone(), said.collect::<Vec<_>>().join("\n")));
+                }
+                None => self.assistant(assistant),
+            },
+            Incoming::RateLimit(limit) => {
+                self.signals.limit = limit.blocks().then(|| limit.clone())
+            }
             Incoming::ToolResults(results) => results.iter().for_each(|r| self.tool_result(r)),
             Incoming::Permission(request) => {
                 let turn = match &request.tool_use_id {
@@ -156,14 +189,21 @@ impl Transcript {
     fn finish(&mut self, result: &TurnResult) {
         let cost_usd = (result.total_cost_usd - self.spent).max(0.0);
         self.spent = result.total_cost_usd;
-        let ending = match &result.outcome {
-            Outcome::Completed => Ending::Finished(Finished {
-                cost_usd,
-                usage: result.usage,
-                duration_ms: result.duration_ms,
-            }),
+        let signals = std::mem::take(&mut self.signals);
+        let finished = Ending::Finished(Finished {
+            cost_usd,
+            usage: result.usage,
+            duration_ms: result.duration_ms,
+        });
+        let ending = |turn: &Turn| match &result.outcome {
+            // A turn that ran into a failed request or a rejecting limit and
+            // has no reply to show failed, whatever its result says.
+            Outcome::Completed if !signals.is_empty() && !turn.replied() => {
+                Ending::Failed(failure::classify(&signals, None))
+            }
+            Outcome::Completed => finished.clone(),
             Outcome::Interrupted => Ending::Interrupted,
-            Outcome::Failed(message) => Ending::Errored(message.clone()),
+            Outcome::Failed(error) => Ending::Failed(failure::classify(&signals, Some(error))),
         };
         let mut answered: Vec<usize> = result
             .messages
@@ -178,6 +218,7 @@ impl Transcript {
             }));
         }
         for turn in answered {
+            let ending = ending(&self.turns[turn]);
             self.end(turn, &ending);
         }
     }
@@ -258,14 +299,5 @@ impl Transcript {
             busy: self.turns.iter().any(|turn| !turn.is_ended()),
             asking: self.pending_permissions().next().is_some(),
         }
-    }
-}
-
-const NOT_RUNNING: &str = "The agent wasn't running, so the message wasn't sent.";
-
-fn quit_message(code: Option<i32>) -> String {
-    match code {
-        Some(code) => format!("The agent quit before it finished (exit code {code})."),
-        None => "The agent was stopped before it finished.".to_owned(),
     }
 }

@@ -40,6 +40,19 @@ pub struct Assistant {
     pub blocks: Vec<Block>,
     /// The turn was interrupted: these blocks are as far as they got.
     pub aborted: bool,
+    /// A request to the model failed: the message is the agent's own, telling
+    /// the person what went wrong, not a reply.
+    pub error: Option<ApiError>,
+}
+
+/// A failed request to the model, as an assistant message reports it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ApiError {
+    /// Such as `authentication_failed`, `rate_limit`, `overloaded`,
+    /// `model_not_found` or `server_error`.
+    pub code: String,
+    /// The model service's HTTP status, when it answered.
+    pub status: Option<u16>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -144,10 +157,15 @@ struct AssistantLine {
     message: AssistantMessage,
     #[serde(default)]
     aborted: bool,
+    #[serde(default)]
+    error: Option<String>,
+    #[serde(default)]
+    api_error_status: Option<u16>,
 }
 
 #[derive(Deserialize)]
 struct AssistantMessage {
+    #[serde(default)]
     id: String,
     #[serde(default)]
     content: Vec<Value>,
@@ -190,10 +208,15 @@ pub(super) fn assistant(value: &Value) -> Parsed {
             })
         })
         .collect::<Result<_, serde_json::Error>>()?;
+    let error = line.error.map(|code| ApiError {
+        code,
+        status: line.api_error_status,
+    });
     Ok(Some(Incoming::Assistant(Assistant {
         message_id: line.message.id,
         blocks,
         aborted: line.aborted,
+        error,
     })))
 }
 

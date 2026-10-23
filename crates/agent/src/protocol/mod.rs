@@ -12,9 +12,10 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 pub use incoming::{
-    AgentStatus, Assistant, Block, BlockKind, Delta, Incoming, Init, Outcome, ParseError,
-    PermissionRequest, RateLimit, Stage, Stream, ToolResult, TurnResult, Usage, parse,
+    AgentStatus, ApiError, Assistant, Block, BlockKind, Delta, Incoming, Init, Outcome, ParseError,
+    PermissionRequest, RateLimit, Stage, Stream, ToolResult, TurnError, TurnResult, Usage, parse,
 };
+pub(crate) use incoming::{epoch_seconds, is_diagnostic};
 pub use outgoing::{
     Attachment, Command, Decision, INITIALIZE, Image, ImageFormat, Message, encode, encode_decline,
     encode_initialize,

@@ -407,19 +407,3 @@ fn a_turn_the_agent_begins_on_its_own_has_no_message() {
         TurnState::Ended(Ending::Finished(_))
     ));
 }
-
-#[test]
-fn a_failed_turn_shows_the_agent_s_words() {
-    let mut player = ready();
-    let message = Message::new("go on", Vec::new());
-    player.send(Command::Send(message.clone()));
-    player.receive(&format!(
-        r#"{{"type":"result","subtype":"success","is_error":true,"result":"API Error: 529 Overloaded","session_id":"s","total_cost_usd":0,"duration_ms":10,"usage":{{}},"user_message_uuid":"{}"}}"#,
-        message.id.0
-    ));
-    assert_eq!(
-        player.transcript.turns()[0].state,
-        TurnState::Ended(Ending::Errored("API Error: 529 Overloaded".to_owned()))
-    );
-    assert_eq!(player.transcript.status(), &Status::Ready);
-}

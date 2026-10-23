@@ -3,7 +3,7 @@
 use serde::Deserialize;
 use serde_json::Value;
 
-use super::{Incoming, Parsed, read};
+use super::{Incoming, Parsed, is_diagnostic, read, time};
 use crate::protocol::MessageId;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -32,21 +32,71 @@ pub struct Usage {
 pub enum Outcome {
     Completed,
     Interrupted,
-    /// The agent's own words for what went wrong.
-    Failed(String),
+    Failed(TurnError),
 }
 
+/// What the agent said about a turn that failed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TurnError {
+    /// Its own words: the result's text, else its errors; the agent's
+    /// internal diagnostics left out. Empty when it gave none.
+    pub message: String,
+    /// Such as `success`, `error_during_execution` or `error_max_turns`.
+    pub subtype: String,
+    /// Such as `api_error` or `prompt_too_long`.
+    pub terminal_reason: Option<String>,
+    /// The model service's HTTP status, when a request to it failed.
+    pub api_status: Option<u16>,
+}
+
+/// Why a turn ended that means it failed, even when the result doesn't say
+/// it is an error.
+const FAILED: &[&str] = &[
+    "api_error",
+    "blocking_limit",
+    "budget_exhausted",
+    "image_error",
+    "malformed_tool_use_exhausted",
+    "model_error",
+    "prompt_too_long",
+    "rapid_refill_breaker",
+    "turn_setup_failed",
+];
+
+/// Where the plan's usage stands, sent as it changes.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct RateLimit {
-    /// Such as `allowed`, or a limit reached.
+    /// `allowed`, `allowed_warning` or `rejected`.
     #[serde(default)]
     pub status: String,
     /// Seconds since the UNIX epoch.
-    #[serde(default, rename = "resetsAt")]
-    pub resets_at: Option<i64>,
-    /// Which window, such as `five_hour`.
+    #[serde(default, rename = "resetsAt", deserialize_with = "time::deserialize")]
+    pub resets_at: Option<u64>,
+    /// Which window, such as `five_hour`, or `overage`.
     #[serde(default, rename = "rateLimitType")]
     pub kind: Option<String>,
+    /// Whether extra usage may be spent past a rejected window.
+    #[serde(default, rename = "overageStatus")]
+    pub overage_status: Option<String>,
+    #[serde(default, rename = "isUsingOverage")]
+    pub using_overage: bool,
+    #[serde(default, rename = "overageInUse")]
+    pub overage_in_use: bool,
+}
+
+impl RateLimit {
+    /// The limit stops the session's turns: rejected, with no extra usage to
+    /// go on with.
+    pub fn blocks(&self) -> bool {
+        self.status == "rejected"
+            && self.kind.as_deref() != Some("overage")
+            && !matches!(
+                self.overage_status.as_deref(),
+                Some("allowed" | "allowed_warning")
+            )
+            && !self.using_overage
+            && !self.overage_in_use
+    }
 }
 
 #[derive(Deserialize)]
@@ -57,10 +107,13 @@ struct ResultLine {
     is_error: bool,
     #[serde(default)]
     result: Option<String>,
+    /// Strings, or from some versions objects.
     #[serde(default)]
-    errors: Vec<String>,
+    errors: Vec<Value>,
     #[serde(default)]
     terminal_reason: Option<String>,
+    #[serde(default)]
+    api_error_status: Option<u16>,
     #[serde(default)]
     session_id: String,
     #[serde(default)]
@@ -81,14 +134,37 @@ pub(super) fn turn_result(value: &Value) -> Parsed {
         .terminal_reason
         .as_deref()
         .is_some_and(|reason| reason.starts_with("aborted"));
+    let failed = line.is_error
+        || line.api_error_status.is_some()
+        || line
+            .terminal_reason
+            .as_deref()
+            .is_some_and(|reason| FAILED.contains(&reason));
     let outcome = if interrupted {
         Outcome::Interrupted
-    } else if line.is_error {
-        let message = [line.result.unwrap_or_default(), line.errors.join("\n")]
+    } else if failed {
+        let errors: Vec<String> = line
+            .errors
+            .iter()
+            .map(|error| match error {
+                Value::String(text) => text.clone(),
+                other => other
+                    .get("message")
+                    .and_then(Value::as_str)
+                    .map_or_else(|| other.to_string(), str::to_owned),
+            })
+            .filter(|text| !text.trim().is_empty() && !is_diagnostic(text))
+            .collect();
+        let message = [line.result.unwrap_or_default(), errors.join("\n")]
             .into_iter()
-            .find(|text| !text.trim().is_empty())
-            .unwrap_or(line.subtype);
-        Outcome::Failed(message)
+            .find(|text| !text.trim().is_empty() && !is_diagnostic(text))
+            .unwrap_or_default();
+        Outcome::Failed(TurnError {
+            message,
+            subtype: line.subtype,
+            terminal_reason: line.terminal_reason,
+            api_status: line.api_error_status,
+        })
     } else {
         Outcome::Completed
     };
@@ -111,6 +187,11 @@ struct RateLimitLine {
     rate_limit_info: RateLimit,
 }
 
+/// A subagent's limit never stops the session's own turns, so only the
+/// session's own count.
 pub(super) fn rate_limit(value: &Value) -> Parsed {
+    if !super::on_main_thread(value) {
+        return Ok(None);
+    }
     read::<RateLimitLine>(value).map(|line| Some(Incoming::RateLimit(line.rate_limit_info)))
 }

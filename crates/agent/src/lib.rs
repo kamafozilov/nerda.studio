@@ -2,6 +2,7 @@
 //! typed events, with no UI: the screen drains the events and shows them.
 
 mod event;
+mod failure;
 mod program;
 pub mod protocol;
 mod session;
@@ -9,6 +10,7 @@ mod spawning;
 mod transcript;
 
 pub use event::Event;
+pub use failure::Failure;
 pub use program::prewarm;
 pub use protocol::{
     Attachment, Command, ConversationId, Decision, Image, ImageFormat, Incoming, Message,

@@ -2,7 +2,7 @@ mod support;
 
 use agent::protocol::{
     AgentStatus, Assistant, Block, BlockKind, Delta, Init, Outcome, PermissionRequest, RateLimit,
-    Stage, Stream, ToolResult, TurnResult, Usage,
+    Stage, Stream, ToolResult, TurnError, TurnResult, Usage,
 };
 use agent::{Incoming, MessageId, RequestId, ToolUseId, protocol::parse};
 use serde_json::json;
@@ -110,6 +110,7 @@ fn finished_blocks_carry_text_thinking_and_tool_input() {
                 message_id: message.clone(),
                 blocks: vec![Block::Thinking(String::new())],
                 aborted: false,
+                error: None,
             },
             Assistant {
                 message_id: message,
@@ -119,11 +120,13 @@ fn finished_blocks_carry_text_thinking_and_tool_input() {
                     input: json!({"file_path": "/Users/me/project/note.txt"}),
                 }],
                 aborted: false,
+                error: None,
             },
             Assistant {
                 message_id: "msg_011CgKJRoWHoTuu7T42okot3".to_owned(),
                 blocks: vec![Block::Text("banana red".to_owned())],
                 aborted: false,
+                error: None,
             },
         ]
     );
@@ -255,6 +258,9 @@ fn queue_moves_status_and_rate_limits_read_as_typed_events() {
             status: "allowed".to_owned(),
             resets_at: Some(1792778400),
             kind: Some("five_hour".to_owned()),
+            overage_status: Some("rejected".to_owned()),
+            using_overage: false,
+            overage_in_use: false,
         }]
     );
 }
@@ -309,7 +315,12 @@ fn a_failed_turn_keeps_the_agent_s_words() {
     };
     assert_eq!(
         result.outcome,
-        Outcome::Failed("Reached the maximum number of turns (3)".to_owned())
+        Outcome::Failed(TurnError {
+            message: "Reached the maximum number of turns (3)".to_owned(),
+            subtype: "error_max_turns".to_owned(),
+            terminal_reason: Some("max_turns".to_owned()),
+            api_status: None,
+        })
     );
 }
 

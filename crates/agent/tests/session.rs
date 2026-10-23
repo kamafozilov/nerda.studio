@@ -4,8 +4,9 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use agent::{
-    Attachment, Command, Conversation, ConversationId, Ending, Event, Image, ImageFormat, Incoming,
-    Item, Message, RequestId, Session, StartError, Status, Text, ToolStatus, Transcript, TurnState,
+    Attachment, Command, Conversation, ConversationId, Ending, Event, Failure, Image, ImageFormat,
+    Incoming, Item, Message, RequestId, Session, StartError, Status, Text, ToolStatus, Transcript,
+    TurnState,
 };
 use serde_json::json;
 use support::{TempDir, Watch, arguments, fake, project, script_lines, written};
@@ -190,11 +191,17 @@ fn the_agent_quitting_mid_turn_ends_the_turn_after_its_last_words() {
     watch.until("the exit", exited);
     assert_eq!(watch.transcript.status(), &Status::Exited { code: Some(3) });
     let turn = &watch.transcript.turns()[0];
+    let crashed = Failure::Crashed {
+        code: Some(3),
+        stderr: "Error: the model went away".to_owned(),
+    };
     assert_eq!(
         turn.state,
-        TurnState::Ended(Ending::Errored(
-            "The agent quit before it finished (exit code 3).".to_owned()
-        ))
+        TurnState::Ended(Ending::Failed(crashed.clone()))
+    );
+    assert_eq!(
+        crashed.message(),
+        "The agent quit before it finished (exit code 3)."
     );
     assert_eq!(
         turn.items,
@@ -301,9 +308,7 @@ fn a_message_after_the_agent_quit_is_not_lost_without_a_word() {
     watch.until("both messages", |transcript, _| {
         transcript.turns().len() == 2
     });
-    let unsent = TurnState::Ended(Ending::Errored(
-        "The agent wasn't running, so the message wasn't sent.".to_owned(),
-    ));
+    let unsent = TurnState::Ended(Ending::Failed(Failure::NotSent));
     for turn in watch.transcript.turns() {
         assert_eq!(turn.state, unsent);
     }

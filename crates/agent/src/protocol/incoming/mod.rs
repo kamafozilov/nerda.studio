@@ -4,6 +4,7 @@
 
 mod control;
 mod reply;
+mod time;
 mod turn;
 
 use std::fmt;
@@ -15,8 +16,10 @@ use serde_json::Value;
 use super::{MessageId, RequestId};
 
 pub use control::PermissionRequest;
+pub use reply::ApiError;
 pub use reply::{Assistant, Block, BlockKind, Delta, Stream, ToolResult};
-pub use turn::{Outcome, RateLimit, TurnResult, Usage};
+pub(crate) use time::epoch_seconds;
+pub use turn::{Outcome, RateLimit, TurnError, TurnResult, Usage};
 
 /// One line from the agent.
 #[derive(Clone, Debug, PartialEq)]
@@ -156,6 +159,14 @@ fn system(value: &Value) -> Parsed {
         Some("status") => Some(Incoming::Status(read(value)?)),
         _ => None,
     })
+}
+
+/// A line the agent writes for its own telemetry, not for the person:
+/// `[ede_diagnostic] …` among a result's errors, `[claude-code:…] …` on
+/// stderr.
+pub(crate) fn is_diagnostic(text: &str) -> bool {
+    let text = text.trim_start();
+    text.starts_with("[ede_diagnostic]") || text.starts_with("[claude-code:")
 }
 
 fn block_type(block: &Value) -> &str {
