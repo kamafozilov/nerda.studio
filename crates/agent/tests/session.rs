@@ -4,9 +4,9 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use agent::{
-    Attachment, Command, Conversation, ConversationId, Ending, Event, Failure, Image, ImageFormat,
-    Incoming, Item, Message, MessageId, RequestId, Session, StartError, Status, Text, ToolStatus,
-    Transcript, TurnState,
+    Attachment, Command, Conversation, ConversationId, Ending, Event, Failure, Image, Incoming,
+    Item, Message, MessageId, RequestId, Session, StartError, Status, Text, ToolStatus, Transcript,
+    TurnState,
 };
 use serde_json::json;
 use support::{TempDir, Watch, arguments, exited, fake, project, script_lines, status_is, written};
@@ -131,10 +131,7 @@ fn changes_mid_session_and_attachments_reach_the_agent() {
         });
         answers.count() == 3
     });
-    let png = Image {
-        format: ImageFormat::Png,
-        bytes: vec![0x89, b'P', b'N', b'G'].into(),
-    };
+    let png = Image::new(vec![0x89, b'P', b'N', b'G']).unwrap();
     let attachments = vec![
         Attachment::File(PathBuf::from("/Users/me/project/note.txt")),
         Attachment::Image(png),
@@ -164,8 +161,8 @@ fn changes_mid_session_and_attachments_reach_the_agent() {
     assert_eq!(
         written[4]["message"]["content"],
         json!([
-            {"type": "text", "text": "What fruit, and what color?\n\nAttached files:\n/Users/me/project/note.txt"},
             {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "iVBORw=="}},
+            {"type": "text", "text": "What fruit, and what color?\n\nAttached files:\n/Users/me/project/note.txt"},
         ])
     );
 }

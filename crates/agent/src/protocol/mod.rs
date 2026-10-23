@@ -2,6 +2,7 @@
 //! app's commands on the agent's stdin and its events on stdout. Lines are
 //! parsed here once, at the boundary; everything past it trusts the types.
 
+mod attachment;
 mod incoming;
 mod outgoing;
 
@@ -11,14 +12,14 @@ use std::str::FromStr;
 use serde::Deserialize;
 use uuid::Uuid;
 
+pub use attachment::{Attachment, Image, ImageFormat, MAX_IMAGE};
 pub use incoming::{
     AgentStatus, ApiError, Assistant, Block, BlockKind, Delta, Incoming, Init, Outcome, ParseError,
     PermissionRequest, RateLimit, Stage, Stream, ToolResult, TurnError, TurnResult, Usage, parse,
 };
 pub(crate) use incoming::{epoch_seconds, is_diagnostic};
 pub use outgoing::{
-    Attachment, Command, Decision, INITIALIZE, Image, ImageFormat, Message, encode, encode_decline,
-    encode_initialize,
+    Command, Decision, INITIALIZE, Message, encode, encode_decline, encode_initialize,
 };
 
 /// The id the app gives a message it sends; the agent names the message by it

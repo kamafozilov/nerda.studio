@@ -1,15 +1,11 @@
 //! What the app writes on the agent's stdin, each command one line.
 
-use std::io;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use serde_json::{Value, json};
 use workspace::{Access, Agent, Effort, ModelId};
 
-use super::{MessageId, RequestId};
+use super::{Attachment, MessageId, RequestId};
 
 /// The id of the `initialize` request a session sends first: its answer
 /// means the agent is up and reading its input.
@@ -60,68 +56,6 @@ impl Message {
             id: MessageId::new(),
             text: text.into(),
             attachments,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Attachment {
-    /// Sent inside the message, so the agent sees it.
-    Image(Image),
-    /// Named in the message by its absolute path; the agent reads it itself.
-    File(PathBuf),
-}
-
-impl Attachment {
-    /// The file at `path` as an attachment: an image in a format the agent
-    /// can see is read in, any other file goes by its absolute path.
-    pub fn open(path: &Path) -> io::Result<Self> {
-        let format = path
-            .extension()
-            .and_then(|extension| extension.to_str())
-            .and_then(ImageFormat::from_extension);
-        Ok(match format {
-            Some(format) => Attachment::Image(Image {
-                format,
-                bytes: std::fs::read(path)?.into(),
-            }),
-            None => Attachment::File(std::path::absolute(path)?),
-        })
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Image {
-    pub format: ImageFormat,
-    pub bytes: Arc<[u8]>,
-}
-
-/// The image formats the agent's model takes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ImageFormat {
-    Png,
-    Jpeg,
-    Gif,
-    Webp,
-}
-
-impl ImageFormat {
-    pub fn from_extension(extension: &str) -> Option<Self> {
-        Some(match extension.to_ascii_lowercase().as_str() {
-            "png" => ImageFormat::Png,
-            "jpg" | "jpeg" => ImageFormat::Jpeg,
-            "gif" => ImageFormat::Gif,
-            "webp" => ImageFormat::Webp,
-            _ => return None,
-        })
-    }
-
-    pub fn media_type(self) -> &'static str {
-        match self {
-            ImageFormat::Png => "image/png",
-            ImageFormat::Jpeg => "image/jpeg",
-            ImageFormat::Gif => "image/gif",
-            ImageFormat::Webp => "image/webp",
         }
     }
 }
@@ -196,9 +130,26 @@ fn control(request_id: &str, request: Value) -> Value {
     json!({"type": "control_request", "request_id": request_id, "request": request})
 }
 
-/// The text, with any files' paths after it, then the images. A message of
-/// whitespace alone sends no text block, which the model would refuse.
+/// The images, then the text with any files' paths after it: the agent
+/// expands a `/command` only from the last text block, and only when it
+/// leads it. A message of whitespace alone sends no text block, which the
+/// model would refuse.
 fn content(message: &Message) -> Vec<Value> {
+    let mut blocks: Vec<Value> = message
+        .attachments
+        .iter()
+        .filter_map(|attachment| match attachment {
+            Attachment::Image(image) => Some(json!({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": image.format().media_type(),
+                    "data": STANDARD.encode(image.bytes()),
+                },
+            })),
+            Attachment::File(_) => None,
+        })
+        .collect();
     let mut text = message.text.clone();
     let files: Vec<String> = message
         .attachments
@@ -215,21 +166,8 @@ fn content(message: &Message) -> Vec<Value> {
         text.push_str("Attached files:\n");
         text.push_str(&files.join("\n"));
     }
-    let mut blocks = Vec::new();
     if !text.trim().is_empty() {
         blocks.push(json!({"type": "text", "text": text}));
-    }
-    for attachment in &message.attachments {
-        if let Attachment::Image(image) = attachment {
-            blocks.push(json!({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": image.format.media_type(),
-                    "data": STANDARD.encode(&image.bytes),
-                },
-            }));
-        }
     }
     blocks
 }
