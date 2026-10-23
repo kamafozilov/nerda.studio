@@ -12,11 +12,14 @@
 //! quits, the runner opens its own build again. If the app quits on its own, the
 //! next change brings it back.
 //!
-//! `cargo run -p dev -- install` puts a release build in `/Applications`.
+//! `cargo run -p dev -- try` runs a build beside the owner's, in the
+//! background; `cargo run -p dev -- install` puts a release build in
+//! `/Applications`.
 
 mod app;
 #[cfg(target_os = "macos")]
 mod install;
+mod trial;
 
 use std::{
     collections::hash_map::DefaultHasher,
@@ -42,12 +45,16 @@ fn main() -> ExitCode {
         eprintln!("dev: can't find the workspace at {}", root.display());
         return ExitCode::FAILURE;
     };
-    match std::env::args().nth(1).as_deref() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match args.first().map(String::as_str) {
         None => live_reload(&root),
+        Some("try") => trial::run(&root, &args[1..]),
         #[cfg(target_os = "macos")]
         Some("install") => install::run(&root),
         Some(other) => {
-            eprintln!("dev: unknown command {other:?}; run it bare, or with install on macOS");
+            eprintln!(
+                "dev: unknown command {other:?}; run it bare, with try, or with install on macOS"
+            );
             ExitCode::FAILURE
         }
     }
@@ -91,7 +98,7 @@ impl Running {
     fn launch(&mut self, root: &Path) {
         self.older.extend(self.current.take());
         self.taken_over = false;
-        self.current = App::launch(root).or_else(|| self.older.pop());
+        self.current = App::launch(root, &[], &[]).or_else(|| self.older.pop());
     }
 
     /// Notices the builds that quit, and what that leaves running.

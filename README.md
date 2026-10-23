@@ -29,6 +29,10 @@ window's place without the window going away: same place and size, same sidebar,
 only if the old one was. A build that fails leaves the running app as it is. Ctrl-C stops
 the runner and the app quits with it, its changes saved.
 
+To try a build without disturbing the one you work in, as an agent does,
+`cargo run -p dev -- try` runs it with its own data, in the background and behind every
+window, until the command ends; `--front` brings it forward. `AGENTS.md` has the details.
+
 On macOS every build run from the source tree runs as **Nerda Studio Dev**
 (`studio.nerda.dev`): it puts itself in `target/<profile>/Nerda Studio Dev.app` and runs
 from there, so it has its own name in the menu bar, Dock icon and ⌘Tab entry. To install
