@@ -20,9 +20,16 @@ static SAVE_COUNTER: AtomicU64 = AtomicU64::new(0);
 /// Largest id a file may hold: integers stay exact in every JSON reader, and the counter cannot overflow.
 const MAX_ID: u64 = 1 << 53;
 
+/// Names another data folder: a build tried out beside the owner's keeps its
+/// own data, lock and window instead of taking over the owner's.
+const DATA_DIR: &str = "NERDA_DATA_DIR";
+
 /// The folder the app keeps its data in, or `None` if the platform has none.
 pub fn default_data_dir() -> Option<PathBuf> {
-    dirs::data_dir().map(|dir| dir.join("Nerda Studio"))
+    match std::env::var_os(DATA_DIR) {
+        Some(dir) if !dir.is_empty() => Some(PathBuf::from(dir)),
+        _ => dirs::data_dir().map(|dir| dir.join("Nerda Studio")),
+    }
 }
 
 /// Where the app keeps its workspace, or `None` if the platform has no data folder.
