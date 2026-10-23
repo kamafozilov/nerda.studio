@@ -165,6 +165,19 @@ impl Store {
         }
     }
 
+    /// Shows `notice` under the sidebar's header until dismissed.
+    pub fn show_notice(&mut self, notice: SharedString, cx: &mut Context<Self>) {
+        self.notice = Some(notice);
+        cx.notify();
+    }
+
+    /// The folder the workspace is saved in, while this instance saves it:
+    /// what else the app keeps beside it goes there too, and nowhere when
+    /// nothing is saved.
+    pub fn data_dir(&self) -> Option<&Path> {
+        self.path.as_deref().and_then(Path::parent)
+    }
+
     pub fn dismiss_notice(&mut self, cx: &mut Context<Self>) {
         self.notice = None;
         cx.notify();

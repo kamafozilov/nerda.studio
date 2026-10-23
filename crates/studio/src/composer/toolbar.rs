@@ -1,10 +1,10 @@
-//! The composer's toolbar: Attach, the session's choices as pills, and Send.
-//! Attach opens the system's file picker and each pill its menu; Send doesn't
-//! act until agents come.
+//! The composer's toolbar: Attach, the session's choices as pills, and Send,
+//! which turns into Stop while the agent works and there is nothing to send.
+//! Attach opens the system's file picker and each pill its menu.
 
 use gpui::{
-    Anchor, ClickEvent, Context, Focusable, IntoElement, ParentElement, PathPromptOptions, Styled,
-    Window, div, prelude::*, svg,
+    Anchor, ClickEvent, Context, Div, Focusable, IntoElement, ParentElement, PathPromptOptions,
+    Pixels, Stateful, Styled, Window, div, prelude::*, px, svg,
 };
 use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, Colors, DISABLED_OPACITY, ICON_SIZE, ICON_SIZE_SMALL, SPACE_1,
@@ -19,6 +19,11 @@ use crate::{
     tooltip::{TooltipExt, WithTooltip},
 };
 
+/// The stop glyph: the icon set's 16 of 24 units at `ICON_SIZE`, as the
+/// send arrow fills it, with its corners.
+const STOP_GLYPH: Pixels = px(10.);
+const STOP_GLYPH_RADIUS: Pixels = px(2.);
+
 impl Composer {
     pub(super) fn render_toolbar(
         &self,
@@ -27,6 +32,7 @@ impl Composer {
     ) -> impl IntoElement + use<> {
         let colors = Theme::of(cx).colors;
         let has_message = self.has_message(cx);
+        let stop = !has_message && self.agent.read(cx).is_busy();
         let pills: Vec<_> = Picker::ALL
             .into_iter()
             .map(|picker| self.render_pill(picker, window, cx))
@@ -47,7 +53,13 @@ impl Composer {
             ))
             .children(pills)
             .child(div().flex_1())
-            .child(send_button(has_message, colors))
+            .child(if stop {
+                stop_button(colors)
+                    .on_click(cx.listener(|composer, _: &ClickEvent, _, cx| composer.stop(cx)))
+                    .with_tooltip("Stop")
+            } else {
+                send_button(has_message, colors)
+            })
     }
 
     /// Opens the system's picker for files and folders, several at once;
@@ -148,6 +160,30 @@ impl Composer {
     }
 }
 
+/// The round button Send and Stop share, in `text_primary`.
+fn round_button(id: &'static str, colors: Colors) -> Stateful<Div> {
+    div()
+        .id(id)
+        .flex_none()
+        .size(CONTROL_SIZE)
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded_full()
+        .bg(colors.text_primary)
+}
+
+/// Send's circle with a square cut in the card's color: drawn from a quad,
+/// since the icon set's stop is an outline.
+fn stop_button(colors: Colors) -> Stateful<Div> {
+    round_button("composer-stop", colors).child(
+        div()
+            .size(STOP_GLYPH)
+            .rounded(STOP_GLYPH_RADIUS)
+            .bg(colors.panel_background),
+    )
+}
+
 /// A round button in `text_primary` with an arrow cut in the card's color.
 /// Faded until there is a message, since whitespace alone isn't one.
 fn send_button(has_message: bool, colors: Colors) -> WithTooltip {
@@ -156,15 +192,7 @@ fn send_button(has_message: bool, colors: Colors) -> WithTooltip {
         (true, true) => "Send (↩)",
         (true, false) => "Send (Enter)",
     };
-    div()
-        .id("composer-send")
-        .flex_none()
-        .size(CONTROL_SIZE)
-        .flex()
-        .items_center()
-        .justify_center()
-        .rounded_full()
-        .bg(colors.text_primary)
+    round_button("composer-send", colors)
         .when(!has_message, |button| button.opacity(DISABLED_OPACITY))
         .when(has_message, |button| {
             button.on_click(|_, window, cx| window.dispatch_action(Box::new(Send), cx))

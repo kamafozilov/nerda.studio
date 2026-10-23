@@ -6,7 +6,7 @@ use gpui::{AppContext, Context, Entity, Focusable, Subscription, Window};
 use workspace::{SessionId, Tab};
 
 use super::Shell;
-use crate::composer::Composer;
+use crate::{agents, composer::Composer};
 
 pub(super) struct OpenComposer {
     pub composer: Entity<Composer>,
@@ -46,7 +46,8 @@ impl Shell {
         cx: &mut Context<Self>,
     ) -> OpenComposer {
         let store = self.store.clone();
-        let composer = cx.new(|cx| Composer::new(store, session, cx));
+        let agent = agents::of(session, cx);
+        let composer = cx.new(|cx| Composer::new(store, session, agent, cx));
         let focus = composer.focus_handle(cx);
         let subscription = cx.on_focus(&focus, window, move |shell, window, cx| {
             if shell.tab_shown != Some(Tab::Session(session)) {

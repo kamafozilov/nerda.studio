@@ -74,10 +74,14 @@ impl Composer {
         )
     }
 
-    /// Changes the session's choice and saves it.
+    /// Changes the session's choice, saves it, and tells its agent if one
+    /// runs.
     fn choose(&mut self, change: impl FnOnce(&mut AgentChoice), cx: &mut Context<Self>) {
-        let mut choice = self.choice(cx);
+        let old = self.choice(cx);
+        let mut choice = old.clone();
         change(&mut choice);
+        self.agent
+            .update(cx, |agent, _| agent.choice_changed(&old, &choice));
         let session = self.session;
         self.store.update(cx, |store, cx| {
             store.update(cx, |workspace| workspace.set_choice(session, choice))

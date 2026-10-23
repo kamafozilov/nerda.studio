@@ -28,6 +28,7 @@ use workspace::{Head, SessionId};
 use attachments::Attachments;
 
 use crate::{
+    agents::{Problem, SessionAgent},
     assets::Icon,
     menu::Menu,
     store::Store,
@@ -52,12 +53,14 @@ pub fn bind_keys(cx: &mut App) {
 pub struct Composer {
     store: Entity<Store>,
     session: SessionId,
+    /// The session's agent, which a message goes to.
+    agent: Entity<SessionAgent>,
     input: Entity<TextInput>,
     /// The picker open over the toolbar, if one is.
     menu: Menu<Composer, pickers::Picker>,
     attachments: Attachments,
-    /// Why the last attempt to attach fell short, shown under the box until
-    /// the next edit.
+    /// Why the last attempt to attach, to send or to change the agent fell
+    /// short, shown under the box until the next edit.
     problem: Option<SharedString>,
     /// The system's file picker is open: a second click must not open another.
     picking: bool,
@@ -65,7 +68,12 @@ pub struct Composer {
 }
 
 impl Composer {
-    pub fn new(store: Entity<Store>, session: SessionId, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        store: Entity<Store>,
+        session: SessionId,
+        agent: Entity<SessionAgent>,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let input = cx.new(|cx| {
             TextInput::new(
                 "Ask anything, or describe a change",
@@ -82,10 +90,16 @@ impl Composer {
                 cx.notify();
             }),
             cx.observe(&store, |_, _, cx| cx.notify()),
+            cx.observe(&agent, |_, _, cx| cx.notify()),
+            cx.subscribe(&agent, |composer, _, Problem(problem), cx| {
+                composer.problem = Some(problem.clone());
+                cx.notify();
+            }),
         ];
         Self {
             store,
             session,
+            agent,
             input,
             menu: Menu::new(|composer| &mut composer.menu, cx),
             attachments: Attachments::default(),
@@ -114,7 +128,33 @@ impl Composer {
         cx.notify();
     }
 
-    fn send(&mut self, _: &Send, _: &mut Window, _: &mut Context<Self>) {}
+    /// Sends the text, its trailing whitespace trimmed, with the
+    /// attachments, and clears both; when the agent can't start, both stay
+    /// and the problem line says why.
+    fn send(&mut self, _: &Send, _: &mut Window, cx: &mut Context<Self>) {
+        if !self.has_message(cx) {
+            return;
+        }
+        let text = self.input.read(cx).text().trim_end().to_owned();
+        let paths: Vec<PathBuf> = (self.attachments.iter())
+            .map(|attachment| attachment.path.clone())
+            .collect();
+        let sent = (self.agent).update(cx, |agent, cx| agent.send(text, &paths, cx));
+        match sent {
+            Ok(()) => {
+                self.input.update(cx, |input, cx| input.set_text("", cx));
+                self.attachments = Attachments::default();
+                self.problem = None;
+            }
+            Err(problem) => self.problem = Some(problem),
+        }
+        cx.notify();
+    }
+
+    /// Stops what the agent is doing.
+    fn stop(&mut self, cx: &mut Context<Self>) {
+        self.agent.update(cx, |agent, _| agent.stop());
+    }
 
     /// The box: the text over the toolbar, on the field's fill, its hairline
     /// turning `focus_ring` while the text has focus. A click anywhere in it

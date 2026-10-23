@@ -1,5 +1,6 @@
 mod accessibility;
 mod add_project;
+mod agents;
 mod app_menu;
 mod assets;
 mod background;
@@ -67,6 +68,7 @@ fn main() {
         // click on the Dock icon brings back shows them as they were.
         let store = cx.new(Store::load);
         cx.set_global(Projects(store.clone()));
+        agents::init(store.clone(), cx);
         // Taking over from a running instance, the window opens where its was;
         // otherwise where it was when the app last quit.
         let left = claim.screen();

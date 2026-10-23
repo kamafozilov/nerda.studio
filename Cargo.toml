@@ -14,6 +14,7 @@ publish = false
 # crates.io has only gpui 0.2.2, without gpui_platform; pin upstream main instead.
 gpui = { git = "https://github.com/zed-industries/zed", rev = "50304070c283519f2f2338b45671af26374025fe" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "50304070c283519f2f2338b45671af26374025fe", features = ["font-kit"] }
+agent = { path = "crates/agent" }
 app_bundle = { path = "crates/app_bundle" }
 theme = { path = "crates/theme" }
 workspace = { path = "crates/workspace" }
