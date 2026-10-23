@@ -157,4 +157,11 @@ impl Tab {
             Tab::Page(_) => None,
         }
     }
+
+    pub fn page(self) -> Option<Page> {
+        match self {
+            Tab::Page(page) => Some(page),
+            Tab::Session(_) => None,
+        }
+    }
 }

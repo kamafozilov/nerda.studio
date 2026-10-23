@@ -41,6 +41,15 @@ pub enum Icon {
 }
 
 impl Icon {
+    /// The page's icon, the same in the sidebar and in its tab.
+    pub fn page(page: workspace::Page) -> Self {
+        match page {
+            workspace::Page::Notes => Self::Notes,
+            workspace::Page::Design => Self::Design,
+            workspace::Page::Routines => Self::Routines,
+        }
+    }
+
     pub fn path(self) -> &'static str {
         match self {
             Self::Back => "icons/arrow-left-01.svg",

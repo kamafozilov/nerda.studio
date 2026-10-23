@@ -9,14 +9,6 @@ use workspace::Page;
 use super::{Sidebar, glide::Glide};
 use crate::assets::Icon;
 
-fn icon(page: Page) -> Icon {
-    match page {
-        Page::Notes => Icon::Notes,
-        Page::Design => Icon::Design,
-        Page::Routines => Icon::Routines,
-    }
-}
-
 impl Sidebar {
     fn hover_page(&mut self, index: usize, hovered: bool, cx: &mut Context<Self>) {
         if self.pointer_outside {
@@ -79,7 +71,7 @@ impl Sidebar {
                         }))
                         .child(
                             svg()
-                                .path(icon(page).path())
+                                .path(Icon::page(page).path())
                                 .size(ICON_SIZE)
                                 .flex_none()
                                 .text_color(colors.text_secondary),

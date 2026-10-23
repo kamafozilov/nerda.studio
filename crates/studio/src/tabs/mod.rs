@@ -85,6 +85,8 @@ pub struct TabStrip {
 #[derive(Clone)]
 struct Label {
     title: SharedString,
+    /// A page's icon before its title; sessions have none.
+    icon: Option<Icon>,
     /// The tab's hover group, which shows its close button.
     group: SharedString,
     close: SharedString,
@@ -153,6 +155,7 @@ impl TabStrip {
                 };
                 let label = Label {
                     title,
+                    icon: id.page().map(Icon::page),
                     group: format!("tab-{}", id.key()).into(),
                     close: format!("close-tab-{}", id.key()).into(),
                     closable: workspace.can_close_tab(id),

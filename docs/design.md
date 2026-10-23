@@ -145,10 +145,12 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   its own session tabs, saved with the workspace; showing another project's session
   switches the row to that project's tabs, and the pages stay in it. A page on screen
   keeps its project's tabs beside it. A tab is `CONTROL_SIZE` high, its title in
-  `text_primary` on `row_selected` when selected and on `hover` under the pointer. Tabs
-  share the row up to `TAB_MAX_WIDTH` (224) each, `TAB_GAP` apart, however many there
-  are; the selected one keeps `TAB_SELECTED_MIN_WIDTH` (112). Under the pointer a tab
-  shows its close button if it is at least `TAB_CLOSE_MIN_WIDTH` (72) wide or selected.
+  `text_primary` on `row_selected` when selected and on `hover` under the pointer; a
+  page's tab leads with its sidebar icon in `text_secondary`, `SPACE_2` before the
+  title. Tabs share the row up to `TAB_MAX_WIDTH` (224) each, `TAB_GAP` apart, however
+  many there are; the selected one keeps `TAB_SELECTED_MIN_WIDTH` (112). Under the
+  pointer a tab shows its close button if it is at least `TAB_CLOSE_MIN_WIDTH` (72) wide
+  or selected.
   New session follows the last tab.
 - **Opening and closing tabs.** A session opened from the sidebar, a shortcut or New
   session gets a tab at the end unless it has one; so does a page, which has one tab at

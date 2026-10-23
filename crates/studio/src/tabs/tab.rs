@@ -147,7 +147,8 @@ impl TabStrip {
     }
 }
 
-/// The tab's plate and title; the selected one sits on the selection's fill.
+/// The tab's plate, a page's icon and the title; the selected one sits on the
+/// selection's fill.
 fn tab_face(id: Tab, label: &Label, selected: bool, colors: Colors) -> Stateful<gpui::Div> {
     div()
         .id(("tab", id.key()))
@@ -157,8 +158,16 @@ fn tab_face(id: Tab, label: &Label, selected: bool, colors: Colors) -> Stateful<
         .px(SPACE_2)
         .flex()
         .items_center()
+        .gap(SPACE_2)
         .rounded(CONTROL_RADIUS)
         .when(selected, |tab| tab.bg(colors.row_selected))
+        .children(label.icon.map(|icon| {
+            svg()
+                .path(icon.path())
+                .size(ICON_SIZE)
+                .flex_none()
+                .text_color(colors.text_secondary)
+        }))
         .child(
             div()
                 .flex_1()
