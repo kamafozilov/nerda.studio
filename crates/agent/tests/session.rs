@@ -433,6 +433,8 @@ fn the_agent_starts_on_the_session_s_choice_and_conversation() {
         "--verbose",
         "--include-partial-messages",
         "--replay-user-messages",
+        "--thinking-display",
+        "summarized",
         "--permission-prompt-tool",
         "stdio",
     ];

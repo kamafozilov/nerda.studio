@@ -407,3 +407,31 @@ fn a_turn_the_agent_begins_on_its_own_has_no_message() {
         TurnState::Ended(Ending::Finished(_))
     ));
 }
+
+#[test]
+fn thinking_streams_its_summary_and_settles_into_the_finished_block() {
+    let mut player = ready();
+    let rest = player.play_until(
+        "turn-thinking.jsonl",
+        says("Is 391 a prime number? Think it through carefully first, then answer in one word."),
+        |line| matches!(line, Line::Agent(line) if line.contains(r#""type":"assistant""#)),
+    );
+    let thought = "Checking divisibility by primes up to 19: 391 isn't divisible by 2,3,5,7,11, or 13, but 17×23 = 391, so it factors evenly.\n\n";
+    assert_eq!(
+        player.transcript.turns()[0].items,
+        [Item::Thinking(Text {
+            text: thought.to_owned(),
+            streaming: true
+        })]
+    );
+    let mut host = says("unused");
+    rest.into_iter()
+        .for_each(|line| player.step(line, &mut host));
+    let turn = &player.transcript.turns()[0];
+    let summary = Item::Thinking(Text {
+        text: thought.to_owned(),
+        streaming: false,
+    });
+    assert_eq!(turn.items, [summary, text("No")]);
+    assert!(matches!(turn.state, TurnState::Ended(Ending::Finished(_))));
+}

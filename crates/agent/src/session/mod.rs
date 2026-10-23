@@ -23,7 +23,8 @@ use crate::{program, spawning};
 use tree::Tree;
 
 /// What makes the agent read and write one JSON object per line, stream its
-/// reply, echo the messages it takes up, and ask the app before a tool runs.
+/// reply, echo the messages it takes up, write a summary of its thinking
+/// rather than nothing, and ask the app before a tool runs.
 const STREAM_JSON: &[&str] = &[
     "-p",
     "--input-format",
@@ -33,6 +34,8 @@ const STREAM_JSON: &[&str] = &[
     "--verbose",
     "--include-partial-messages",
     "--replay-user-messages",
+    "--thinking-display",
+    "summarized",
     "--permission-prompt-tool",
     "stdio",
 ];
