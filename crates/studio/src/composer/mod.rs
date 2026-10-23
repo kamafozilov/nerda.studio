@@ -7,6 +7,8 @@
 
 mod attachments;
 mod chips;
+mod intake;
+mod pasted;
 mod pickers;
 mod toolbar;
 
@@ -122,8 +124,9 @@ impl Composer {
         let input_focus = self.input.focus_handle(cx);
         let focused = input_focus.contains_focused(window, cx);
         let toolbar = self.render_toolbar(window, cx);
-        div()
-            .id("composer-box")
+        let text = self.render_text(cx);
+        let target = div().id("composer-box");
+        self.accept_drops(target, cx)
             .w_full()
             .p(SPACE_3 - HAIRLINE)
             .flex()
@@ -142,7 +145,7 @@ impl Composer {
                 cx.listener(move |_, _: &ClickEvent, window, cx| window.focus(&input_focus, cx)),
             )
             .children(self.render_chips(cx))
-            .child(self.input.clone())
+            .child(text)
             .child(toolbar)
     }
 
@@ -262,6 +265,7 @@ impl Render for Composer {
         div()
             .key_context(CONTEXT)
             .on_action(cx.listener(Self::send))
+            .capture_action(cx.listener(Self::paste))
             .flex_1()
             .min_h_0()
             .w_full()
