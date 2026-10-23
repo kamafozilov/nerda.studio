@@ -81,6 +81,7 @@ dependencies = [
 name = "agent"
 version = "0.1.0"
 dependencies = [
+ "async-channel",
  "base64",
  "serde",
  "serde_json",

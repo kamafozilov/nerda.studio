@@ -125,9 +125,12 @@ fn a_message_shows_queued_until_the_agent_takes_it_up_and_never_twice() {
         player.step(line, &mut host);
         states.push(player.transcript.turns()[0].state.clone());
     }
-    // The host line, queued, started, the turn's start, its status, the echo.
     use TurnState::{Queued, Running};
-    assert_eq!(states, [Queued, Queued, Running, Running, Running, Running]);
+    assert_eq!(
+        states,
+        [Queued, Queued, Running, Running, Running, Running],
+        "after the host line, queued, started, the turn's start, its status, the echo"
+    );
     assert_eq!(player.transcript.turns().len(), 1);
     assert_eq!(player.transcript.turns()[0].message, Some(message));
 }

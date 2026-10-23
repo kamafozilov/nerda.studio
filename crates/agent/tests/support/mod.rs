@@ -4,9 +4,12 @@
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 
 use agent::protocol::{INITIALIZE, parse};
-use agent::{Command, Event, Message, Transcript};
+use agent::{Command, Conversation, ConversationId, Event, Events, Launch, Message, Transcript};
+use serde_json::Value;
+use workspace::{AgentChoice, ModelId};
 
 /// Every recorded fixture: the wire of real `claude` runs, trimmed and with
 /// private paths replaced. Agent lines are what it wrote on stdout; a
@@ -152,6 +155,103 @@ pub fn says(text: &str) -> impl FnMut(&str, &Transcript) -> Command + '_ {
     move |kind, _| match kind {
         "user" => Command::Send(Message::new(text, Vec::new())),
         other => panic!("the host was asked for {other}"),
+    }
+}
+
+/// A project folder whose fake agent plays `steps`: fixtures by file name,
+/// and any other step as a line of the script.
+pub fn project(steps: &[&str]) -> TempDir {
+    let dir = TempDir::new();
+    let mut script = String::new();
+    for step in steps {
+        if step.ends_with(".jsonl") {
+            script.push_str(&std::fs::read_to_string(fixture_path(step)).unwrap());
+        } else {
+            script.push_str(step);
+            script.push('\n');
+        }
+    }
+    std::fs::write(dir.path().join("fake-agent.jsonl"), script).unwrap();
+    dir
+}
+
+/// The fixture's lines as script steps, for splicing.
+pub fn script_lines(fixture: &str) -> Vec<String> {
+    let text = std::fs::read_to_string(fixture_path(fixture)).unwrap();
+    text.lines().map(str::to_owned).collect()
+}
+
+/// Runs the fake agent in `dir` on haiku, asking first, in a new conversation.
+pub fn fake(dir: &TempDir) -> Launch {
+    Launch {
+        folder: dir.path().to_owned(),
+        choice: AgentChoice {
+            model: ModelId("haiku".to_owned()),
+            ..AgentChoice::default()
+        },
+        conversation: Conversation::New(ConversationId::new()),
+        program: Some(PathBuf::from(env!("CARGO_BIN_EXE_fake-agent"))),
+    }
+}
+
+/// Each line the fake agent read from the app.
+pub fn written(dir: &TempDir) -> Vec<Value> {
+    let log = std::fs::read_to_string(dir.path().join("fake-agent.stdin.jsonl")).unwrap();
+    log.lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect()
+}
+
+/// The arguments the fake agent was started with.
+pub fn arguments(dir: &TempDir) -> Vec<String> {
+    let text = std::fs::read_to_string(dir.path().join("fake-agent.args")).unwrap();
+    text.lines().map(str::to_owned).collect()
+}
+
+/// Drains a session's events into a transcript, as the screen would.
+pub struct Watch {
+    events: Events,
+    pub transcript: Transcript,
+    pub seen: Vec<Event>,
+}
+
+impl Watch {
+    pub fn new(events: Events) -> Self {
+        Self {
+            events,
+            transcript: Transcript::new(),
+            seen: Vec::new(),
+        }
+    }
+
+    /// Applies events until `done` holds; fails after ten seconds.
+    pub fn until(&mut self, what: &str, done: impl Fn(&Transcript, &[Event]) -> bool) {
+        self.until_within(Duration::from_secs(10), what, done);
+    }
+
+    pub fn until_within(
+        &mut self,
+        limit: Duration,
+        what: &str,
+        done: impl Fn(&Transcript, &[Event]) -> bool,
+    ) {
+        let deadline = Instant::now() + limit;
+        while !done(&self.transcript, &self.seen) {
+            match self.events.try_recv() {
+                Ok(event) => {
+                    self.transcript.apply(&event);
+                    self.seen.push(event);
+                }
+                Err(async_channel::TryRecvError::Empty) if Instant::now() < deadline => {
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                Err(error) => panic!(
+                    "{error:?} waiting for {what}, at {:?} after {:#?}",
+                    self.transcript.status(),
+                    self.seen
+                ),
+            }
+        }
     }
 }
 
