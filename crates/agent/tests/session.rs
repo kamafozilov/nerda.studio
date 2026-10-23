@@ -255,6 +255,37 @@ fn the_agent_quitting_mid_turn_ends_the_turn_after_its_last_words() {
 }
 
 #[test]
+fn text_shows_as_it_streams_in_while_the_agent_takes_its_time() {
+    let turn = script_lines("turn-interrupt.jsonl");
+    let deltas: Vec<usize> = (turn.iter().enumerate())
+        .filter(|(_, line)| line.contains("text_delta"))
+        .map(|(at, _)| at)
+        .collect();
+    let mut steps: Vec<String> = vec!["initialize.jsonl".to_owned()];
+    steps.extend(turn[..=deltas[0]].iter().cloned());
+    steps.push(r#"{"agent": "sleep", "ms": 400}"#.to_owned());
+    steps.push(turn[deltas[1]].clone());
+    let dir = project(&steps.iter().map(String::as_str).collect::<Vec<_>>());
+
+    let (session, events) = Session::start(&fake(&dir)).unwrap();
+    let mut watch = Watch::new(events);
+    session.send(Command::Send(Message::new("Count to 300", Vec::new())));
+    watch.until("the first words", |transcript, _| {
+        !transcript.turns().is_empty() && !texts(transcript, 0).concat().is_empty()
+    });
+    let first = Instant::now();
+    assert_eq!(texts(&watch.transcript, 0), ["1\n2\n3\n4"]);
+    watch.until("the next words", |transcript, _| {
+        texts(transcript, 0) == ["1\n2\n3\n4\n5\n6\n7\n8"]
+    });
+    assert!(
+        first.elapsed() >= Duration::from_millis(300),
+        "the pause holds them"
+    );
+    drop(session);
+}
+
+#[test]
 fn the_exit_comes_even_while_a_process_the_agent_started_holds_its_stderr() {
     let dir = project(&[
         "initialize.jsonl",

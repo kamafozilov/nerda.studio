@@ -11,8 +11,10 @@
 //! open for five seconds; `{"agent": "spawn", "name": N, "group": "own"}`
 //! starts a process that sleeps a minute, in a process group of its own as
 //! the agent's background shells are, or in the agent's without `group`, and
-//! writes its pid to `N.pid`. It writes its arguments to `fake-agent.args`, one a line, its
-//! PATH to `fake-agent.path`, and each line it reads to `fake-agent.stdin.jsonl`.
+//! writes its pid to `N.pid`; `{"agent": "sleep", "ms": N}` waits N milliseconds,
+//! as the agent does between the parts of a reply it streams. It writes its
+//! arguments to `fake-agent.args`, one a line, its PATH to `fake-agent.path`, and
+//! each line it reads to `fake-agent.stdin.jsonl`.
 
 use std::io::{BufRead, Write};
 use std::sync::mpsc;
@@ -100,6 +102,9 @@ fn main() {
                 let child = command.spawn().unwrap();
                 let name = step["name"].as_str().unwrap();
                 std::fs::write(format!("{name}.pid"), child.id().to_string()).unwrap();
+            }
+            Some("sleep") => {
+                std::thread::sleep(Duration::from_millis(step["ms"].as_u64().unwrap_or(0)))
             }
             Some("hang") => loop {
                 std::thread::sleep(Duration::from_secs(60));
