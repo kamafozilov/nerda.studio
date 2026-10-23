@@ -2,9 +2,9 @@
 
 use std::ops::Range;
 
-use gpui::{Bounds, Context, EntityInputHandler, Pixels, Point, UTF16Selection, Window, point};
+use gpui::{Bounds, Context, EntityInputHandler, Pixels, Point, UTF16Selection, Window};
 
-use super::{TextInput, single_line};
+use super::{Lines, TextInput};
 
 impl TextInput {
     /// Byte offset of a UTF-16 offset; clamps to the text and never splits a character.
@@ -54,11 +54,11 @@ impl TextInput {
             .unwrap_or_else(|| self.selected_range.clone())
     }
 
-    /// Last frame's line, if it still shows the current text rather than the placeholder.
-    fn current_layout(&self) -> Option<&gpui::ShapedLine> {
-        self.last_layout
+    /// Last frame's text, if it still shows the current text rather than the placeholder.
+    fn current_layout(&self) -> Option<&super::Painted> {
+        self.painted
             .as_ref()
-            .filter(|line| !self.content.is_empty() && line.text == self.content)
+            .filter(|painted| painted.shows(&self.content))
     }
 }
 
@@ -122,7 +122,7 @@ impl EntityInputHandler for TextInput {
         cx.notify();
     }
 
-    /// Commits typed or composed text, line breaks turned into spaces.
+    /// Commits typed or composed text, line breaks normalized for the input's `Lines`.
     fn replace_text_in_range(
         &mut self,
         range_utf16: Option<Range<usize>>,
@@ -131,7 +131,7 @@ impl EntityInputHandler for TextInput {
         cx: &mut Context<Self>,
     ) {
         let range = self.target_range(range_utf16.as_ref());
-        let text = single_line(new_text).into_owned();
+        let text = self.lines.normalize(new_text).into_owned();
         self.replace(range, &text, window, cx);
     }
 
@@ -145,8 +145,11 @@ impl EntityInputHandler for TextInput {
         cx: &mut Context<Self>,
     ) {
         let range = self.target_range(range_utf16.as_ref());
-        // One space per break keeps the IME's UTF-16 offsets into its text valid.
-        let new_text = new_text.replace(['\n', '\r'], " ");
+        // One character per break keeps the IME's UTF-16 offsets into its text valid.
+        let new_text = match self.lines {
+            Lines::Single => new_text.replace(['\n', '\r'], " "),
+            Lines::Multi { .. } => new_text.replace('\r', "\n"),
+        };
         let content = [
             &self.content[..range.start],
             new_text.as_str(),
@@ -179,24 +182,22 @@ impl EntityInputHandler for TextInput {
         _cx: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
         let range = self.range_from_utf16(&range_utf16);
-        let line = self.current_layout()?;
-        let left = bounds.left() - self.scroll_x;
-        Some(Bounds::from_corners(
-            point(left + line.x_for_index(range.start), bounds.top()),
-            point(left + line.x_for_index(range.end), bounds.bottom()),
-        ))
+        let painted = self.current_layout()?;
+        painted.range_bounds(range, bounds).into_iter().next()
     }
 
     fn selection_bounds_for_range(
         &mut self,
         range_utf16: Range<usize>,
         bounds: Bounds<Pixels>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
+        _window: &mut Window,
+        _cx: &mut Context<Self>,
     ) -> Vec<Bounds<Pixels>> {
-        self.bounds_for_range(range_utf16, bounds, window, cx)
-            .into_iter()
-            .collect()
+        let range = self.range_from_utf16(&range_utf16);
+        match self.current_layout() {
+            Some(painted) => painted.range_bounds(range, bounds),
+            None => Vec::new(),
+        }
     }
 
     fn character_index_for_point(
@@ -205,9 +206,9 @@ impl EntityInputHandler for TextInput {
         _window: &mut Window,
         _cx: &mut Context<Self>,
     ) -> Option<usize> {
-        let line_point = self.last_bounds?.localize(&point)?;
-        let line = self.current_layout()?;
-        let index = line.closest_index_for_x(line_point.x + self.scroll_x);
+        let bounds = self.last_bounds?;
+        bounds.localize(&point)?;
+        let index = self.current_layout()?.index_for_position(point, bounds);
         Some(self.offset_to_utf16(index))
     }
 }

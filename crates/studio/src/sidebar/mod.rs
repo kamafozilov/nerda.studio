@@ -29,7 +29,7 @@ use workspace::{AddProjectError, AddedProject, ProjectId, ProjectScope, SessionI
 use self::{card::Row, glide::Track, shift::Shifts};
 use crate::{
     store::Store,
-    text_input::{TextInput, TextInputEvent},
+    text_input::{Lines, TextInput, TextInputEvent},
 };
 
 actions!(
@@ -128,7 +128,7 @@ impl Sidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let search = cx.new(|cx| TextInput::new("Search sessions", cx));
+        let search = cx.new(|cx| TextInput::new("Search sessions", Lines::Single, cx));
         let search_focus = search.focus_handle(cx);
         let subscriptions = vec![
             cx.subscribe(&search, |sidebar, search, TextInputEvent::Changed, cx| {

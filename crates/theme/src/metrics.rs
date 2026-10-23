@@ -84,6 +84,20 @@ pub const NOTICE_MAX_HEIGHT: Pixels = px(136.);
 /// a hint: `FIELD_TARGET_SIZE` less a 2 px inset each side.
 pub const KEY_CAP_SIZE: Pixels = px(20.);
 
+/// Widest the session composer grows; past it the composer stays centered in
+/// the card, `SPACE_3` clear of its sides below it.
+pub const COMPOSER_MAX_WIDTH: Pixels = px(720.);
+/// Corners of the composer's box: rounder than a field's, since it holds a
+/// toolbar as well as text.
+pub const COMPOSER_RADIUS: Pixels = px(12.);
+/// Lines of text the composer starts at, so a draft's composer and a docked
+/// one stand the same height.
+pub const COMPOSER_MIN_LINES: usize = 2;
+/// Lines of text the composer grows to before it scrolls inside.
+pub const COMPOSER_MAX_LINES: usize = 10;
+
+/// A heading over the main area's content, such as a draft session's question.
+pub const TEXT_HEADING: Pixels = px(18.);
 /// Body text and titles; macOS's standard control size.
 pub const TEXT_BODY: Pixels = px(13.);
 /// Supporting lines under or over a title, such as a session's project and

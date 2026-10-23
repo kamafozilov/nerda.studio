@@ -20,7 +20,7 @@ use workspace::browse::{BrowseQuery, ListError, Listing, Target, folder_text};
 
 use crate::{
     sidebar::Sidebar,
-    text_input::{TextInput, TextInputEvent},
+    text_input::{Lines, TextInput, TextInputEvent},
 };
 
 actions!(
@@ -106,7 +106,11 @@ impl AddProjectPalette {
         cx: &mut Context<Self>,
     ) -> Self {
         let input = cx.new(|cx| {
-            let mut input = TextInput::new("Enter project path (e.g. ~/projects/my-app)", cx);
+            let mut input = TextInput::new(
+                "Enter project path (e.g. ~/projects/my-app)",
+                Lines::Single,
+                cx,
+            );
             input.set_text(START, cx);
             input
         });

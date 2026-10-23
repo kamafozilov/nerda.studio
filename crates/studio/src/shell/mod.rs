@@ -4,12 +4,16 @@
 //! from the window's edges.
 
 mod commands;
+mod composers;
 mod quit;
 
 pub use quit::bind_keys as bind_quit_keys;
 mod top_row;
 
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use gpui::{
     AnimationExt, App, ClickEvent, Context, DismissEvent, Entity, FocusHandle, IntoElement,
@@ -17,7 +21,7 @@ use gpui::{
     Subscription, Task, Window, actions, div, prelude::*,
 };
 use theme::{MAIN_INSET, MAIN_RADIUS, SIDEBAR_WIDTH, TEXT_BODY, Theme, motion};
-use workspace::{Tab, Timestamp, Visits};
+use workspace::{SessionId, Tab, Timestamp, Visits};
 
 use crate::{
     accessibility, add_project::AddProjectPalette, app_menu, instance::Screen, native_window,
@@ -66,6 +70,11 @@ pub struct Shell {
     tabs: Entity<TabStrip>,
     /// Back and Forward through the tabs shown.
     visits: Visits,
+    /// Each open session's composer; see `composers`.
+    composers: HashMap<SessionId, composers::OpenComposer>,
+    /// The tab on screen as the composers last saw it, to tell a newly shown
+    /// session, whose composer takes focus.
+    tab_shown: Option<Tab>,
     sidebar_open: bool,
     /// The left button went down on the titlebar; the next move drags the window.
     titlebar_pressed: bool,
@@ -125,6 +134,10 @@ impl Shell {
         // until something inside it takes it.
         let focus_handle = cx.focus_handle();
         window.focus(&focus_handle, cx);
+        // Focus given back to a composer whose tab closed meanwhile, as by
+        // the tab menu, lands nowhere: it goes to the composer on screen.
+        cx.on_focus_lost(window, |shell, window, cx| shell.focus_shown(window, cx))
+            .detach();
         // A project on screen always shows something.
         let nothing_open = {
             let workspace = store.read(cx).workspace();
@@ -139,13 +152,14 @@ impl Shell {
         }
         // Every way a tab comes on screen counts as a visit; a closed tab drops
         // out of Back and Forward.
-        cx.observe(&store, |shell, store, cx| {
+        cx.observe_in(&store, window, |shell, store, window, cx| {
             let workspace = store.read(cx).workspace();
             let selected = workspace.selected_tab();
             shell.visits.prune(workspace.tabs(), selected);
             if let Some(selected) = selected {
                 shell.visits.record(selected);
             }
+            shell.sync_composers(window, cx);
             cx.notify();
         })
         .detach();
@@ -163,19 +177,23 @@ impl Shell {
             )
         });
         let tabs = cx.new(|cx| TabStrip::new(store.clone(), cx));
-        Self {
+        let mut shell = Self {
             focus_handle,
             store,
             sidebar,
             tabs,
             visits,
+            composers: HashMap::new(),
+            tab_shown: None,
             sidebar_open,
             titlebar_pressed: false,
             add_project: None,
             quit_dialog: None,
             sidebar_motion: SidebarMotion::at_rest(sidebar_open),
             tabs_held: None,
-        }
+        };
+        shell.sync_composers(window, cx);
+        shell
     }
 
     /// Opens the add-project palette; does nothing while it is open.
@@ -307,8 +325,8 @@ impl Shell {
 
     /// The main area: a rounded card with a hairline, `MAIN_INSET` clear of the
     /// window's right and bottom edges and, as the sidebar closes, of its left.
-    /// Before the first project it welcomes, unless a page is on screen; the
-    /// pages and the sessions show nothing in it yet.
+    /// Before the first project it welcomes, unless a page is on screen; a
+    /// session shows its composer, and a page nothing yet.
     fn main_area(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
         let workspace = self.store.read(cx).workspace();
@@ -325,6 +343,7 @@ impl Shell {
             .border_1()
             .border_color(colors.border)
             .bg(colors.panel_background)
+            .when_some(self.shown_composer(), |card, composer| card.child(composer))
             .when(welcome, |card| {
                 card.child(welcome::no_projects(
                     cx.listener(|shell, _: &ClickEvent, window, cx| {

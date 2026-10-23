@@ -14,6 +14,8 @@ pub enum Icon {
     /// Back to the tab shown before.
     Back,
     Check,
+    /// Opens a pill's choices.
+    ChevronDown,
     Close,
     /// The Design page.
     Design,
@@ -35,6 +37,8 @@ pub enum Icon {
     /// The Routines page.
     Routines,
     Search,
+    /// Sends the composer's message.
+    Send,
     Settings,
     Sort,
     Usage,
@@ -54,6 +58,7 @@ impl Icon {
         match self {
             Self::Back => "icons/arrow-left-01.svg",
             Self::Check => "icons/tick-02.svg",
+            Self::ChevronDown => "icons/arrow-down-01.svg",
             Self::Close => "icons/cancel-01.svg",
             Self::Design => "icons/pen-tool-03.svg",
             Self::Forward => "icons/arrow-right-01.svg",
@@ -68,6 +73,7 @@ impl Icon {
             Self::Return => "icons/arrow-turn-backward.svg",
             Self::Routines => "icons/repeat.svg",
             Self::Search => "icons/search.svg",
+            Self::Send => "icons/arrow-up-02.svg",
             Self::Settings => "icons/gear.svg",
             Self::Sort => "icons/list-filter.svg",
             Self::Usage => "icons/gauge.svg",
@@ -88,12 +94,20 @@ const FILES: &[(&str, &[u8])] = &[
         include_bytes!("../assets/icons/add-01.svg"),
     ),
     (
+        "icons/arrow-down-01.svg",
+        include_bytes!("../assets/icons/arrow-down-01.svg"),
+    ),
+    (
         "icons/arrow-left-01.svg",
         include_bytes!("../assets/icons/arrow-left-01.svg"),
     ),
     (
         "icons/arrow-right-01.svg",
         include_bytes!("../assets/icons/arrow-right-01.svg"),
+    ),
+    (
+        "icons/arrow-up-02.svg",
+        include_bytes!("../assets/icons/arrow-up-02.svg"),
     ),
     (
         "icons/arrow-turn-backward.svg",

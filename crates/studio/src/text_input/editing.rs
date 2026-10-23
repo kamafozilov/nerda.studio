@@ -13,7 +13,7 @@ use super::keys::{
     SelectAll, SelectLeft, SelectRight, SelectToEnd, SelectToStart, SelectWordLeft,
     SelectWordRight, ShowCharacterPalette, WordLeft, WordRight,
 };
-use super::{TextInput, TextInputEvent, single_line};
+use super::{TextInput, TextInputEvent};
 
 impl TextInput {
     pub(super) fn left(&mut self, _: &Left, window: &mut Window, cx: &mut Context<Self>) {
@@ -101,11 +101,11 @@ impl TextInput {
     }
 
     pub(super) fn home(&mut self, _: &Home, window: &mut Window, cx: &mut Context<Self>) {
-        self.move_to(0, window, cx);
+        self.move_to(self.row_span(self.cursor_offset()).start, window, cx);
     }
 
     pub(super) fn end(&mut self, _: &End, window: &mut Window, cx: &mut Context<Self>) {
-        self.move_to(self.content.len(), window, cx);
+        self.move_to(self.row_span(self.cursor_offset()).end, window, cx);
     }
 
     pub(super) fn select_to_start(
@@ -114,7 +114,7 @@ impl TextInput {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.select_to(0, window, cx);
+        self.select_to(self.row_span(self.cursor_offset()).start, window, cx);
     }
 
     pub(super) fn select_to_end(
@@ -123,7 +123,7 @@ impl TextInput {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.select_to(self.content.len(), window, cx);
+        self.select_to(self.row_span(self.cursor_offset()).end, window, cx);
     }
 
     /// Deletes the selection, else the grapheme before the cursor.
@@ -149,14 +149,14 @@ impl TextInput {
         self.delete_range(range, window, cx);
     }
 
-    /// Deletes the selection, else everything before the cursor.
+    /// Deletes the selection, else everything before the cursor on its row.
     pub(super) fn delete_to_start(
         &mut self,
         _: &DeleteToStart,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let range = self.selection_or(|_, cursor| 0..cursor);
+        let range = self.selection_or(|input, cursor| input.row_span(cursor).start..cursor);
         self.delete_range(range, window, cx);
     }
 
@@ -169,10 +169,11 @@ impl TextInput {
         window.show_character_palette();
     }
 
-    /// Replaces the selection with the clipboard's text, line breaks turned into spaces.
+    /// Replaces the selection with the clipboard's text, its line breaks
+    /// normalized for the input's `Lines`.
     pub(super) fn paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
-            let text = single_line(&text).into_owned();
+            let text = self.lines.normalize(&text).into_owned();
             self.replace(self.selected_range.clone(), &text, window, cx);
         }
     }
@@ -257,6 +258,8 @@ impl TextInput {
     ) {
         let changed = content != self.content.as_ref();
         self.content = content.into();
+        self.reveal_cursor = true;
+        self.goal_x = None;
         window.notify_text_input_changed(&self.focus_handle);
         cx.notify();
         if changed {
@@ -272,14 +275,14 @@ impl TextInput {
         }
     }
 
-    fn move_to(&mut self, offset: usize, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn move_to(&mut self, offset: usize, window: &mut Window, cx: &mut Context<Self>) {
         self.selected_range = offset..offset;
         self.selection_reversed = false;
         self.selection_changed(window, cx);
     }
 
     /// Moves the cursor end of the selection to `offset`, keeping the other end as the anchor.
-    fn select_to(&mut self, offset: usize, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn select_to(&mut self, offset: usize, window: &mut Window, cx: &mut Context<Self>) {
         if self.selection_reversed {
             self.selected_range.start = offset;
         } else {
@@ -293,6 +296,8 @@ impl TextInput {
     }
 
     pub(super) fn selection_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.reveal_cursor = true;
+        self.goal_x = None;
         window.notify_text_selection_changed(&self.focus_handle);
         cx.notify();
     }
@@ -315,23 +320,15 @@ impl TextInput {
         }
     }
 
-    /// The grapheme boundary nearest the pointer on last frame's line, clamped to the text.
+    /// The grapheme boundary nearest the pointer on last frame's text, clamped to the text.
     fn index_for_mouse_position(&self, position: Point<Pixels>) -> usize {
         if self.content.is_empty() {
             return 0;
         }
-        let (Some(bounds), Some(line)) = (self.last_bounds.as_ref(), self.last_layout.as_ref())
-        else {
+        let (Some(bounds), Some(painted)) = (self.last_bounds, self.painted.as_ref()) else {
             return 0;
         };
-        if position.y < bounds.top() {
-            return 0;
-        }
-        if position.y > bounds.bottom() {
-            return self.content.len();
-        }
-        let index = line.closest_index_for_x(position.x - bounds.left() + self.scroll_x);
-        self.grapheme_start(index)
+        self.grapheme_start(painted.index_for_position(position, bounds))
     }
 
     /// The start of the grapheme containing `offset`; the text's end maps to itself.

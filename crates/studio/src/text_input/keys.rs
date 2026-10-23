@@ -26,14 +26,53 @@ actions!(
         Paste,
         Cut,
         Copy,
+        /// To the row above; from the first row, to the start.
+        Up,
+        /// To the row below; from the last row, to the end.
+        Down,
+        SelectUp,
+        SelectDown,
+        /// To the start of the whole text, past every row.
+        TextStart,
+        /// To the end of the whole text, past every row.
+        TextEnd,
+        SelectToTextStart,
+        SelectToTextEnd,
+        InsertNewline,
     ]
 );
 
 const CONTEXT: Option<&str> = Some("TextInput");
+/// A `Lines::Multi` input, which adds rows to move between and breaks to type.
+const MULTI: Option<&str> = Some("MultiLine");
 
-/// Registers the input's bindings in key context `TextInput`. Enter, escape, up and down
-/// stay unbound so the parent can handle them.
+/// Registers the input's bindings in key context `TextInput`. Enter and escape
+/// stay unbound so the parent can handle them, and so do up and down on one
+/// line. Home and End, and their Cmd arrows on macOS, keep to a row in a
+/// multi-line input.
 pub fn bind_keys(cx: &mut App) {
+    cx.bind_keys([
+        KeyBinding::new("up", Up, MULTI),
+        KeyBinding::new("down", Down, MULTI),
+        KeyBinding::new("shift-up", SelectUp, MULTI),
+        KeyBinding::new("shift-down", SelectDown, MULTI),
+        KeyBinding::new("shift-enter", InsertNewline, MULTI),
+    ]);
+    if cfg!(target_os = "macos") {
+        cx.bind_keys([
+            KeyBinding::new("cmd-up", TextStart, MULTI),
+            KeyBinding::new("cmd-down", TextEnd, MULTI),
+            KeyBinding::new("cmd-shift-up", SelectToTextStart, MULTI),
+            KeyBinding::new("cmd-shift-down", SelectToTextEnd, MULTI),
+        ]);
+    } else {
+        cx.bind_keys([
+            KeyBinding::new("ctrl-home", TextStart, MULTI),
+            KeyBinding::new("ctrl-end", TextEnd, MULTI),
+            KeyBinding::new("ctrl-shift-home", SelectToTextStart, MULTI),
+            KeyBinding::new("ctrl-shift-end", SelectToTextEnd, MULTI),
+        ]);
+    }
     cx.bind_keys([
         KeyBinding::new("backspace", Backspace, CONTEXT),
         KeyBinding::new("shift-backspace", Backspace, CONTEXT),

@@ -5,6 +5,7 @@ mod assets;
 mod background;
 #[cfg(target_os = "macos")]
 mod bundle;
+mod composer;
 mod instance;
 mod key_cap;
 mod native_window;
@@ -53,6 +54,7 @@ fn main() {
         }
         bind_keys(cx);
         text_input::bind_keys(cx);
+        composer::bind_keys(cx);
         sidebar::bind_keys(cx);
         add_project::bind_keys(cx);
         shell::bind_quit_keys(cx);
