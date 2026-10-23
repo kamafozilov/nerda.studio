@@ -3,6 +3,7 @@
 mod age;
 pub mod browse;
 mod error;
+mod git;
 mod history;
 mod model;
 mod paths;
@@ -14,6 +15,7 @@ use std::path::Path;
 
 pub use age::compact_age;
 pub use error::{AddProjectError, LoadError};
+pub use git::{Head, head};
 pub use history::Visits;
 pub use model::{
     AddedProject, Page, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, Tab,
@@ -92,6 +94,11 @@ impl Workspace {
     /// Whether any project exists; cheap enough to call on every render.
     pub fn has_projects(&self) -> bool {
         !self.projects.is_empty()
+    }
+
+    /// Every project's id, in the order they were added.
+    pub fn project_ids(&self) -> Vec<ProjectId> {
+        self.projects.iter().map(|project| project.id).collect()
     }
 
     pub fn project(&self, id: ProjectId) -> Option<&Project> {
