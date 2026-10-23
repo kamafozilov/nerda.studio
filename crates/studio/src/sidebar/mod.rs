@@ -28,6 +28,7 @@ use workspace::{AddProjectError, AddedProject, ProjectId, ProjectScope, SessionI
 
 use self::{card::Row, glide::Track, shift::Shifts};
 use crate::{
+    menu::Menu,
     store::Store,
     text_input::{Lines, TextInput, TextInputEvent},
 };
@@ -41,19 +42,18 @@ actions!(
         SelectPrevious,
         /// Opens the highlighted search result and clears the search.
         OpenHighlighted,
-        /// Closes the menu, else clears the search; does nothing on an empty one.
+        /// Clears the search; on an empty one, gives focus back.
         Dismiss,
     ]
 );
 
-/// Key bindings for the search field and the menu.
+/// Key bindings for the search field.
 pub fn bind_keys(cx: &mut App) {
     cx.bind_keys([
         gpui::KeyBinding::new("down", SelectNext, Some("SidebarSearch")),
         gpui::KeyBinding::new("up", SelectPrevious, Some("SidebarSearch")),
         gpui::KeyBinding::new("enter", OpenHighlighted, Some("SidebarSearch")),
         gpui::KeyBinding::new("escape", Dismiss, Some("SidebarSearch")),
-        gpui::KeyBinding::new("escape", Dismiss, Some("SidebarMenu")),
     ]);
 }
 
@@ -97,7 +97,7 @@ pub struct Sidebar {
     hover_surface: Track,
     page_selection_surface: Track,
     page_hover_surface: Track,
-    menu_open: bool,
+    menu: Menu<Sidebar, ()>,
     /// Where focus was before `focus_search` took it, given back by Escape on an
     /// empty search and when the sidebar closes.
     focus_before_search: Option<FocusHandle>,
@@ -106,10 +106,6 @@ pub struct Sidebar {
     /// Whether the sidebar is open: closed, nothing in it glides or keeps key
     /// focus.
     open: bool,
-    /// Holds key focus while the menu is open, so Escape reaches it.
-    menu_focus: FocusHandle,
-    /// Where focus was before the menu opened, to give it back.
-    focus_before_menu: Option<FocusHandle>,
     scroll: UniformListScrollHandle,
     /// The projects whose heads were read, to read again when they change.
     headed_projects: Vec<ProjectId>,
@@ -175,12 +171,10 @@ impl Sidebar {
             hover_surface: Track::default(),
             page_selection_surface: Track::default(),
             page_hover_surface: Track::default(),
-            menu_open: false,
+            menu: Menu::new(|sidebar| &mut sidebar.menu, cx),
             focus_before_search: None,
             home_focus,
             open,
-            menu_focus: cx.focus_handle(),
-            focus_before_menu: None,
             scroll: UniformListScrollHandle::new(),
             headed_projects: Vec::new(),
             heads_task: Task::ready(()),
@@ -197,9 +191,7 @@ impl Sidebar {
 
     /// Puts the cursor in the search field, its text selected so typing replaces it.
     pub fn focus_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.menu_open {
-            self.close_menu(window, cx);
-        }
+        self.menu.close(window, cx);
         let search = self.search.focus_handle(cx);
         if !search.contains_focused(window, cx) {
             self.focus_before_search = window.focused(cx);
@@ -225,9 +217,7 @@ impl Sidebar {
         if open {
             return;
         }
-        if self.menu_open {
-            self.close_menu(window, cx);
-        }
+        self.menu.close(window, cx);
         if self.search.focus_handle(cx).contains_focused(window, cx) {
             self.give_focus_back(window, cx);
         }
@@ -324,21 +314,6 @@ impl Sidebar {
         Ok(())
     }
 
-    fn open_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.focus_before_menu = window.focused(cx);
-        self.menu_open = true;
-        window.focus(&self.menu_focus, cx);
-        cx.notify();
-    }
-
-    fn close_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.menu_open = false;
-        if let Some(focus) = self.focus_before_menu.take() {
-            window.focus(&focus, cx);
-        }
-        cx.notify();
-    }
-
     fn select_next(&mut self, _: &SelectNext, _: &mut Window, cx: &mut Context<Self>) {
         self.move_highlight(1, cx);
     }
@@ -383,9 +358,7 @@ impl Sidebar {
     }
 
     fn dismiss(&mut self, _: &Dismiss, window: &mut Window, cx: &mut Context<Self>) {
-        if self.menu_open {
-            self.close_menu(window, cx);
-        } else if self.query.is_empty() {
+        if self.query.is_empty() {
             // An empty search gives focus back to where Cmd-K took it from.
             self.give_focus_back(window, cx);
         } else {

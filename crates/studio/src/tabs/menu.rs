@@ -1,25 +1,18 @@
 //! A tab's menu, opened by a right click on it: close it, the others, those to
 //! either side, or all of them.
 
-use gpui::{
-    AnyElement, ClickEvent, Context, FocusHandle, IntoElement, MouseButton, ParentElement, Pixels,
-    Point, Styled, Window, anchored, deferred, div, point, prelude::*, px,
-};
-use theme::{
-    CONTROL_RADIUS, DISABLED_OPACITY, HAIRLINE, MENU_RADIUS, MENU_WIDTH, ROW_HEIGHT, SPACE_1,
-    SPACE_2, SPACE_3, Theme,
-};
+use gpui::{AnyElement, Context, Pixels, Point, Window};
 use workspace::{Tab, Timestamp, Workspace};
 
-use super::{DismissMenu, TabStrip};
+use super::TabStrip;
+use crate::menu::{Entry, Item, Placement};
 
 const MAC: bool = cfg!(target_os = "macos");
 
+/// The tab the menu opened on, and where.
 pub(super) struct TabMenu {
     pub tab: Tab,
     position: Point<Pixels>,
-    /// Where focus was before the menu opened, to give it back.
-    focus_before: Option<FocusHandle>,
 }
 
 /// A choice in the menu and what it does to the tab it opened on.
@@ -39,23 +32,7 @@ impl TabStrip {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let focus_before = window.focused(cx);
-        self.menu = Some(TabMenu {
-            tab,
-            position,
-            focus_before,
-        });
-        window.focus(&self.menu_focus, cx);
-        cx.notify();
-    }
-
-    pub(super) fn close_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if let Some(menu) = self.menu.take()
-            && let Some(focus) = menu.focus_before
-        {
-            window.focus(&focus, cx);
-        }
-        cx.notify();
+        self.menu.open(TabMenu { tab, position }, window, cx);
     }
 
     pub(super) fn render_menu(
@@ -63,8 +40,7 @@ impl TabStrip {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
-        let menu = self.menu.as_ref()?;
-        let colors = Theme::of(cx).colors;
+        let menu = self.menu.opened()?;
         let workspace = self.store.read(cx).workspace();
         let tabs = workspace.open_tabs();
         let index = tabs.iter().position(|&tab| tab == menu.tab)?;
@@ -108,108 +84,34 @@ impl TabStrip {
             },
         ];
         let tab = menu.tab;
-        let items = choices.map(|choice| {
-            let Choice {
-                id,
-                label,
-                shortcut,
-                enabled,
-                run,
-            } = choice;
-            div()
-                .id(id)
-                .h(ROW_HEIGHT)
-                .flex_none()
-                .px(SPACE_2)
-                .flex()
-                .items_center()
-                .gap(SPACE_3)
-                .rounded(CONTROL_RADIUS)
-                .when(enabled, |item| {
-                    item.hover(|item| item.bg(colors.hover))
-                        .on_click(cx.listener(move |strip, _: &ClickEvent, window, cx| {
-                            strip.store.update(cx, |store, cx| {
-                                store.update(cx, |workspace| run(workspace, tab, Timestamp::now()))
-                            });
-                            strip.close_menu(window, cx);
-                        }))
+        let entries = choices
+            .into_iter()
+            .map(|choice| {
+                let Choice {
+                    id,
+                    label,
+                    shortcut,
+                    enabled,
+                    run,
+                } = choice;
+                let item = Item::new(id, label, move |strip: &mut TabStrip, _, cx| {
+                    strip.store.update(cx, |store, cx| {
+                        store.update(cx, |workspace| run(workspace, tab, Timestamp::now()))
+                    })
                 })
-                .when(!enabled, |item| item.opacity(DISABLED_OPACITY))
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .overflow_hidden()
-                        .whitespace_nowrap()
-                        .text_ellipsis()
-                        .text_color(colors.text_primary)
-                        .child(label),
-                )
-                .children(shortcut.map(|keys| {
-                    div()
-                        .flex_none()
-                        .text_color(colors.text_secondary)
-                        .child(keys)
-                }))
-        });
-        let viewport = window.viewport_size();
-        Some(
-            div()
-                .child(
-                    // Under the menu, a click anywhere else closes it and goes no further.
-                    deferred(
-                        anchored().position(point(px(0.), px(0.))).child(
-                            div()
-                                .id("tab-menu-backdrop")
-                                .w(viewport.width)
-                                .h(viewport.height)
-                                .occlude()
-                                .on_mouse_down(
-                                    MouseButton::Left,
-                                    cx.listener(|strip, _, window, cx| {
-                                        strip.close_menu(window, cx)
-                                    }),
-                                )
-                                .on_mouse_down(
-                                    MouseButton::Right,
-                                    cx.listener(|strip, _, window, cx| {
-                                        strip.close_menu(window, cx)
-                                    }),
-                                ),
-                        ),
-                    )
-                    .priority(1),
-                )
-                .child(
-                    deferred(
-                        anchored()
-                            .position(menu.position)
-                            .offset(point(px(0.), SPACE_1))
-                            .snap_to_window_with_margin(SPACE_2)
-                            .child(
-                                div()
-                                    .id("tab-menu")
-                                    .key_context("TabMenu")
-                                    .track_focus(&self.menu_focus)
-                                    .on_action(cx.listener(|strip, _: &DismissMenu, window, cx| {
-                                        strip.close_menu(window, cx)
-                                    }))
-                                    .occlude()
-                                    .w(MENU_WIDTH)
-                                    .p(SPACE_1 - HAIRLINE)
-                                    .flex()
-                                    .flex_col()
-                                    .rounded(MENU_RADIUS)
-                                    .border_1()
-                                    .border_color(colors.border)
-                                    .bg(colors.popover_background)
-                                    .shadow_lg()
-                                    .children(items),
-                            ),
-                    )
-                    .priority(2),
-                )
-                .into_any_element(),
+                .enabled(enabled);
+                Entry::Item(match shortcut {
+                    Some(keys) => item.shortcut(keys),
+                    None => item,
+                })
+            })
+            .collect();
+        self.menu.render(
+            "tab-menu",
+            entries,
+            Placement::At(menu.position),
+            window,
+            cx,
         )
     }
 }

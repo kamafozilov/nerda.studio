@@ -23,8 +23,8 @@ use std::{
 };
 
 use gpui::{
-    App, Bounds, ClickEvent, Context, Entity, FocusHandle, IntoElement, ParentElement, Pixels,
-    Render, SharedString, Styled, Task, Window, actions, div, prelude::*,
+    Bounds, ClickEvent, Context, Entity, IntoElement, ParentElement, Pixels, Render, SharedString,
+    Styled, Task, Window, div, prelude::*,
 };
 use theme::{
     MAIN_INSET, TAB_GAP, Theme,
@@ -32,23 +32,7 @@ use theme::{
 };
 use workspace::Tab;
 
-use crate::{accessibility, assets::Icon, sidebar::icon_button, store::Store};
-
-actions!(
-    tabs,
-    [
-        /// Closes the tab menu.
-        DismissMenu
-    ]
-);
-
-pub fn bind_keys(cx: &mut App) {
-    cx.bind_keys([gpui::KeyBinding::new(
-        "escape",
-        DismissMenu,
-        Some("TabMenu"),
-    )]);
-}
+use crate::{accessibility, assets::Icon, menu::Menu, sidebar::icon_button, store::Store};
 
 pub struct TabStrip {
     store: Entity<Store>,
@@ -77,8 +61,7 @@ pub struct TabStrip {
     settle_from: HashMap<Tab, f32>,
     /// The press that ended a drag also ends in a click; that click is not a choice.
     skip_click: bool,
-    menu: Option<menu::TabMenu>,
-    menu_focus: FocusHandle,
+    menu: Menu<TabStrip, menu::TabMenu>,
 }
 
 /// What a tab shows and the names its elements go by.
@@ -123,14 +106,13 @@ impl TabStrip {
             drops: 0,
             settle_from: HashMap::new(),
             skip_click: false,
-            menu: None,
-            menu_focus: cx.focus_handle(),
+            menu: Menu::new(|strip| &mut strip.menu, cx),
         }
     }
 
     /// Closes the tab menu, as when Cmd-K takes focus to the search.
     pub fn dismiss_menu(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.close_menu(window, cx);
+        self.menu.close(window, cx);
     }
 
     /// Reads the workspace again after it changed: the tabs on screen, the
@@ -279,10 +261,10 @@ impl Render for TabStrip {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.refresh(cx);
         // A menu whose tab closed some other way has nothing left to act on.
-        if let Some(menu) = &self.menu
+        if let Some(menu) = self.menu.opened()
             && !self.live.contains(&menu.tab)
         {
-            self.close_menu(window, cx);
+            self.menu.close(window, cx);
         }
         let colors = Theme::of(cx).colors;
         let slots: Vec<_> = (0..self.order.len())

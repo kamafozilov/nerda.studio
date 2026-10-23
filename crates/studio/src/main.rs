@@ -8,6 +8,7 @@ mod bundle;
 mod composer;
 mod instance;
 mod key_cap;
+mod menu;
 mod native_window;
 mod shell;
 mod sidebar;
@@ -58,7 +59,7 @@ fn main() {
         sidebar::bind_keys(cx);
         add_project::bind_keys(cx);
         shell::bind_quit_keys(cx);
-        tabs::bind_keys(cx);
+        menu::bind_keys(cx);
         app_menu::init(cx);
         let theme = system_theme::current(cx.window_appearance());
         cx.set_global(theme);
