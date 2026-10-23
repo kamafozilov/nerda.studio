@@ -28,9 +28,12 @@ impl Workspace {
             .collect()
     }
 
-    /// Sessions in the current scope whose title contains the trimmed query (ignoring case), in sort order.
+    /// Sessions in the current scope whose title, as shown, contains the
+    /// query, in sort order. Matching ignores case, runs of whitespace and the
+    /// spellings people type for each other: е for ё, and a plain apostrophe
+    /// for the Uzbek ʻ and ʼ.
     pub fn visible_sessions(&self, query: &str) -> Vec<&Session> {
-        let needle = query.trim().to_lowercase();
+        let needle = fold(&query.split_whitespace().collect::<Vec<_>>().join(" "));
         let mut sessions: Vec<&Session> = self
             .sessions
             .iter()
@@ -38,7 +41,7 @@ impl Workspace {
                 ProjectScope::All => true,
                 ProjectScope::Project(id) => session.project == id,
             })
-            .filter(|session| needle.is_empty() || session.title.to_lowercase().contains(&needle))
+            .filter(|session| needle.is_empty() || fold(&session.display_title()).contains(&needle))
             .collect();
         sessions.sort_by_key(|session| Reverse((self.sort_key(session), session.id)));
         sessions
@@ -105,4 +108,17 @@ impl Workspace {
             SessionSort::Created => session.created_at,
         }
     }
+}
+
+/// Text as search compares it: lowercase, ё as е, and every apostrophe-like
+/// mark (ʻ ʼ ‘ ’ `) as a plain apostrophe.
+fn fold(text: &str) -> String {
+    text.to_lowercase()
+        .chars()
+        .map(|c| match c {
+            'ё' => 'е',
+            'ʻ' | 'ʼ' | '‘' | '’' | '`' => '\'',
+            c => c,
+        })
+        .collect()
 }

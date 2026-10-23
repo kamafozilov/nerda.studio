@@ -87,6 +87,23 @@ fn search_is_trimmed_and_unicode_case_insensitive() {
 }
 
 #[test]
+fn search_matches_the_spellings_people_type() {
+    let workspace = load_json(FIXTURE);
+    // A plain apostrophe, or a curly one, for the Uzbek ʻ.
+    assert_eq!(ids(workspace.visible_sessions("o'zbek")), [5]);
+    assert_eq!(ids(workspace.visible_sessions("o’zbek")), [5]);
+    assert_eq!(ids(workspace.visible_sessions("oʻzbek")), [5]);
+    // е for ё, either way round.
+    let workspace = load_json(&FIXTURE.replace("Исправить Баг", "Отчёт о баге"));
+    assert_eq!(ids(workspace.visible_sessions("отчет")), [3]);
+    assert_eq!(ids(workspace.visible_sessions("ОТЧЁТ")), [3]);
+    // The title as shown: runs of whitespace read as one space.
+    let workspace = load_json(&FIXTURE.replace("Fix bug", "Fix   the\\tbug"));
+    assert_eq!(ids(workspace.visible_sessions("fix the bug")), [4]);
+    assert_eq!(ids(workspace.visible_sessions("fix  the")), [4]);
+}
+
+#[test]
 fn sorts_newest_first_with_ties_by_id() {
     let mut workspace = load_json(FIXTURE);
     assert_eq!(workspace.sort(), SessionSort::LastActivity);
@@ -152,4 +169,26 @@ fn latest_session_picks_greatest_activity_with_ties_by_id() {
         panic!("expected a new project");
     };
     assert!(workspace.latest_session(empty).is_none());
+}
+
+#[test]
+fn a_title_shows_as_one_trimmed_line() {
+    let session = |title: &str| workspace::Session {
+        id: workspace::SessionId(1),
+        project: workspace::ProjectId(0),
+        title: title.to_owned(),
+        created_at: workspace::Timestamp(0),
+        last_activity_at: None,
+    };
+    assert_eq!(session("Fix the tabs").display_title(), "Fix the tabs");
+    assert_eq!(
+        session("  First line\nSecond\tline  ").display_title(),
+        "First line Second line"
+    );
+    assert_eq!(session("   ").display_title(), "Untitled session");
+    assert_eq!(session("\n\n").display_title(), "Untitled session");
+    assert_eq!(
+        session("Отчёт oʻzgartirish").display_title(),
+        "Отчёт oʻzgartirish"
+    );
 }

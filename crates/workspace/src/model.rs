@@ -37,6 +37,9 @@ pub struct Project {
     pub created_at: Timestamp,
 }
 
+/// What a session with a blank title is shown as.
+const UNTITLED: &str = "Untitled session";
+
 /// An agent session inside a project.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Session {
@@ -57,6 +60,18 @@ impl Session {
     /// The time the session was last touched, falling back to its creation.
     pub fn activity(&self) -> Timestamp {
         self.last_activity_at.unwrap_or(self.created_at)
+    }
+
+    /// The title as one line to show: runs of whitespace, line breaks and tabs
+    /// included, read as one space and trimmed; a blank title reads
+    /// "Untitled session".
+    pub fn display_title(&self) -> String {
+        let title = self.title.split_whitespace().collect::<Vec<_>>().join(" ");
+        if title.is_empty() {
+            UNTITLED.to_owned()
+        } else {
+            title
+        }
     }
 }
 
