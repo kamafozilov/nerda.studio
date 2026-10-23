@@ -25,3 +25,9 @@ dirs = "6.0"
 # block 0.1.6 (under metal, under GPUI's macOS backend) declares an extern static of an
 # uninhabited type, which a future Rust rejects; `vendor/block` makes the type inhabited.
 block = { path = "vendor/block" }
+
+# Dev builds run their dependencies optimized: GPUI's layout, text shaping and
+# scene building, serde and the rest are 10-30 times slower unoptimized, enough
+# to drop frames in motion. The app's own crates stay quick to rebuild and debug.
+[profile.dev.package."*"]
+opt-level = 2
