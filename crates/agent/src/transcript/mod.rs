@@ -1,17 +1,16 @@
 //! A session's conversation as the screen shows it: turns of the person's
 //! message and what came back, reduced from the session's events.
 
+mod prompt;
 mod reply;
 mod status;
 mod turn;
 
+pub use prompt::{Answer, Permission, PermissionState};
 use reply::Streaming;
 pub use status::Status;
 use status::Work;
-pub use turn::{
-    Ending, Finished, Item, Permission, PermissionState, Text, ToolCall, ToolStatus, Turn,
-    TurnState,
-};
+pub use turn::{Ending, Finished, Item, Text, ToolCall, ToolStatus, Turn, TurnState};
 
 use crate::event::Event;
 use crate::failure::{self, Failure, Signals, StderrTail};
@@ -184,7 +183,7 @@ impl Transcript {
                 };
                 let turn = turn.unwrap_or_else(|| self.active_turn());
                 self.turns[turn].items.push(Item::Permission(Permission {
-                    request: request.clone(),
+                    request: (**request).clone(),
                     state: PermissionState::Pending,
                 }));
             }

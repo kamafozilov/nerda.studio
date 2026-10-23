@@ -4,7 +4,7 @@ use agent::protocol::{
     AgentStatus, Assistant, Block, BlockKind, Delta, Init, Outcome, PermissionRequest, RateLimit,
     Stage, Stream, ToolResult, TurnError, TurnResult, Usage,
 };
-use agent::{Incoming, MessageId, RequestId, ToolUseId, protocol::parse};
+use agent::{Ask, Incoming, MessageId, RequestId, ToolUseId, protocol::parse};
 use serde_json::json;
 use support::{FIXTURES, agent_lines};
 
@@ -209,7 +209,7 @@ fn a_permission_prompt_names_the_tool_its_input_and_its_call() {
     });
     assert_eq!(
         asks,
-        [PermissionRequest {
+        [Box::new(PermissionRequest {
             id: RequestId("a6c22aa7-22c2-43d3-9358-c0477a9b497f".to_owned()),
             tool_name: "Bash".to_owned(),
             display_name: Some("Bash".to_owned()),
@@ -223,7 +223,14 @@ fn a_permission_prompt_names_the_tool_its_input_and_its_call() {
             tool_use_id: Some(ToolUseId("toolu_01FtUazAVz9ksL4K2nMikyVK".to_owned())),
             blocked_path: Some("/Users/me/project/probe.txt".to_owned()),
             default_to_no: false,
-        }]
+            ask: Ask::Tool,
+            suggestions: vec![
+                json!({"type": "addRules", "rules": [{"toolName": "Bash", "ruleContent": "touch probe.txt"}], "behavior": "allow", "destination": "localSettings"}),
+                json!({"type": "addDirectories", "directories": ["/Users/me/project"], "destination": "session"}),
+                json!({"type": "setMode", "mode": "acceptEdits", "destination": "session"}),
+            ],
+            session_rule: true,
+        })]
     );
 }
 

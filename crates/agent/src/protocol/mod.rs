@@ -2,6 +2,7 @@
 //! app's commands on the agent's stdin and its events on stdout. Lines are
 //! parsed here once, at the boundary; everything past it trusts the types.
 
+mod ask;
 mod attachment;
 mod incoming;
 mod outgoing;
@@ -12,6 +13,8 @@ use std::str::FromStr;
 use serde::Deserialize;
 use uuid::Uuid;
 
+pub use ask::{Ask, Choice, Question};
+pub(crate) use ask::{answered, for_session};
 pub use attachment::{Attachment, Image, ImageFormat, MAX_IMAGE};
 pub use incoming::{
     AgentStatus, ApiError, Assistant, Block, BlockKind, Delta, Incoming, Init, Outcome, ParseError,

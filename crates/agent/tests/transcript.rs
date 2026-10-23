@@ -2,8 +2,8 @@ mod support;
 
 use agent::protocol::Usage;
 use agent::{
-    Command, Ending, Finished, Item, Message, PermissionState, Status, Text, ToolCall, ToolStatus,
-    ToolUseId, Transcript, TurnState,
+    Answer, Command, Ending, Finished, Item, Message, PermissionState, Status, Text, ToolCall,
+    ToolStatus, ToolUseId, Transcript, TurnState,
 };
 use serde_json::json;
 use support::{Line, Player, says};
@@ -149,7 +149,7 @@ fn a_tool_waits_for_the_person_s_answer_and_then_runs() {
                 let pending: Vec<_> = transcript.pending_permissions().collect();
                 assert_eq!(pending.len(), 1);
                 assert_eq!(pending[0].request.tool_name, "Bash");
-                pending[0].allow()
+                pending[0].answer(Answer::AllowOnce)
             }
             other => panic!("asked for {other}"),
         },
@@ -195,7 +195,9 @@ fn a_denied_or_withdrawn_prompt_stops_waiting() {
         .next()
         .unwrap()
         .clone();
-    denied.send(permission.deny("Not now"));
+    denied.send(permission.answer(Answer::Deny {
+        feedback: Some("Not now".to_owned()),
+    }));
     assert_eq!(denied.transcript.pending_permissions().count(), 0);
     let states: Vec<_> = denied.transcript.turns()[0]
         .items
@@ -224,7 +226,11 @@ fn turns_on_one_process_each_show_what_they_cost() {
             format!("message {}", transcript.turns().len()),
             Vec::new(),
         )),
-        "answer" => transcript.pending_permissions().next().unwrap().allow(),
+        "answer" => transcript
+            .pending_permissions()
+            .next()
+            .unwrap()
+            .answer(Answer::AllowOnce),
         "set_permission_mode" => Command::SetAccess(Access::AcceptEdits),
         "set_model" => Command::SetModel(ModelId("haiku".to_owned())),
         "apply_flag_settings" => Command::SetEffort(Effort::Low),

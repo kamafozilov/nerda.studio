@@ -134,6 +134,7 @@ fn an_answer_goes_back_under_the_prompt_s_id() {
         request: RequestId("a6c22aa7-22c2-43d3-9358-c0477a9b497f".to_owned()),
         decision: Decision::Allow {
             input: input.clone(),
+            permissions: Vec::new(),
         },
     };
     assert_eq!(
@@ -148,11 +149,35 @@ fn an_answer_goes_back_under_the_prompt_s_id() {
         request: RequestId("a6c22aa7".to_owned()),
         decision: Decision::Deny {
             message: "Not now".to_owned(),
+            interrupt: false,
         },
     };
     assert_eq!(
         line(&deny, "unused")["response"]["response"],
         json!({"behavior": "deny", "message": "Not now"})
+    );
+    let rule = json!({"type": "addRules", "rules": [{"toolName": "Bash"}], "behavior": "allow", "destination": "session"});
+    let for_session = Command::Answer {
+        request: RequestId("a6c22aa7".to_owned()),
+        decision: Decision::Allow {
+            input: input.clone(),
+            permissions: vec![rule.clone()],
+        },
+    };
+    assert_eq!(
+        line(&for_session, "unused")["response"]["response"],
+        json!({"behavior": "allow", "updatedInput": input, "updatedPermissions": [rule]})
+    );
+    let cancel = Command::Answer {
+        request: RequestId("a6c22aa7".to_owned()),
+        decision: Decision::Deny {
+            message: "Stop".to_owned(),
+            interrupt: true,
+        },
+    };
+    assert_eq!(
+        line(&cancel, "unused")["response"]["response"],
+        json!({"behavior": "deny", "message": "Stop", "interrupt": true})
     );
 }
 

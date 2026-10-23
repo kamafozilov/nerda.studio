@@ -2,8 +2,9 @@
 
 use serde_json::Value;
 
+use super::Permission;
 use crate::failure::Failure;
-use crate::protocol::{Command, Decision, Message, MessageId, PermissionRequest, ToolUseId, Usage};
+use crate::protocol::{Message, MessageId, ToolUseId, Usage};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Turn {
@@ -70,44 +71,6 @@ pub enum ToolStatus {
     Done(String),
     /// With the tool's output; empty when the turn ended before the tool did.
     Failed(String),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Permission {
-    pub request: PermissionRequest,
-    pub state: PermissionState,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PermissionState {
-    Pending,
-    Allowed,
-    Denied,
-    /// Withdrawn by the agent, or left unanswered when the turn ended.
-    Cancelled,
-}
-
-impl Permission {
-    /// The answer that lets the tool run as asked.
-    pub fn allow(&self) -> Command {
-        self.answer(Decision::Allow {
-            input: self.request.input.clone(),
-        })
-    }
-
-    /// The answer that refuses the tool, telling the agent why.
-    pub fn deny(&self, message: impl Into<String>) -> Command {
-        self.answer(Decision::Deny {
-            message: message.into(),
-        })
-    }
-
-    fn answer(&self, decision: Decision) -> Command {
-        Command::Answer {
-            request: self.request.id.clone(),
-            decision,
-        }
-    }
 }
 
 impl Turn {

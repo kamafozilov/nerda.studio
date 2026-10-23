@@ -4,9 +4,10 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use super::{Incoming, Parsed, read};
-use crate::protocol::{RequestId, ToolUseId};
+use crate::protocol::{Ask, RequestId, ToolUseId};
 
-/// A tool call waiting for the person's yes or no.
+/// A tool call waiting for the person: to run, or, for the agent's questions
+/// and plans, to be answered.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PermissionRequest {
     pub id: RequestId,
@@ -21,6 +22,12 @@ pub struct PermissionRequest {
     pub blocked_path: Option<String>,
     /// Approving must take a deliberate choice: the prompt opens on Deny.
     pub default_to_no: bool,
+    /// What it asks, by the tool asking.
+    pub ask: Ask,
+    /// The permissions the agent suggests keeping, as it writes them.
+    pub suggestions: Vec<Value>,
+    /// The agent lets the person allow it for the rest of the session.
+    pub session_rule: bool,
 }
 
 #[derive(Deserialize)]
@@ -48,6 +55,10 @@ struct CanUseTool {
     blocked_path: Option<String>,
     #[serde(default)]
     default_to_no: bool,
+    #[serde(default)]
+    permission_suggestions: Vec<Value>,
+    #[serde(default)]
+    suppress_always_allow_rule: bool,
 }
 
 pub(super) fn control_request(value: &Value) -> Parsed {
@@ -61,7 +72,8 @@ pub(super) fn control_request(value: &Value) -> Parsed {
         }));
     }
     let ask: CanUseTool = read(&line.request)?;
-    Ok(Some(Incoming::Permission(PermissionRequest {
+    let asks = Ask::of(&ask.tool_name, &ask.input);
+    Ok(Some(Incoming::Permission(Box::new(PermissionRequest {
         id: line.request_id,
         tool_name: ask.tool_name,
         display_name: ask.display_name,
@@ -72,7 +84,10 @@ pub(super) fn control_request(value: &Value) -> Parsed {
         tool_use_id: ask.tool_use_id,
         blocked_path: ask.blocked_path,
         default_to_no: ask.default_to_no,
-    })))
+        ask: asks,
+        suggestions: ask.permission_suggestions,
+        session_rule: !ask.suppress_always_allow_rule,
+    }))))
 }
 
 #[derive(Deserialize)]

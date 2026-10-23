@@ -31,13 +31,19 @@ pub enum Command {
     },
 }
 
+/// An answer to a prompt as the agent takes it; `Permission::answer` makes
+/// one from the person's.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Decision {
     /// Run the tool on `input`: the input it asked with, or one the person
-    /// changed.
-    Allow { input: Value },
-    /// Don't run it; `message` tells the agent why.
-    Deny { message: String },
+    /// changed or answered; keep `permissions` for the rest of the session.
+    Allow {
+        input: Value,
+        permissions: Vec<Value>,
+    },
+    /// Don't run it; `message` tells the agent why; `interrupt` also stops
+    /// the turn.
+    Deny { message: String, interrupt: bool },
 }
 
 /// A message the person sends.
@@ -94,10 +100,21 @@ pub fn encode(command: &Command, agent: &Agent, request: &RequestId) -> Option<S
             )
         }
         Command::Answer { request, decision } => {
-            let answer = match decision {
-                Decision::Allow { input } => json!({"behavior": "allow", "updatedInput": input}),
-                Decision::Deny { message } => json!({"behavior": "deny", "message": message}),
+            let mut answer = match decision {
+                Decision::Allow { input, .. } => {
+                    json!({"behavior": "allow", "updatedInput": input})
+                }
+                Decision::Deny { message, .. } => json!({"behavior": "deny", "message": message}),
             };
+            match decision {
+                Decision::Allow { permissions, .. } if !permissions.is_empty() => {
+                    answer["updatedPermissions"] = Value::from(permissions.clone());
+                }
+                Decision::Deny {
+                    interrupt: true, ..
+                } => answer["interrupt"] = Value::from(true),
+                _ => {}
+            }
             json!({
                 "type": "control_response",
                 "response": {"subtype": "success", "request_id": request.0, "response": answer},

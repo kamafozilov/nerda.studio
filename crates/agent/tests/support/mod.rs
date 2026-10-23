@@ -27,6 +27,7 @@ pub const FIXTURES: &[&str] = &[
     "turn-model-not-found.jsonl",
     "turn-signed-out.jsonl",
     "turn-thinking.jsonl",
+    "turn-plan.jsonl",
 ];
 
 #[derive(Clone, Debug, PartialEq, Eq)]

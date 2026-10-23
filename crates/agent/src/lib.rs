@@ -13,11 +13,11 @@ pub use event::Event;
 pub use failure::Failure;
 pub use program::prewarm;
 pub use protocol::{
-    Attachment, Command, ConversationId, Decision, Image, ImageFormat, Incoming, Message,
-    MessageId, ParseError, RequestId, ToolUseId,
+    Ask, Attachment, Choice, Command, ConversationId, Decision, Image, ImageFormat, Incoming,
+    Message, MessageId, ParseError, Question, RequestId, ToolUseId,
 };
 pub use session::{Conversation, Events, Launch, Refusal, Session, StartError};
 pub use transcript::{
-    Ending, Finished, Item, Permission, PermissionState, Status, Text, ToolCall, ToolStatus,
-    Transcript, Turn, TurnState,
+    Answer, Ending, Finished, Item, Permission, PermissionState, Status, Text, ToolCall,
+    ToolStatus, Transcript, Turn, TurnState,
 };

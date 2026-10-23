@@ -4,9 +4,9 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use agent::{
-    Attachment, Command, Conversation, ConversationId, Ending, Event, Failure, Image, Incoming,
-    Item, Message, MessageId, RequestId, Session, StartError, Status, Text, ToolStatus, Transcript,
-    TurnState,
+    Answer, Attachment, Command, Conversation, ConversationId, Ending, Event, Failure, Image,
+    Incoming, Item, Message, MessageId, RequestId, Session, StartError, Status, Text, ToolStatus,
+    Transcript, TurnState,
 };
 use serde_json::json;
 use support::{TempDir, Watch, arguments, exited, fake, project, script_lines, status_is, written};
@@ -39,7 +39,7 @@ fn the_agent_asks_before_a_tool_runs_and_runs_it_once_allowed() {
         .pending_permissions()
         .next()
         .unwrap()
-        .allow();
+        .answer(Answer::AllowOnce);
     session.send(allow);
     watch.until("the reply", status_is(Status::Ready));
     let turn = &watch.transcript.turns()[0];

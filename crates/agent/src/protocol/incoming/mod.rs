@@ -39,7 +39,7 @@ pub enum Incoming {
     /// A turn ended.
     Result(TurnResult),
     /// The agent asks whether a tool may run.
-    Permission(PermissionRequest),
+    Permission(Box<PermissionRequest>),
     /// Any other request the agent makes of the app.
     Request {
         id: RequestId,
