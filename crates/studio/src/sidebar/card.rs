@@ -147,7 +147,9 @@ impl Sidebar {
             .foreground_executor()
             .block_with_timeout(LAUNCH_HEADS_WAIT, read)
         {
-            Ok(heads) => self.heads = heads,
+            Ok(heads) => self
+                .store
+                .update(cx, |store, cx| store.set_heads(heads, cx)),
             Err(read) => self.heads_task = self.take_heads(read, cx),
         }
     }
@@ -182,8 +184,8 @@ impl Sidebar {
         self.heads_task = self.take_heads(read, cx);
     }
 
-    /// Takes the heads `read` finds once it does; the cards redraw if one
-    /// changed.
+    /// Hands the store the heads `read` finds once it does; the cards redraw
+    /// if one changed.
     fn take_heads(
         &mut self,
         read: impl Future<Output = HashMap<ProjectId, Head>> + 'static,
@@ -193,11 +195,9 @@ impl Sidebar {
             let heads = read.await;
             sidebar
                 .update(cx, |sidebar, cx| {
-                    if sidebar.heads != heads {
-                        sidebar.heads = heads;
-                        sidebar.stale = true;
-                        cx.notify();
-                    }
+                    sidebar
+                        .store
+                        .update(cx, |store, cx| store.set_heads(heads, cx))
                 })
                 .ok();
         })

@@ -6,13 +6,14 @@
 //! Quitting writes the newest state before the app exits.
 
 use std::{
+    collections::HashMap,
     io::ErrorKind,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
 use gpui::{Context, SharedString, Subscription};
-use workspace::{LoadError, Timestamp, Workspace};
+use workspace::{Head, LoadError, ProjectId, Timestamp, Workspace};
 
 /// Shared by the sidebar and the main area; both observe it.
 pub struct Store {
@@ -22,6 +23,8 @@ pub struct Store {
     path: Option<PathBuf>,
     /// A problem the user should know about, shown until dismissed.
     notice: Option<SharedString>,
+    /// Each project's checkout head, as the sidebar last read it; not saved.
+    heads: HashMap<ProjectId, Head>,
     /// The file's contents as last handed to the writer.
     saved: Option<Arc<[u8]>>,
     /// Where saves go once a newer instance has taken the file over; see
@@ -72,6 +75,7 @@ impl Store {
             workspace,
             path,
             notice,
+            heads: HashMap::new(),
             saved: None,
             handed_off: None,
             serial: 0,
@@ -145,6 +149,20 @@ impl Store {
 
     pub fn notice(&self) -> Option<&SharedString> {
         self.notice.as_ref()
+    }
+
+    /// What the project's checkout is on; `None` outside git, or before the
+    /// sidebar first read it.
+    pub fn head(&self, project: ProjectId) -> Option<&Head> {
+        self.heads.get(&project)
+    }
+
+    /// Takes the heads just read; observers hear of it only if one changed.
+    pub fn set_heads(&mut self, heads: HashMap<ProjectId, Head>, cx: &mut Context<Self>) {
+        if self.heads != heads {
+            self.heads = heads;
+            cx.notify();
+        }
     }
 
     pub fn dismiss_notice(&mut self, cx: &mut Context<Self>) {

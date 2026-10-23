@@ -71,7 +71,8 @@ impl Sidebar {
         if !std::mem::take(&mut self.stale) {
             return;
         }
-        let workspace = self.store.read(cx).workspace();
+        let store = self.store.read(cx);
+        let workspace = store.workspace();
         let previous: Vec<SessionId> = self.rows.iter().map(|row| row.id).collect();
         self.rows.clear();
         let now = Timestamp::now();
@@ -82,7 +83,7 @@ impl Sidebar {
             };
             let face = faces.entry(project.id).or_insert_with(|| {
                 let name = workspace.display_name(project.id).unwrap_or_default();
-                ProjectFace::new(project, name, self.heads.get(&project.id))
+                ProjectFace::new(project, name, store.head(project.id))
             });
             self.rows.push(face.row(session, now));
         }

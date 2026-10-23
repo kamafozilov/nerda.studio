@@ -17,16 +17,14 @@ mod shift;
 
 pub(crate) use header::icon_button;
 
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 use gpui::{
     App, Context, Entity, FocusHandle, Focusable, IntoElement, MouseExitEvent, MouseMoveEvent,
     ParentElement, Render, ScrollStrategy, Styled, Subscription, Task, UniformListScrollHandle,
     Window, actions, div, prelude::*,
 };
-use workspace::{
-    AddProjectError, AddedProject, Head, ProjectId, ProjectScope, SessionId, Timestamp,
-};
+use workspace::{AddProjectError, AddedProject, ProjectId, ProjectScope, SessionId, Timestamp};
 
 use self::{card::Row, glide::Track, shift::Shifts};
 use crate::{
@@ -113,8 +111,6 @@ pub struct Sidebar {
     /// Where focus was before the menu opened, to give it back.
     focus_before_menu: Option<FocusHandle>,
     scroll: UniformListScrollHandle,
-    /// Each project's checkout head, as last read; see `refresh_heads`.
-    heads: HashMap<ProjectId, Head>,
     /// The projects whose heads were read, to read again when they change.
     headed_projects: Vec<ProjectId>,
     heads_task: Task<()>,
@@ -186,7 +182,6 @@ impl Sidebar {
             menu_focus: cx.focus_handle(),
             focus_before_menu: None,
             scroll: UniformListScrollHandle::new(),
-            heads: HashMap::new(),
             headed_projects: Vec::new(),
             heads_task: Task::ready(()),
             age_timer: Task::ready(()),
