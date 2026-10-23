@@ -147,6 +147,18 @@ impl Transcript {
                     self.end(turn, &Ending::Interrupted);
                 }
             }
+            // The agent took a message it had already run, as it does with an
+            // id its conversation has seen, and dropped it.
+            Incoming::Lifecycle {
+                message,
+                stage: Stage::Completed,
+            } => {
+                if let Some(turn) = self.open_turn_of(message)
+                    && self.turns[turn].state == TurnState::Queued
+                {
+                    self.end(turn, &Ending::Failed(Failure::NeverStarted));
+                }
+            }
             Incoming::Stream(stream) => self.stream(stream),
             Incoming::Assistant(assistant) => match &assistant.error {
                 // The agent's own words about a failed request: they show as
@@ -213,9 +225,16 @@ impl Transcript {
         if answered.is_empty() {
             // Naming none of the app's open messages, it ends the turn the
             // agent began on its own; naming none at all, the one that runs.
-            answered.extend(self.turns.iter().position(|turn| {
-                !turn.is_ended() && (result.messages.is_empty() || turn.message.is_none())
-            }));
+            // Never a message the agent hasn't taken up: the agent settles
+            // its old background tasks with such results before it starts on
+            // a message, as when it resumes a conversation.
+            let running = |turn: &Turn| turn.state == TurnState::Running;
+            let own = self
+                .turns
+                .iter()
+                .position(|turn| running(turn) && turn.message.is_none());
+            let any = || self.turns.iter().position(running);
+            answered.extend(own.or_else(|| result.messages.is_empty().then(any).flatten()));
         }
         for turn in answered {
             let ending = ending(&self.turns[turn]);
@@ -252,21 +271,35 @@ impl Transcript {
         }
     }
 
-    /// The turn the agent works on: the first not ended, which the agent has
-    /// taken up if it still showed as queued; a new turn of its own if none.
+    /// The turn the agent works on: the first that runs; when none does, a
+    /// turn of its own, as when a background task of its finishes, placed
+    /// before the messages still waiting, which it hasn't taken up. The agent
+    /// echoes a message as it takes it up, so output alone never starts one.
     fn active_turn(&mut self) -> usize {
-        if let Some(turn) = self.turns.iter().position(|turn| !turn.is_ended()) {
-            if self.turns[turn].state == TurnState::Queued {
-                self.turns[turn].state = TurnState::Running;
-            }
+        if let Some(turn) = self
+            .turns
+            .iter()
+            .position(|turn| turn.state == TurnState::Running)
+        {
             return turn;
         }
-        self.turns.push(Turn {
-            message: None,
-            state: TurnState::Running,
-            items: Vec::new(),
-        });
-        self.turns.len() - 1
+        let at = self
+            .turns
+            .iter()
+            .position(|turn| turn.state == TurnState::Queued);
+        let at = at.unwrap_or(self.turns.len());
+        self.turns.insert(
+            at,
+            Turn {
+                message: None,
+                state: TurnState::Running,
+                items: Vec::new(),
+            },
+        );
+        if let Some(streaming) = &mut self.streaming {
+            streaming.shift_turns_from(at);
+        }
+        at
     }
 
     fn open_turn_of(&self, id: &MessageId) -> Option<usize> {

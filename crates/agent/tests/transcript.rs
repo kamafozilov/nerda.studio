@@ -95,14 +95,14 @@ fn a_streamed_reply_settles_into_the_one_text_it_finished_as() {
     assert_eq!(
         turns[0].state,
         TurnState::Ended(Ending::Finished(Finished {
-            cost_usd: 0.00439533,
+            cost_usd: 0.0035433900000000004,
             usage: Usage {
                 input_tokens: 2,
                 output_tokens: 4,
-                cache_read_input_tokens: 11333,
-                cache_creation_input_tokens: 21399,
+                cache_read_input_tokens: 12799,
+                cache_creation_input_tokens: 17066,
             },
-            duration_ms: 2102,
+            duration_ms: 2137,
         }))
     );
     assert_eq!(player.transcript.status(), &Status::Ready);

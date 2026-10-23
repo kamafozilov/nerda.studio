@@ -73,7 +73,7 @@ fn a_new_process_picks_the_session_up_with_its_turns() {
         .collect();
     assert_eq!(
         costs,
-        [0.00439533, 0.00439533],
+        [0.0035433900000000004, 0.0035433900000000004],
         "each process counts from zero"
     );
 }

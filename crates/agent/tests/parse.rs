@@ -60,7 +60,7 @@ fn a_streamed_reply_reads_as_message_blocks_and_deltas() {
         stream,
         [
             Stream::MessageStart {
-                id: "msg_011CgKJMx7M5xnAe1LR8QDED".to_owned()
+                id: "msg_011CgKV8FNZj274cGFd3GXRm".to_owned()
             },
             Stream::BlockStart {
                 index: 0,

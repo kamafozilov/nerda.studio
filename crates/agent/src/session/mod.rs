@@ -18,7 +18,7 @@ use async_channel::{Receiver, Sender};
 use workspace::{Agent, AgentChoice, AgentId};
 
 use crate::event::Event;
-use crate::protocol::{self, Command, ConversationId, Incoming, RequestId};
+use crate::protocol::{self, Command, ConversationId, Incoming, MessageId, RequestId};
 use crate::{program, spawning};
 use tree::Tree;
 
@@ -270,7 +270,9 @@ fn arguments(agent: &Agent, launch: &Launch) -> Vec<String> {
 
 /// Writes `initialize`, then each command as it comes, until the session
 /// closes. Once the agent stops reading, each command is still reported
-/// sent, so none goes missing without a word.
+/// sent, so none goes missing without a word. Each message goes under a new
+/// id: the agent drops a message whose id its conversation has seen, so one
+/// sent again would never run.
 fn write_commands(
     mut stdin: ChildStdin,
     inbox: mpsc::Receiver<Outgoing>,
@@ -288,7 +290,10 @@ fn write_commands(
     let mut requests = 0;
     for outgoing in inbox {
         let line = match outgoing {
-            Outgoing::Command(command) => {
+            Outgoing::Command(mut command) => {
+                if let Command::Send(message) = &mut command {
+                    message.id = MessageId::new();
+                }
                 requests += 1;
                 let request = RequestId(format!("host_{requests}"));
                 let Some(line) = protocol::encode(&command, agent, &request) else {

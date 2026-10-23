@@ -5,8 +5,8 @@ use std::time::{Duration, Instant};
 
 use agent::{
     Attachment, Command, Conversation, ConversationId, Ending, Event, Failure, Image, ImageFormat,
-    Incoming, Item, Message, RequestId, Session, StartError, Status, Text, ToolStatus, Transcript,
-    TurnState,
+    Incoming, Item, Message, MessageId, RequestId, Session, StartError, Status, Text, ToolStatus,
+    Transcript, TurnState,
 };
 use serde_json::json;
 use support::{TempDir, Watch, arguments, exited, fake, project, script_lines, status_is, written};
@@ -52,17 +52,65 @@ fn the_agent_asks_before_a_tool_runs_and_runs_it_once_allowed() {
     watch.until("the exit", exited);
     assert_eq!(watch.transcript.status(), &Status::Exited { code: Some(0) });
     let input = json!({"command": "touch probe.txt", "description": "Create empty probe.txt file in working directory"});
+    let [id] = &sent_ids(&watch.seen)[..] else {
+        panic!("one message");
+    };
     assert_eq!(
         written(&dir),
         [
             json!({"type": "control_request", "request_id": "initialize", "request": {"subtype": "initialize"}}),
-            json!({"type": "user", "uuid": message.id.0, "parent_tool_use_id": null, "message": {
+            json!({"type": "user", "uuid": id.0, "parent_tool_use_id": null, "message": {
                 "role": "user", "content": [{"type": "text", "text": "Use the Bash tool: touch probe.txt"}]}}),
             json!({"type": "control_response", "response": {"subtype": "success",
                 "request_id": "a6c22aa7-22c2-43d3-9358-c0477a9b497f",
                 "response": {"behavior": "allow", "updatedInput": input}}}),
         ]
     );
+}
+
+/// The ids messages went to the agent under, as their `Sent` events say.
+fn sent_ids(seen: &[Event]) -> Vec<MessageId> {
+    seen.iter()
+        .filter_map(|event| match event {
+            Event::Sent(Command::Send(message)) => Some(message.id.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn a_message_sent_again_goes_under_a_new_id_and_runs_again() {
+    let dir = project(&[
+        "initialize.jsonl",
+        "turn-after-interrupt.jsonl",
+        "turn-after-interrupt.jsonl",
+    ]);
+    let (session, events) = Session::start(&fake(&dir)).unwrap();
+    let mut watch = Watch::new(events);
+    let message = Message::new("What is 17*23?", Vec::new());
+    session.send(Command::Send(message.clone()));
+    watch.until("the first answer", status_is(Status::Ready));
+    session.send(Command::Send(message.clone()));
+    watch.until("the second answer", |transcript, _| {
+        transcript.turns().len() == 2 && transcript.status() == &Status::Ready
+    });
+    assert_eq!(
+        [texts(&watch.transcript, 0), texts(&watch.transcript, 1)],
+        [["391"], ["391"]]
+    );
+    let ids = sent_ids(&watch.seen);
+    let uuids: Vec<_> = written(&dir)
+        .into_iter()
+        .filter(|line| line["type"] == "user")
+        .map(|line| MessageId(line["uuid"].as_str().unwrap().to_owned()))
+        .collect();
+    assert_eq!(uuids, ids);
+    assert_ne!(ids[0], ids[1]);
+    assert!(
+        !ids.contains(&message.id),
+        "written under the id it was made with"
+    );
+    drop(session);
 }
 
 #[test]

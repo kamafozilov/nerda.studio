@@ -21,6 +21,17 @@ pub(super) struct OpenBlock {
     item: usize,
 }
 
+impl Streaming {
+    /// Keeps the open blocks on their turns once a turn is put in at `at`.
+    pub(super) fn shift_turns_from(&mut self, at: usize) {
+        for block in &mut self.open {
+            if block.turn >= at {
+                block.turn += 1;
+            }
+        }
+    }
+}
+
 impl Transcript {
     pub(super) fn stream(&mut self, stream: &Stream) {
         match stream {

@@ -10,13 +10,14 @@ fn ready() -> Player {
     player
 }
 
-/// A turn of `message` that receives `lines`, `{{uuid}}` standing for the
-/// message's id; how it ended.
+/// A turn of `message` that the agent takes up and then receives `lines`,
+/// `{{uuid}}` standing for the message's id; how it ended.
 fn ended(lines: &[&str]) -> Ending {
     let mut player = ready();
     let message = Message::new("go on", Vec::new());
     player.send(Command::Send(message.clone()));
-    for line in lines {
+    let started = r#"{"type":"command_lifecycle","command_uuid":"{{uuid}}","state":"started"}"#;
+    for line in std::iter::once(&started).chain(lines) {
         player.receive(&line.replace("{{uuid}}", &message.id.0));
     }
     let transcript: &Transcript = &player.transcript;

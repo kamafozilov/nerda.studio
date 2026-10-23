@@ -47,6 +47,8 @@ pub enum Decision {
 /// A message the person sends.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Message {
+    /// The id it went to the agent under: a session gives each message a new
+    /// one as it writes it, which its `Event::Sent` carries.
     pub id: MessageId,
     pub text: String,
     pub attachments: Vec<Attachment>,
