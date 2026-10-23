@@ -10,8 +10,8 @@ mod turn;
 
 use std::fmt;
 
-use serde::Deserialize;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{MessageId, RequestId};
@@ -24,7 +24,7 @@ pub(crate) use time::epoch_seconds;
 pub use turn::{Outcome, RateLimit, TurnError, TurnResult, Usage};
 
 /// One line from the agent.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Incoming {
     /// A turn began, on this conversation, model and permission mode.
     Init(Init),
@@ -67,7 +67,7 @@ pub enum Incoming {
     Other(Value),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Init {
     pub session_id: String,
     #[serde(default)]
@@ -76,7 +76,7 @@ pub struct Init {
     pub permission_mode: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct AgentStatus {
     /// Such as `requesting` while a model call is out; `None` when idle.
     #[serde(default)]
@@ -85,7 +85,7 @@ pub struct AgentStatus {
     pub permission_mode: Option<String>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Stage {
     Queued,
@@ -98,7 +98,8 @@ pub enum Stage {
 
 /// A line that isn't one of the agent's events: not JSON, without a type, or
 /// of a known kind in a shape that doesn't fit it.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ParseError(String);
 
 impl fmt::Display for ParseError {

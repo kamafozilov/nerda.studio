@@ -1,13 +1,13 @@
 //! The agent's reply: streamed pieces, finished blocks and tools' output.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{Incoming, Parsed, block_type, on_main_thread, read};
 use crate::protocol::{MessageId, ToolUseId};
 
 /// The reply as it streams: one message at a time, its blocks by index.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Stream {
     MessageStart { id: String },
     BlockStart { index: u32, kind: BlockKind },
@@ -16,7 +16,7 @@ pub enum Stream {
     Other,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum BlockKind {
     Text,
     Thinking,
@@ -24,7 +24,7 @@ pub enum BlockKind {
     Other,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Delta {
     Text(String),
     Thinking(String),
@@ -34,7 +34,7 @@ pub enum Delta {
 
 /// Finished blocks of the reply message `message_id`, in order. A message's
 /// blocks may come in several of these.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Assistant {
     pub message_id: String,
     pub blocks: Vec<Block>,
@@ -46,7 +46,7 @@ pub struct Assistant {
 }
 
 /// A failed request to the model, as an assistant message reports it.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ApiError {
     /// Such as `authentication_failed`, `rate_limit`, `overloaded`,
     /// `model_not_found` or `server_error`.
@@ -55,7 +55,7 @@ pub struct ApiError {
     pub status: Option<u16>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Block {
     Text(String),
     Thinking(String),
@@ -67,7 +67,7 @@ pub enum Block {
     Other(Value),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToolResult {
     pub tool_use_id: ToolUseId,
     /// The text the tool gave back, its text parts joined by line breaks.

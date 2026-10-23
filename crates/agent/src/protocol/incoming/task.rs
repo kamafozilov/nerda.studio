@@ -1,14 +1,14 @@
 //! The agent's tasks: background shells, subagents and watchers it runs
 //! beside or within a turn.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{Incoming, Parsed, read};
 use crate::protocol::TaskId;
 
 /// A change in the agent's tasks.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TaskEvent {
     /// It started, `background` when it runs beside the turn rather than
     /// holding it up.

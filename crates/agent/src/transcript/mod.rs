@@ -82,9 +82,21 @@ impl Transcript {
             })
     }
 
+    /// What `events`, a session's events as a journal kept them, add up to.
+    pub fn replay<'a>(events: impl IntoIterator<Item = &'a Event>) -> Self {
+        let mut transcript = Self::new();
+        for event in events {
+            transcript.apply(event);
+        }
+        transcript
+    }
+
     pub fn apply(&mut self, event: &Event) {
         match event {
             Event::Started => {
+                // What a process left open ends with it, though a journal
+                // the app kept may hold no exit for it, as after a crash.
+                self.end_open(&Ending::Interrupted);
                 self.streaming = None;
                 self.signals = Signals::default();
                 self.stderr = StderrTail::default();

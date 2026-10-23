@@ -23,8 +23,8 @@ pub use error::{AddProjectError, LoadError};
 pub use git::{Head, head};
 pub use history::Visits;
 pub use model::{
-    AddedProject, Page, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, Tab,
-    Timestamp,
+    AddedProject, ConversationId, Page, Project, ProjectId, ProjectScope, Session, SessionId,
+    SessionSort, Tab, Timestamp,
 };
 pub use paths::home_relative;
 pub use store::{default_data_dir, default_instance_lock_path, default_state_path, write_state};
@@ -98,6 +98,7 @@ impl Workspace {
             created_at: now,
             last_activity_at: None,
             choice: self.last_choice.clone(),
+            conversation: None,
         });
         Some(id)
     }
@@ -113,6 +114,14 @@ impl Workspace {
         if let Some(session) = self.sessions.iter_mut().find(|item| item.id == session) {
             session.choice = choice.clone();
             self.last_choice = choice;
+        }
+    }
+
+    /// Records the agent's conversation `session` runs, which a later
+    /// process resumes; does nothing for an unknown session.
+    pub fn set_conversation(&mut self, session: SessionId, conversation: ConversationId) {
+        if let Some(session) = self.sessions.iter_mut().find(|item| item.id == session) {
+            session.conversation = Some(conversation);
         }
     }
 

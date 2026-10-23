@@ -9,3 +9,5 @@ publish.workspace = true
 dirs.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# Conversation ids; GPUI already depends on it.
+uuid = { version = "1.28", features = ["v4"] }

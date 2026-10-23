@@ -1,7 +1,6 @@
 //! What the app writes on the agent's stdin, each command one line.
 
-use base64::Engine;
-use base64::engine::general_purpose::STANDARD;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use workspace::{Access, Agent, Effort, ModelId};
 
@@ -12,7 +11,7 @@ use super::{Attachment, MessageId, RequestId, TaskId};
 pub const INITIALIZE: &str = "initialize";
 
 /// Something the app tells a running agent.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Command {
     /// A message; one sent while a turn runs waits in the agent's queue.
     Send(Message),
@@ -37,7 +36,7 @@ pub enum Command {
 
 /// An answer to a prompt as the agent takes it; `Permission::answer` makes
 /// one from the person's.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Decision {
     /// Run the tool on `input`: the input it asked with, or one the person
     /// changed or answered; keep `permissions` for the rest of the session.
@@ -51,7 +50,7 @@ pub enum Decision {
 }
 
 /// A message the person sends.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Message {
     /// The id it went to the agent under: a session gives each message a new
     /// one as it writes it, which its `Event::Sent` carries.
@@ -169,7 +168,7 @@ fn content(message: &Message) -> Vec<Value> {
                 "source": {
                     "type": "base64",
                     "media_type": image.format().media_type(),
-                    "data": STANDARD.encode(image.bytes()),
+                    "data": image.base64(),
                 },
             })),
             Attachment::File(_) => None,

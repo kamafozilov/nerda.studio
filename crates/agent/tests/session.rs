@@ -420,7 +420,7 @@ fn the_agent_starts_on_the_session_s_choice_and_conversation() {
         access: Access::AcceptEdits,
         ..AgentChoice::default()
     };
-    launch.conversation = Conversation::New(id);
+    launch.conversation = Conversation::New(id.clone());
     let stream_json = [
         "-p",
         "--input-format",
@@ -436,8 +436,8 @@ fn the_agent_starts_on_the_session_s_choice_and_conversation() {
         "stdio",
     ];
     for (conversation, flag) in [
-        (Conversation::New(id), "--session-id"),
-        (Conversation::Resume(id), "--resume"),
+        (Conversation::New(id.clone()), "--session-id"),
+        (Conversation::Resume(id.clone()), "--resume"),
     ] {
         launch.conversation = conversation;
         let (session, events) = Session::start(&launch).unwrap();

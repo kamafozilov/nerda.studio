@@ -1,12 +1,12 @@
 //! How a turn ended, and the plan's rate limits.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{Incoming, Parsed, is_diagnostic, read, time};
 use crate::protocol::MessageId;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct TurnResult {
     pub session_id: String,
     /// The app's messages this turn answered.
@@ -19,7 +19,7 @@ pub struct TurnResult {
     pub outcome: Outcome,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Usage {
     pub input_tokens: u64,
@@ -28,7 +28,7 @@ pub struct Usage {
     pub cache_creation_input_tokens: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Outcome {
     Completed,
     Interrupted,
@@ -36,7 +36,7 @@ pub enum Outcome {
 }
 
 /// What the agent said about a turn that failed.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TurnError {
     /// Its own words: the result's text, else its errors; the agent's
     /// internal diagnostics left out. Empty when it gave none.
@@ -64,7 +64,7 @@ const FAILED: &[&str] = &[
 ];
 
 /// Where the plan's usage stands, sent as it changes.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct RateLimit {
     /// `allowed`, `allowed_warning` or `rejected`.
     #[serde(default)]

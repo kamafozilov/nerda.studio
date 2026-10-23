@@ -39,6 +39,32 @@ pub struct Project {
     pub created_at: Timestamp,
 }
 
+/// The agent's own id for a session's conversation, by which a later process
+/// resumes it. Kept as written, so one this build can't read survives loading
+/// and saving.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ConversationId(pub String);
+
+impl ConversationId {
+    /// A new id; the agent takes a UUID.
+    pub fn new() -> Self {
+        Self(uuid::Uuid::new_v4().to_string())
+    }
+}
+
+impl Default for ConversationId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::fmt::Display for ConversationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 /// What a session with a blank title is shown as.
 const UNTITLED: &str = "Untitled session";
 
@@ -54,6 +80,10 @@ pub struct Session {
     /// What runs the session; files from before there was a choice hold none.
     #[serde(default)]
     pub choice: AgentChoice,
+    /// The agent's conversation, once a process has started on it; `None`
+    /// before, and in files from before sessions ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversation: Option<ConversationId>,
 }
 
 impl Session {

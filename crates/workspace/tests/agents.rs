@@ -2,8 +2,8 @@ mod support;
 
 use support::{TempDir, load_json};
 use workspace::{
-    Access, AddedProject, AgentChoice, AgentId, Effort, ModelId, ProjectId, SessionId, Timestamp,
-    Workspace,
+    Access, AddedProject, AgentChoice, AgentId, ConversationId, Effort, ModelId, ProjectId,
+    SessionId, Timestamp, Workspace,
 };
 
 fn choice(model: &str, effort: Effort, access: Access) -> AgentChoice {
@@ -172,5 +172,42 @@ fn the_choice_becomes_the_agents_arguments() {
             "--permission-mode",
             "bypassPermissions"
         ]
+    );
+}
+
+#[test]
+fn a_session_s_conversation_is_saved_and_kept_as_written() {
+    let temp = TempDir::new();
+    let path = temp.path().join("workspace.json");
+    let mut workspace = Workspace::default();
+    let project = add(&mut workspace, &temp, "web");
+    let first = workspace.new_session(project, Timestamp(2)).unwrap();
+    assert_eq!(workspace.session(first).unwrap().conversation, None);
+    let id = ConversationId::new();
+    let groups: Vec<usize> = id.0.split('-').map(str::len).collect();
+    assert_eq!(groups, [8, 4, 4, 4, 12], "a UUID: {id}");
+    workspace.set_conversation(first, id.clone());
+    workspace.set_conversation(SessionId(99), ConversationId::new());
+    workspace.save(&path).unwrap();
+    let loaded = Workspace::load(&path).unwrap();
+    assert_eq!(loaded.session(first).unwrap().conversation, Some(id));
+
+    let written = r#"{"version": 1, "next_id": 3,
+      "projects": [{"id": 0, "title": "web", "path": "/web", "created_at": 1}],
+      "sessions": [
+        {"id": 1, "project": 0, "title": "Odd", "created_at": 1, "last_activity_at": 2, "conversation": "not-a-uuid"},
+        {"id": 2, "project": 0, "title": "Older", "created_at": 1, "last_activity_at": 2}
+      ]}"#;
+    let odd = load_json(written);
+    let kept = Some(ConversationId("not-a-uuid".to_owned()));
+    assert_eq!(odd.session(SessionId(1)).unwrap().conversation, kept);
+    assert_eq!(odd.session(SessionId(2)).unwrap().conversation, None);
+    odd.save(&path).unwrap();
+    let saved = std::fs::read_to_string(&path).unwrap();
+    assert!(saved.contains(r#""conversation": "not-a-uuid""#), "{saved}");
+    assert_eq!(
+        saved.matches("\"conversation\"").count(),
+        1,
+        "none is written for a session without one"
     );
 }

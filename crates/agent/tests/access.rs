@@ -25,7 +25,7 @@ fn full_access_starts_the_agent_again_resuming_its_conversation() {
     let dir = project(&["initialize.jsonl", "turn-ok.jsonl"]);
     let id = ConversationId::new();
     let mut launch = fake(&dir);
-    launch.conversation = Conversation::New(id);
+    launch.conversation = Conversation::New(id.clone());
     let (session, events) = Session::start(&launch).unwrap();
     let mut watch = Watch::new(events);
     session.send(Command::Send(Message::new(
@@ -71,7 +71,7 @@ fn a_conversation_without_a_turn_starts_anew_under_its_id() {
     let id = ConversationId::new();
     let mut launch = fake(&dir);
     launch.choice.access = Access::FullAccess;
-    launch.conversation = Conversation::New(id);
+    launch.conversation = Conversation::New(id.clone());
     let (session, events) = Session::start(&launch).unwrap();
     let mut watch = Watch::new(events);
     watch.until("ready", status_is(Status::Ready));

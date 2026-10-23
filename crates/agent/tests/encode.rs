@@ -4,10 +4,7 @@ use std::path::PathBuf;
 
 use agent::protocol::MAX_IMAGE;
 use agent::protocol::{encode, encode_decline, encode_initialize};
-use agent::{
-    Attachment, Command, ConversationId, Decision, Image, ImageFormat, Message, MessageId,
-    RequestId,
-};
+use agent::{Attachment, Command, Decision, Image, ImageFormat, Message, MessageId, RequestId};
 use serde_json::{Value, json};
 use support::TempDir;
 use workspace::{Access, AgentId, Effort, ModelId};
@@ -268,11 +265,4 @@ fn an_image_too_large_or_that_cannot_be_read_goes_by_its_path() {
         std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
         assert_eq!(Attachment::open(&locked), Attachment::File(locked.clone()));
     }
-}
-
-#[test]
-fn a_conversation_id_reads_back_as_written() {
-    let id = ConversationId::new();
-    assert_eq!(id.to_string().parse::<ConversationId>().unwrap(), id);
-    assert!("not-a-uuid".parse::<ConversationId>().is_err());
 }

@@ -1,9 +1,10 @@
 //! What a permission prompt asks, by the tool asking: a tool wanting to run,
 //! the agent's questions for the person, or its plan to approve.
 
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Ask {
     /// A tool wants to run on its input.
     Tool,
@@ -16,7 +17,7 @@ pub enum Ask {
     Plan(String),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Question {
     /// The question in full; the answer goes back under it.
     pub question: String,
@@ -27,7 +28,7 @@ pub struct Question {
     pub multi_select: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Choice {
     pub label: String,
     pub description: String,

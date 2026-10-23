@@ -1,9 +1,11 @@
+use serde::{Deserialize, Serialize};
+
 use crate::protocol::{Command, Incoming, Message, ParseError};
 use crate::session::Refusal;
 
 /// Something that happened in a session, in the order it happened: what a
 /// transcript is reduced from.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Event {
     /// A process began for the session, new or resuming its conversation.
     Started,

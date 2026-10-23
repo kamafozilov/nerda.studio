@@ -1,6 +1,6 @@
 //! The agent's requests of the app, and the answers to the app's.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{Incoming, Parsed, read};
@@ -8,7 +8,7 @@ use crate::protocol::{Ask, RequestId, ToolUseId};
 
 /// A tool call waiting for the person: to run, or, for the agent's questions
 /// and plans, to be answered.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PermissionRequest {
     pub id: RequestId,
     pub tool_name: String,

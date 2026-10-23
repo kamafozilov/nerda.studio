@@ -212,6 +212,7 @@ fn a_title_shows_as_one_trimmed_line() {
         created_at: workspace::Timestamp(0),
         last_activity_at: None,
         choice: workspace::AgentChoice::default(),
+        conversation: None,
     };
     assert_eq!(session("Fix the tabs").display_title(), "Fix the tabs");
     assert_eq!(

@@ -5,10 +5,14 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
 /// The largest image sent inside a message; a larger one goes by its path.
 pub const MAX_IMAGE: u64 = 5 * 1024 * 1024;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Attachment {
     /// Sent inside the message, so the model sees it.
     Image(Image),
@@ -44,6 +48,11 @@ impl Image {
         (bytes.len() as u64 <= MAX_IMAGE).then_some(Self { format, bytes })
     }
 
+    /// The bytes as base64, as a message carries them.
+    pub fn base64(&self) -> String {
+        STANDARD.encode(&self.bytes)
+    }
+
     pub fn format(&self) -> ImageFormat {
         self.format
     }
@@ -66,8 +75,24 @@ impl Image {
     }
 }
 
+/// Written as its bytes in base64, and read back only as an image.
+impl Serialize for Image {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.base64())
+    }
+}
+
+impl<'de> Deserialize<'de> for Image {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        let bytes = STANDARD.decode(text).map_err(serde::de::Error::custom)?;
+        Image::new(bytes)
+            .ok_or_else(|| serde::de::Error::custom("not an image the model takes, or over 5 MiB"))
+    }
+}
+
 /// The image formats the agent's model takes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ImageFormat {
     Png,
     Jpeg,

@@ -14,6 +14,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, mpsc};
 
 use async_channel::Receiver;
+use serde::{Deserialize, Serialize};
 use workspace::{Access, AgentChoice, AgentId};
 
 use crate::event::Event;
@@ -22,7 +23,7 @@ use activity::{Activity, Emitter};
 use process::{Process, Spec};
 
 /// Which conversation a process runs.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Conversation {
     /// A new one under this id, which a later process resumes it by.
     New(ConversationId),
@@ -59,7 +60,7 @@ enum Request {
 }
 
 /// Why the session didn't carry out a command.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Refusal {
     /// Switching to or from Full access starts the agent again, which would
     /// end the turn that runs or drop the messages that wait.
@@ -133,8 +134,8 @@ impl Session {
         let process = Process::start(&spec, &choice, &launch.conversation, &emitter)?;
         let pid = Arc::new(AtomicU32::new(process.pid));
         let (requests, inbox) = mpsc::channel();
-        let conversation = match launch.conversation {
-            Conversation::New(id) | Conversation::Resume(id) => id,
+        let conversation = match &launch.conversation {
+            Conversation::New(id) | Conversation::Resume(id) => id.clone(),
         };
         let supervisor = Supervisor {
             spec,
@@ -271,7 +272,7 @@ impl Supervisor {
             process.end_and_wait();
         }
         self.choice.access = access;
-        let id = self.conversation;
+        let id = self.conversation.clone();
         let conversation = match self.emitter.activity(Activity::recorded) {
             true => Conversation::Resume(id),
             false => Conversation::New(id),
