@@ -69,7 +69,8 @@ the front.
   saves.
 - `crates/agent`: a session's coding agent run as a process, with no UI: what it says
   parsed into typed events and reduced into a transcript of turns, and the session's
-  status. [docs/agent.md](docs/agent.md) has the lifecycle and the model.
+  status. [docs/agent.md](docs/agent.md) has the lifecycle and the model, and
+  [docs/agent-prompts.md](docs/agent-prompts.md) the prompts and their answers.
 - `crates/dev`: the live-reload runner and `install`; one instance taking over from
   another is `crates/studio/src/instance`.
 - `crates/app_bundle`: the macOS app bundle, its `Info.plist` and its icon, made from
@@ -80,3 +81,4 @@ only an older `gpui` without `gpui_platform`. `vendor/block` is the `block` crat
 GPUI's macOS backend pulls in, patched so that a future Rust still compiles it; the root
 `Cargo.toml` puts it in place of the crates.io copy.
 
+program lookup, login-shell PATH, process teardown, sign-in wait, failure wording and
