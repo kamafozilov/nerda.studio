@@ -2,11 +2,14 @@
 //! typed events, with no UI: the screen drains the events and shows them.
 
 mod event;
+mod program;
 pub mod protocol;
 mod session;
+mod spawning;
 mod transcript;
 
 pub use event::Event;
+pub use program::prewarm;
 pub use protocol::{
     Attachment, Command, ConversationId, Decision, Image, ImageFormat, Incoming, Message,
     MessageId, ParseError, RequestId, ToolUseId,

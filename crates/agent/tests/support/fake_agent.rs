@@ -8,8 +8,8 @@
 //! "stderr", "text": …}` writes to stderr; `{"agent": "raw", "text": …}`
 //! writes text that needn't be JSON; `{"agent": "hang"}` stops reading and
 //! never quits; `{"agent": "orphan"}` starts a process that holds its stderr
-//! open for five seconds. It writes its arguments to `fake-agent.args`, one a line, and
-//! each line it reads to `fake-agent.stdin.jsonl`.
+//! open for five seconds. It writes its arguments to `fake-agent.args`, one a line, its
+//! PATH to `fake-agent.path`, and each line it reads to `fake-agent.stdin.jsonl`.
 
 use std::io::{BufRead, Write};
 use std::sync::mpsc;
@@ -24,6 +24,8 @@ fn main() {
         return;
     }
     std::fs::write("fake-agent.args", arguments.join("\n")).unwrap();
+    let path = std::env::var("PATH").unwrap_or_default();
+    std::fs::write("fake-agent.path", path).unwrap();
     let Ok(script) = std::fs::read_to_string("fake-agent.jsonl") else {
         eprintln!("fake-agent: no fake-agent.jsonl in this folder");
         std::process::exit(2);

@@ -10,11 +10,19 @@ publish.workspace = true
 async-channel = "2.5"
 # Encodes image attachments; already built for the app under usvg.
 base64 = "0.22"
+dirs.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 # Message and session ids; GPUI already depends on it.
 uuid = { version = "1.28", features = ["v4"] }
 workspace.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+# The account's shell, process groups and signals; already built for GPUI.
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
 
 # Stands in for the agent in the tests: plays a recorded fixture.
 [[bin]]

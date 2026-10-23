@@ -318,7 +318,7 @@ fn a_session_that_cannot_start_says_why_naming_the_program() {
     assert!(matches!(error, StartError::NotFound { .. }));
     assert_eq!(
         error.to_string(),
-        "Couldn't start claude: it isn't installed, or isn't on PATH."
+        "Couldn't find claude. Install it with `curl -fsSL https://claude.ai/install.sh | bash` in a terminal, then try again."
     );
 
     launch.program = Some(PathBuf::from("no-such-agent-on-path"));
@@ -349,6 +349,22 @@ fn a_session_that_cannot_start_says_why_naming_the_program() {
             message: error.to_string()
         }
     );
+}
+
+#[test]
+fn the_agent_runs_with_its_own_folder_and_the_app_s_path() {
+    let dir = project(&["initialize.jsonl"]);
+    let (session, events) = Session::start(&fake(&dir)).unwrap();
+    Watch::new(events).until("ready", status_is(Status::Ready));
+    let path = std::fs::read_to_string(dir.path().join("fake-agent.path")).unwrap();
+    let folders: Vec<PathBuf> = std::env::split_paths(&path).collect();
+    let program = PathBuf::from(env!("CARGO_BIN_EXE_fake-agent"));
+    assert_eq!(folders.first().map(PathBuf::as_path), program.parent());
+    let ours = std::env::var_os("PATH").unwrap();
+    for folder in std::env::split_paths(&ours).filter(|folder| !folder.as_os_str().is_empty()) {
+        assert!(folders.contains(&folder), "{folder:?} missing from {path}");
+    }
+    drop(session);
 }
 
 #[test]

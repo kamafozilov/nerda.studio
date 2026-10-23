@@ -56,6 +56,8 @@ pub enum Access {
 pub struct Agent {
     pub id: &'static str,
     pub name: &'static str,
+    /// How to install it, as a command to run in a terminal.
+    pub install: &'static str,
     /// In the order the model menu lists them.
     pub models: &'static [Model],
     pub default_model: &'static str,
@@ -90,6 +92,11 @@ pub struct AccessMode {
 pub const AGENTS: &[Agent] = &[Agent {
     id: "claude",
     name: "Claude Code",
+    install: if cfg!(windows) {
+        "npm install -g @anthropic-ai/claude-code"
+    } else {
+        "curl -fsSL https://claude.ai/install.sh | bash"
+    },
     models: &[
         Model {
             id: "fable",

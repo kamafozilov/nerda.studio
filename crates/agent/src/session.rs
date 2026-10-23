@@ -6,7 +6,7 @@ use std::fmt;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Stdio};
-use std::sync::{Arc, Mutex, OnceLock, PoisonError, mpsc};
+use std::sync::{Arc, OnceLock, mpsc};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -15,6 +15,7 @@ use workspace::{Agent, AgentChoice, AgentId};
 
 use crate::event::Event;
 use crate::protocol::{self, Command, ConversationId, Incoming, RequestId};
+use crate::{program, spawning};
 
 /// What makes the agent read and write one JSON object per line, stream its
 /// reply, echo the messages it takes up, and ask the app before a tool runs.
@@ -42,11 +43,6 @@ const WATCH: Duration = Duration::from_millis(50);
 /// wrote. A process the agent started can hold its pipes open past its end.
 const TAIL: Duration = Duration::from_millis(500);
 
-/// On macOS a pipe is made close-on-exec in a second step, so a child started
-/// by another thread in between keeps the pipe open. Starting one agent at a
-/// time keeps agents off each other's pipes.
-static SPAWNING: Mutex<()> = Mutex::new(());
-
 /// Which conversation a process runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Conversation {
@@ -62,7 +58,9 @@ pub struct Launch {
     pub folder: PathBuf,
     pub choice: AgentChoice,
     pub conversation: Conversation,
-    /// Run in place of the agent's own command, which is looked up on PATH.
+    /// Run in place of the agent's own command. A bare name is looked up as
+    /// the agent's is: on PATH, the login shell's PATH, then where installers
+    /// put it.
     pub program: Option<PathBuf>,
 }
 
@@ -87,9 +85,19 @@ enum Outgoing {
 #[derive(Debug)]
 pub enum StartError {
     UnknownAgent(AgentId),
-    NoFolder { program: String, folder: PathBuf },
-    NotFound { program: String },
-    Io { program: String, error: io::Error },
+    NoFolder {
+        program: String,
+        folder: PathBuf,
+    },
+    /// Nowhere to be found; `install` is the command that installs it.
+    NotFound {
+        program: String,
+        install: &'static str,
+    },
+    Io {
+        program: String,
+        error: io::Error,
+    },
 }
 
 impl fmt::Display for StartError {
@@ -103,9 +111,9 @@ impl fmt::Display for StartError {
                 "Couldn't start {program}: the folder {} isn't there.",
                 folder.display()
             ),
-            StartError::NotFound { program } => write!(
+            StartError::NotFound { program, install } => write!(
                 f,
-                "Couldn't start {program}: it isn't installed, or isn't on PATH."
+                "Couldn't find {program}. Install it with `{install}` in a terminal, then try again."
             ),
             StartError::Io { program, error } => write!(f, "Couldn't start {program}: {error}."),
         }
@@ -136,7 +144,15 @@ impl Session {
                 folder,
             });
         }
-        let mut process = std::process::Command::new(&program);
+        let not_found = || StartError::NotFound {
+            program: name.clone(),
+            install: agent.install,
+        };
+        let path = program::find(&program).ok_or_else(not_found)?;
+        let mut process = std::process::Command::new(&path);
+        if let Some(search) = program::child_path(&path) {
+            process.env("PATH", search);
+        }
         process
             .args(arguments(agent, launch))
             .current_dir(&launch.folder)
@@ -149,13 +165,10 @@ impl Session {
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;
             process.creation_flags(CREATE_NO_WINDOW);
         }
-        let spawning = SPAWNING.lock().unwrap_or_else(PoisonError::into_inner);
-        let spawned = process.spawn();
-        drop(spawning);
-        let mut child = spawned.map_err(|error| match error.kind() {
-            io::ErrorKind::NotFound => StartError::NotFound { program: name },
+        let mut child = spawning::spawn(&mut process).map_err(|error| match error.kind() {
+            io::ErrorKind::NotFound => not_found(),
             _ => StartError::Io {
-                program: name,
+                program: name.clone(),
                 error,
             },
         })?;
