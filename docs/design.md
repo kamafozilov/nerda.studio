@@ -159,7 +159,8 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   screen always shows something, and before the first project leaves the welcome. A tab
   closes from its button, a middle click, `Cmd-W`, or its menu (a right click): Close
   Tab, Close Other Tabs, Close Tabs to the Right or to the Left, Close All Tabs. Dragged
-  along the row, a tab reorders.
+  along the row, a tab reorders; while dragged it lies on `popover_background` with
+  `shadow_md`, its fill over that, so the tabs it passes never show through it.
 - **Tab shortcuts** (Ctrl for Cmd elsewhere): `Cmd-T` or `Cmd-N` new session, `Cmd-W`
   close, `Cmd-Alt-T` close the others, `Cmd-Shift-W` close all, `Ctrl-Tab` or
   `Cmd-Shift-]` the next tab and `Ctrl-Shift-Tab` or `Cmd-Shift-[` the previous, wrapping,

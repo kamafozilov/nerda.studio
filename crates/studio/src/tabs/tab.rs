@@ -30,8 +30,9 @@ impl TabStrip {
     ) -> AnyElement {
         let closing = self.closing.get(&id).map(|closing| closing.label.clone());
         let is_selected = closing.is_none() && self.selected == Some(id);
+        let lifted = self.lifted(id);
         let content = match closing {
-            Some(label) => tab_face(id, &label, false, colors).into_any_element(),
+            Some(label) => tab_face(id, &label, false, false, colors).into_any_element(),
             None => {
                 let Some(label) = self.labels.get(&id).cloned() else {
                     return div().into_any_element();
@@ -86,11 +87,7 @@ impl TabStrip {
             });
         let shift = self.shift(id);
         // The dragged tab rides the pointer itself, over its neighbors.
-        if self
-            .drag
-            .as_ref()
-            .is_some_and(|drag| drag.active && drag.id == id)
-        {
+        if lifted {
             return deferred(slot.map_element(move |slot| slot.left(shift)))
                 .priority(1)
                 .into_any_element();
@@ -107,6 +104,13 @@ impl TabStrip {
         .into_any_element()
     }
 
+    /// Whether `id` is the tab being dragged.
+    fn lifted(&self, id: Tab) -> bool {
+        self.drag
+            .as_ref()
+            .is_some_and(|drag| drag.active && drag.id == id)
+    }
+
     fn live_tab(
         &self,
         id: Tab,
@@ -116,9 +120,12 @@ impl TabStrip {
         colors: Colors,
         cx: &mut Context<Self>,
     ) -> Stateful<gpui::Div> {
-        tab_face(id, label, selected, colors)
+        let lifted = self.lifted(id);
+        tab_face(id, label, selected, lifted, colors)
             .occlude()
-            .when(!selected, |tab| tab.hover(|tab| tab.bg(colors.hover)))
+            .when(!selected && !lifted, |tab| {
+                tab.hover(|tab| tab.bg(colors.hover))
+            })
             .when(can_close, |tab| {
                 tab.pr(FIELD_TARGET_SIZE + SPACE_1)
                     .child(close_button(id, label, colors, cx))
@@ -148,8 +155,21 @@ impl TabStrip {
 }
 
 /// The tab's plate, a page's icon and the title; the selected one sits on the
-/// selection's fill.
-fn tab_face(id: Tab, label: &Label, selected: bool, colors: Colors) -> Stateful<gpui::Div> {
+/// selection's fill. A dragged tab is lifted onto an opaque plate, so the tabs
+/// it passes over never show through it; its fill, the selection's or the
+/// pointer's, lies over that plate.
+fn tab_face(
+    id: Tab,
+    label: &Label,
+    selected: bool,
+    lifted: bool,
+    colors: Colors,
+) -> Stateful<gpui::Div> {
+    let fill = if selected {
+        colors.row_selected
+    } else {
+        colors.hover
+    };
     div()
         .id(("tab", id.key()))
         .group(label.group.clone())
@@ -160,7 +180,12 @@ fn tab_face(id: Tab, label: &Label, selected: bool, colors: Colors) -> Stateful<
         .items_center()
         .gap(SPACE_2)
         .rounded(CONTROL_RADIUS)
-        .when(selected, |tab| tab.bg(colors.row_selected))
+        .when(selected && !lifted, |tab| tab.bg(colors.row_selected))
+        .when(lifted, |tab| {
+            tab.bg(colors.popover_background)
+                .shadow_md()
+                .child(div().absolute().inset_0().rounded(CONTROL_RADIUS).bg(fill))
+        })
         .children(label.icon.map(|icon| {
             svg()
                 .path(icon.path())
