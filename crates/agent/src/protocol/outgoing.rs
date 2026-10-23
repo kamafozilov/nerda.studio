@@ -5,7 +5,7 @@ use base64::engine::general_purpose::STANDARD;
 use serde_json::{Value, json};
 use workspace::{Access, Agent, Effort, ModelId};
 
-use super::{Attachment, MessageId, RequestId};
+use super::{Attachment, MessageId, RequestId, TaskId};
 
 /// The id of the `initialize` request a session sends first: its answer
 /// means the agent is up and reading its input.
@@ -17,8 +17,12 @@ pub enum Command {
     /// A message; one sent while a turn runs waits in the agent's queue.
     Send(Message),
     /// Stops the turn that runs and drops the messages queued behind it; the
-    /// agent stays up for the next message.
+    /// agent stays up for the next message. A session sends `StopTask` for
+    /// each task running in the background and denies each open prompt
+    /// first, so nothing of the turn goes on.
     Interrupt,
+    /// Stops one of the agent's tasks.
+    StopTask(TaskId),
     /// Takes effect from the agent's next model call.
     SetModel(ModelId),
     /// Takes effect from the next turn.
@@ -80,6 +84,10 @@ pub fn encode(command: &Command, agent: &Agent, request: &RequestId) -> Option<S
         Command::Interrupt => control(
             &request.0,
             json!({"subtype": "interrupt", "cancel_queued": true}),
+        ),
+        Command::StopTask(task) => control(
+            &request.0,
+            json!({"subtype": "stop_task", "task_id": task.0}),
         ),
         Command::SetModel(model) => control(
             &request.0,

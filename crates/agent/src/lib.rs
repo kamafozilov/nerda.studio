@@ -14,7 +14,7 @@ pub use failure::Failure;
 pub use program::prewarm;
 pub use protocol::{
     Ask, Attachment, Choice, Command, ConversationId, Decision, Image, ImageFormat, Incoming,
-    Message, MessageId, ParseError, Question, RequestId, ToolUseId,
+    Message, MessageId, ParseError, Question, RequestId, TaskId, ToolUseId,
 };
 pub use session::{Conversation, Events, Launch, Refusal, Session, StartError};
 pub use transcript::{

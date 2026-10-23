@@ -1,4 +1,4 @@
-use crate::protocol::{Command, Incoming, ParseError};
+use crate::protocol::{Command, Incoming, Message, ParseError};
 use crate::session::Refusal;
 
 /// Something that happened in a session, in the order it happened: what a
@@ -11,6 +11,9 @@ pub enum Event {
     Sent(Command),
     /// The session didn't carry out `command`, for `reason`.
     Refused { command: Command, reason: Refusal },
+    /// The agent dropped this message, waiting behind the turn that ran,
+    /// when it was stopped; it never ran, and can be sent again.
+    Dropped(Message),
     /// The agent said this.
     Received(Incoming),
     /// The agent wrote a line that isn't one of its events; it is skipped.

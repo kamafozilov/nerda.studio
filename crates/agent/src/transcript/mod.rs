@@ -93,7 +93,7 @@ impl Transcript {
                 self.end_open(&Ending::Failed(Failure::Other(message.clone())))
             }
             Event::Stderr(line) => self.stderr.push(line),
-            Event::Unreadable { .. } | Event::Refused { .. } => {}
+            Event::Unreadable { .. } | Event::Refused { .. } | Event::Dropped(_) => {}
         }
         self.status = self.status.next(event, self.work());
     }

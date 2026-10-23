@@ -17,7 +17,7 @@ use async_channel::Receiver;
 use workspace::{Access, AgentChoice, AgentId};
 
 use crate::event::Event;
-use crate::protocol::{self, Command, ConversationId, MessageId, RequestId};
+use crate::protocol::{self, Command, ConversationId, Decision, MessageId, RequestId};
 use activity::{Activity, Emitter};
 use process::{Process, Spec};
 
@@ -201,12 +201,36 @@ impl Supervisor {
     }
 
     fn command(&mut self, command: Command) {
-        if let Command::SetAccess(access) = command
-            && (access == Access::FullAccess) != (self.choice.access == Access::FullAccess)
-        {
-            return self.restart_in(access, command);
+        match command {
+            Command::SetAccess(access)
+                if (access == Access::FullAccess) != (self.choice.access == Access::FullAccess) =>
+            {
+                self.restart_in(access, command);
+            }
+            Command::Interrupt => self.stop(),
+            command => self.write(command),
         }
-        self.write(command);
+    }
+
+    /// Stops what the agent does: each task it runs in the background, then
+    /// each prompt it waits on, which is denied, then the turn, dropping the
+    /// messages waiting behind it.
+    fn stop(&mut self) {
+        let (tasks, prompts) = self
+            .emitter
+            .activity(|activity| (activity.tasks(), activity.prompts()));
+        for task in tasks {
+            self.write(Command::StopTask(task));
+        }
+        for request in prompts {
+            let message = "The user stopped the turn.".to_owned();
+            let decision = Decision::Deny {
+                message,
+                interrupt: false,
+            };
+            self.write(Command::Answer { request, decision });
+        }
+        self.write(Command::Interrupt);
     }
 
     /// Writes `command`, each message under a new id: the agent drops a

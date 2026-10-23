@@ -4,6 +4,7 @@
 
 mod control;
 mod reply;
+mod task;
 mod time;
 mod turn;
 
@@ -18,6 +19,7 @@ use super::{MessageId, RequestId};
 pub use control::PermissionRequest;
 pub use reply::ApiError;
 pub use reply::{Assistant, Block, BlockKind, Delta, Stream, ToolResult};
+pub use task::TaskEvent;
 pub(crate) use time::epoch_seconds;
 pub use turn::{Outcome, RateLimit, TurnError, TurnResult, Usage};
 
@@ -53,6 +55,8 @@ pub enum Incoming {
     /// The agent no longer needs an answer to its request.
     Cancel(RequestId),
     RateLimit(RateLimit),
+    /// The agent's tasks changed.
+    Task(TaskEvent),
     /// One of the app's messages moved through the agent's queue.
     Lifecycle {
         message: MessageId,
@@ -154,9 +158,16 @@ fn on_main_thread(value: &Value) -> bool {
 }
 
 fn system(value: &Value) -> Parsed {
-    Ok(match value.get("subtype").and_then(Value::as_str) {
-        Some("init") => Some(Incoming::Init(read(value)?)),
-        Some("status") => Some(Incoming::Status(read(value)?)),
+    let subtype = value
+        .get("subtype")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    if let Some(task) = task::task(subtype, value) {
+        return task;
+    }
+    Ok(match subtype {
+        "init" => Some(Incoming::Init(read(value)?)),
+        "status" => Some(Incoming::Status(read(value)?)),
         _ => None,
     })
 }

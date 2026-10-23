@@ -18,7 +18,8 @@ pub(crate) use ask::{answered, for_session};
 pub use attachment::{Attachment, Image, ImageFormat, MAX_IMAGE};
 pub use incoming::{
     AgentStatus, ApiError, Assistant, Block, BlockKind, Delta, Incoming, Init, Outcome, ParseError,
-    PermissionRequest, RateLimit, Stage, Stream, ToolResult, TurnError, TurnResult, Usage, parse,
+    PermissionRequest, RateLimit, Stage, Stream, TaskEvent, ToolResult, TurnError, TurnResult,
+    Usage, parse,
 };
 pub(crate) use incoming::{epoch_seconds, is_diagnostic};
 pub use outgoing::{
@@ -54,6 +55,11 @@ pub struct RequestId(pub String);
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct ToolUseId(pub String);
+
+/// One of the agent's tasks, such as a shell it runs in the background.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(transparent)]
+pub struct TaskId(pub String);
 
 /// The agent's own id for a conversation: a new session starts with one the
 /// app chose, and a later process resumes the conversation by it.
