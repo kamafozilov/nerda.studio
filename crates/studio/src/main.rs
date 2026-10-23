@@ -2,6 +2,7 @@ mod accessibility;
 mod add_project;
 mod app_menu;
 mod assets;
+mod background;
 #[cfg(target_os = "macos")]
 mod bundle;
 mod instance;
@@ -44,6 +45,9 @@ fn main() {
     let app = application().with_assets(Assets);
     app.on_reopen(reopen);
     app.run(move |cx: &mut App| {
+        if background::requested() {
+            background::start(cx);
+        }
         bind_keys(cx);
         text_input::bind_keys(cx);
         sidebar::bind_keys(cx);
@@ -78,7 +82,7 @@ fn main() {
             .detach();
         }
         // A takeover while the editor is in front leaves it there.
-        if left.is_none_or(|left| left.active) {
+        if !background::requested() && left.is_none_or(|left| left.active) {
             cx.activate(true);
         }
     });
@@ -114,28 +118,39 @@ fn open_window(
     cx: &mut App,
 ) -> WindowHandle<Shell> {
     let theme = *Theme::of(cx);
-    cx.open_window(
-        WindowOptions {
-            window_bounds: Some(bounds),
-            window_min_size: Some(size(px(720.), px(480.))),
-            // Windows keeps its system titlebar until the app draws its own
-            // caption buttons; macOS draws the traffic lights over our glass.
-            titlebar: Some(TitlebarOptions {
-                title: Some("Nerda Studio".into()),
-                appears_transparent: cfg!(target_os = "macos"),
-                traffic_light_position: Some(traffic_lights::position()),
-            }),
-            // The shell's titlebar drags and zooms the window itself, so AppKit
-            // takes no click in the top row: a double-click on a control there
-            // stays the control's. No-op off macOS.
-            app_owns_titlebar_drag: true,
-            window_background: theme.window_background_appearance(),
-            app_id: Some("studio.nerda".into()),
-            ..Default::default()
-        },
-        |window, cx| cx.new(|cx| Shell::new(store, sidebar_open, window, cx)),
-    )
-    .expect("the main window opens")
+    let background = background::requested();
+    let window = cx
+        .open_window(
+            WindowOptions {
+                window_bounds: Some(bounds),
+                window_min_size: Some(size(px(720.), px(480.))),
+                // Windows keeps its system titlebar until the app draws its own
+                // caption buttons; macOS draws the traffic lights over our glass.
+                titlebar: Some(TitlebarOptions {
+                    title: Some("Nerda Studio".into()),
+                    appears_transparent: cfg!(target_os = "macos"),
+                    traffic_light_position: Some(traffic_lights::position()),
+                }),
+                // The shell's titlebar drags and zooms the window itself, so AppKit
+                // takes no click in the top row: a double-click on a control there
+                // stays the control's. No-op off macOS.
+                app_owns_titlebar_drag: true,
+                window_background: theme.window_background_appearance(),
+                app_id: Some("studio.nerda".into()),
+                // In the background it opens hidden, then behind every window.
+                focus: !background,
+                show: !background,
+                ..Default::default()
+            },
+            |window, cx| cx.new(|cx| Shell::new(store, sidebar_open, window, cx)),
+        )
+        .expect("the main window opens");
+    if background {
+        window
+            .update(cx, |_, window, _| background::show_behind(window))
+            .ok();
+    }
+    window
 }
 
 /// The window's shortcuts: Cmd on macOS, Ctrl elsewhere.
