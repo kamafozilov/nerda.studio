@@ -23,3 +23,28 @@ pub fn compact_age(then: Timestamp, now: Timestamp) -> String {
         format!("{}y", elapsed / YEAR)
     }
 }
+
+/// Milliseconds until `compact_age(then, now)` next reads differently, so a
+/// list can redraw its ages exactly when one changes, and not in between.
+pub fn age_changes_in(then: Timestamp, now: Timestamp) -> u64 {
+    if then.0 > now.0 {
+        // A future time reads "now" until a minute after it.
+        return then.0 - now.0 + MINUTE;
+    }
+    let elapsed = now.0 - then.0;
+    let unit = if elapsed < HOUR {
+        MINUTE
+    } else if elapsed < DAY {
+        HOUR
+    } else if elapsed < WEEK {
+        DAY
+    } else if elapsed < YEAR {
+        WEEK
+    } else {
+        YEAR
+    };
+    let next = (elapsed / unit + 1) * unit;
+    // A year is not a whole number of weeks: "52w" turns to "1y" at the year.
+    let next = if elapsed < YEAR { next.min(YEAR) } else { next };
+    next - elapsed
+}

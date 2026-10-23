@@ -13,7 +13,7 @@ mod tabs;
 
 use std::path::Path;
 
-pub use age::compact_age;
+pub use age::{age_changes_in, compact_age};
 pub use error::{AddProjectError, LoadError};
 pub use git::{Head, head};
 pub use history::Visits;
