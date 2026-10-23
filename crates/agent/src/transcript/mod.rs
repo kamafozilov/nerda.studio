@@ -25,7 +25,8 @@ pub struct Transcript {
     status: Status,
     /// The reply message streaming now, and its blocks not yet finished.
     streaming: Option<Streaming>,
-    /// What the process had cost when its last turn ended.
+    /// What the conversation had cost by the agent's count when its last
+    /// turn ended.
     spent: f64,
     /// What the running turn ran into that may explain how it ends.
     signals: Signals,
@@ -76,7 +77,6 @@ impl Transcript {
     pub fn apply(&mut self, event: &Event) {
         match event {
             Event::Started => {
-                self.spent = 0.0;
                 self.streaming = None;
                 self.signals = Signals::default();
                 self.stderr = StderrTail::default();
@@ -94,7 +94,7 @@ impl Transcript {
                 self.end_open(&Ending::Failed(Failure::Other(message.clone())))
             }
             Event::Stderr(line) => self.stderr.push(line),
-            Event::Unreadable { .. } => {}
+            Event::Unreadable { .. } | Event::Refused { .. } => {}
         }
         self.status = self.status.next(event, self.work());
     }
@@ -199,8 +199,15 @@ impl Transcript {
     }
 
     fn finish(&mut self, result: &TurnResult) {
-        let cost_usd = (result.total_cost_usd - self.spent).max(0.0);
-        self.spent = result.total_cost_usd;
+        // A process resuming the conversation goes on from the total it saved;
+        // one that counts from zero shows it by a total below the last.
+        let total = result.total_cost_usd;
+        let cost_usd = if total >= self.spent {
+            total - self.spent
+        } else {
+            total
+        };
+        self.spent = total;
         let signals = std::mem::take(&mut self.signals);
         let finished = Ending::Finished(Finished {
             cost_usd,

@@ -61,9 +61,25 @@ fn a_new_process_picks_the_session_up_with_its_turns() {
     player.transcript.apply(&Event::Exited { code: Some(0) });
     player.play("initialize.jsonl", says("unused"));
     assert_eq!(player.transcript.status(), &Status::Ready);
-    player.play("turn-ok.jsonl", says("again"));
+    let first = 0.0035433900000000004;
+    let resumed = |line: &str| {
+        line.replace(
+            &format!("\"total_cost_usd\":{first}"),
+            "\"total_cost_usd\":0.006",
+        )
+    };
+    play_with(&mut player, "turn-ok.jsonl", "again", resumed);
+    player.transcript.apply(&Event::Exited { code: Some(0) });
+    player.play("initialize.jsonl", says("unused"));
+    let from_zero = |line: &str| {
+        line.replace(
+            &format!("\"total_cost_usd\":{first}"),
+            "\"total_cost_usd\":0.001",
+        )
+    };
+    play_with(&mut player, "turn-ok.jsonl", "and again", from_zero);
     let turns = player.transcript.turns();
-    assert_eq!(turns.len(), 2);
+    assert_eq!(turns.len(), 3);
     let costs: Vec<_> = turns
         .iter()
         .map(|turn| match &turn.state {
@@ -71,11 +87,27 @@ fn a_new_process_picks_the_session_up_with_its_turns() {
             other => panic!("{other:?}"),
         })
         .collect();
-    assert_eq!(
-        costs,
-        [0.0035433900000000004, 0.0035433900000000004],
-        "each process counts from zero"
+    assert!((costs[0] - first).abs() < 1e-12, "{costs:?}");
+    assert!(
+        (costs[1] - (0.006 - first)).abs() < 1e-12,
+        "a resumed process goes on from the total: {costs:?}"
     );
+    assert!(
+        (costs[2] - 0.001).abs() < 1e-12,
+        "a process counting from zero: {costs:?}"
+    );
+}
+
+/// Plays `fixture` with each agent line changed by `change`.
+fn play_with(player: &mut Player, fixture: &str, text: &str, change: impl Fn(&str) -> String) {
+    let mut host = says(text);
+    for line in support::fixture(fixture) {
+        let line = match line {
+            Line::Agent(line) => Line::Agent(change(&line)),
+            host_line => host_line,
+        };
+        player.step(line, &mut host);
+    }
 }
 
 #[test]
