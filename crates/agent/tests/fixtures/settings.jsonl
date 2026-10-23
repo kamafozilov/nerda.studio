@@ -1,0 +1,7 @@
+{"host":"set_permission_mode"}
+{"type":"control_response","response":{"subtype":"success","request_id":"{{request}}","response":{"mode":"acceptEdits"}}}
+{"host":"set_model"}
+{"type":"system","subtype":"status","status":null,"permissionMode":"acceptEdits","uuid":"2915c6d1-c81a-442c-8602-64f6b31e2c5e","session_id":"75c98f01-f805-4e67-9364-889d9c590313"}
+{"type":"control_response","response":{"subtype":"success","request_id":"{{request}}","response":{"model":"claude-haiku-5-5"}}}
+{"host":"apply_flag_settings"}
+{"type":"control_response","response":{"subtype":"success","request_id":"{{request}}"}}
