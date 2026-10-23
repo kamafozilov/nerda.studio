@@ -7,6 +7,7 @@ mod background;
 #[cfg(target_os = "macos")]
 mod bundle;
 mod composer;
+mod conversation;
 mod instance;
 mod key_cap;
 mod menu;

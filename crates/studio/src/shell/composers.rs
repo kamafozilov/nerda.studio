@@ -1,15 +1,16 @@
-//! One composer per open session, so a message half written survives
-//! switching tabs. Showing a session's tab puts the cursor in its composer,
+//! One composer and one conversation per open session, so a message half
+//! written, and where the conversation is scrolled, survive switching tabs. Showing a session's tab puts the cursor in its composer,
 //! unless a palette, a menu, the quit dialog or the search holds it.
 
-use gpui::{AppContext, Context, Entity, Focusable, Subscription, Window};
+use gpui::{App, AppContext, Context, Entity, Focusable, Subscription, Window};
 use workspace::{SessionId, Tab};
 
 use super::Shell;
-use crate::{agents, composer::Composer};
+use crate::{agents, composer::Composer, conversation::Conversation};
 
 pub(super) struct OpenComposer {
     pub composer: Entity<Composer>,
+    pub conversation: Entity<Conversation>,
     /// Sends focus on to the composer on screen, should it come back here
     /// while this session is off screen, as when a palette closes.
     _focus: Subscription,
@@ -47,6 +48,7 @@ impl Shell {
     ) -> OpenComposer {
         let store = self.store.clone();
         let agent = agents::of(session, cx);
+        let conversation = cx.new(|cx| Conversation::new(agent.clone(), cx));
         let composer = cx.new(|cx| Composer::new(store, session, agent, cx));
         let focus = composer.focus_handle(cx);
         let subscription = cx.on_focus(&focus, window, move |shell, window, cx| {
@@ -56,6 +58,7 @@ impl Shell {
         });
         OpenComposer {
             composer,
+            conversation,
             _focus: subscription,
         }
     }
@@ -64,6 +67,20 @@ impl Shell {
     pub(super) fn shown_composer(&self) -> Option<Entity<Composer>> {
         let session = self.tab_shown?.session()?;
         Some(self.composers.get(&session)?.composer.clone())
+    }
+
+    /// The conversation of the session on screen, once it has seen work: a
+    /// draft has only its composer.
+    pub(super) fn shown_conversation(&self, cx: &App) -> Option<Entity<Conversation>> {
+        let session = self.tab_shown?.session()?;
+        let workspace = self.store.read(cx).workspace();
+        (!workspace.session(session)?.is_empty())
+            .then(|| {
+                self.composers
+                    .get(&session)
+                    .map(|open| open.conversation.clone())
+            })
+            .flatten()
     }
 
     /// Puts the cursor in the composer on screen, else gives focus to the

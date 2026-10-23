@@ -26,10 +26,12 @@ use theme::{
 use workspace::{Head, SessionId};
 
 use attachments::Attachments;
+pub(crate) use chips::{chip, chip_label};
 
 use crate::{
     agents::{Problem, SessionAgent},
     assets::Icon,
+    conversation,
     menu::Menu,
     store::Store,
     text_input::{Lines, TextInput, TextInputEvent},
@@ -198,7 +200,7 @@ impl Composer {
                 .px(SPACE_3)
                 .text_size(TEXT_SMALL)
                 .text_color(Theme::of(cx).colors.text_primary)
-                .child(problem),
+                .child(conversation::markdown_line(&problem)),
         )
     }
 
@@ -306,15 +308,15 @@ impl Render for Composer {
             .key_context(CONTEXT)
             .on_action(cx.listener(Self::send))
             .capture_action(cx.listener(Self::paste))
-            .flex_1()
-            .min_h_0()
             .w_full()
             .px(SPACE_3)
             .flex()
             .flex_col()
             .items_center()
-            .when(draft, |placement| placement.justify_center())
-            .when(!draft, |placement| placement.justify_end().pb(SPACE_3))
+            .when(draft, |placement| {
+                placement.flex_1().min_h_0().justify_center()
+            })
+            .when(!draft, |placement| placement.flex_none().pb(SPACE_3))
             .child(column)
     }
 }

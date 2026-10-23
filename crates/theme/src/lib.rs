@@ -12,6 +12,16 @@ pub use metrics::*;
 
 use gpui::{App, Global, Hsla, WindowAppearance, WindowBackgroundAppearance, rgba};
 
+/// The platform's monospaced font, for code: SF Mono on macOS, by the name
+/// CoreText gives the system's monospaced face; Consolas on Windows.
+pub const MONOSPACE_FONT: &str = if cfg!(target_os = "macos") {
+    ".AppleSystemUIFontMonospaced"
+} else if cfg!(target_os = "windows") {
+    "Consolas"
+} else {
+    "DejaVu Sans Mono"
+};
+
 /// Whether the window shows the desktop through a blur or paints a solid base.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Material {

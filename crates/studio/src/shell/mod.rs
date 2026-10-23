@@ -326,7 +326,8 @@ impl Shell {
     /// The main area: a rounded card with a hairline, `MAIN_INSET` clear of the
     /// window's right and bottom edges and, as the sidebar closes, of its left.
     /// Before the first project it welcomes, unless a page is on screen; a
-    /// session shows its composer, and a page nothing yet.
+    /// session shows its conversation over its composer, and a page nothing
+    /// yet.
     fn main_area(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
         let workspace = self.store.read(cx).workspace();
@@ -343,6 +344,7 @@ impl Shell {
             .border_1()
             .border_color(colors.border)
             .bg(colors.panel_background)
+            .children(self.shown_conversation(cx))
             .when_some(self.shown_composer(), |card, composer| card.child(composer))
             .when(welcome, |card| {
                 card.child(welcome::no_projects(

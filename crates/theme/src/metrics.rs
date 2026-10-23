@@ -102,6 +102,10 @@ pub const CHIP_MAX_WIDTH: Pixels = px(200.);
 /// ten lines of text still fits the card at the window's minimum size.
 pub const CHIPS_MAX_HEIGHT: Pixels = px(78.);
 
+/// The widest share of the conversation's column a message of the person's
+/// takes, so it reads as theirs, apart from the agent's full-width replies.
+pub const MESSAGE_MAX_WIDTH: f32 = 0.8;
+
 /// A heading over the main area's content, such as a draft session's question.
 pub const TEXT_HEADING: Pixels = px(18.);
 /// Body text and titles; macOS's standard control size.

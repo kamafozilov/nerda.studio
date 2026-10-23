@@ -4,12 +4,13 @@
 //! it has a turn on record, and again after one ended on its own.
 
 use std::{
+    collections::HashMap,
     path::PathBuf,
     time::{Duration, Instant},
 };
 
 use agent::{
-    Attachment, Command, Conversation, Event, Events, Incoming, Launch, Message, Status,
+    Attachment, Command, Conversation, Event, Events, Incoming, Item, Launch, Message, Status,
     Transcript, TurnState,
 };
 use gpui::{App, AppContext, Context, Entity, EventEmitter, SharedString, Task};
@@ -39,6 +40,8 @@ pub struct SessionAgent {
     access: Option<Access>,
     /// Since when a turn has been running or waiting, while one is.
     busy_since: Option<Instant>,
+    /// When each thinking block still streaming began, by turn and item.
+    thinking_since: HashMap<(usize, usize), Instant>,
 }
 
 enum State {
@@ -97,7 +100,21 @@ impl SessionAgent {
             switching: false,
             access: None,
             busy_since: None,
+            thinking_since: HashMap::new(),
         }
+    }
+
+    pub fn transcript(&self) -> &Transcript {
+        &self.transcript
+    }
+
+    pub fn busy_since(&self) -> Option<Instant> {
+        self.busy_since
+    }
+
+    /// When the thinking at `item` of `turn` began, while it streams.
+    pub fn thinking_since(&self, turn: usize, item: usize) -> Option<Instant> {
+        self.thinking_since.get(&(turn, item)).copied()
     }
 
     /// Whether a turn runs or a message waits for one.
@@ -314,11 +331,25 @@ impl SessionAgent {
         })
     }
 
-    /// Starts or ends the clock of how long the agent has been working.
+    /// Starts or ends the clocks the screen shows: how long the agent has
+    /// been working, and how long each thinking block has streamed.
     fn note_times(&mut self) {
+        let now = Instant::now();
         let turns = self.transcript.turns();
         let busy = (turns.iter()).any(|turn| !matches!(turn.state, TurnState::Ended(_)));
-        self.busy_since = busy.then(|| self.busy_since.unwrap_or_else(Instant::now));
+        self.busy_since = busy.then(|| self.busy_since.unwrap_or(now));
+        let mut thinking = HashMap::new();
+        for (at, turn) in turns.iter().enumerate() {
+            for (item, part) in turn.items.iter().enumerate() {
+                if let Item::Thinking(text) = part
+                    && text.streaming
+                {
+                    let since = self.thinking_since.get(&(at, item)).copied();
+                    thinking.insert((at, item), since.unwrap_or(now));
+                }
+            }
+        }
+        self.thinking_since = thinking;
     }
 
     /// A refused switch of access: the session's choice goes back to what

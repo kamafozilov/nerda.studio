@@ -10,6 +10,10 @@ agent.workspace = true
 gpui.workspace = true
 gpui_platform.workspace = true
 image = { version = "0.25", default-features = false, features = ["bmp", "png", "tiff"] }
+# The agent's replies are CommonMark, whose emphasis, lists and fences are a
+# spec's worth of rules: a hand parser would get them wrong. Pure Rust, no
+# HTML writer.
+pulldown-cmark = { version = "0.13", default-features = false }
 # Each session's journal: one event a line.
 serde_json.workspace = true
 theme.workspace = true
