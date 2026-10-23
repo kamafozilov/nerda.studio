@@ -21,6 +21,7 @@ pub use model::{
     AddedProject, Page, Project, ProjectId, ProjectScope, Session, SessionId, SessionSort, Tab,
     Timestamp,
 };
+pub use paths::home_relative;
 pub use store::{default_data_dir, default_instance_lock_path, default_state_path, write_state};
 
 /// Title given to every freshly created session.

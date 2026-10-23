@@ -47,3 +47,29 @@ fn same_titles_take_the_shortest_distinct_end_of_their_paths() {
 fn an_unknown_project_has_no_name() {
     assert_eq!(Workspace::default().display_name(ProjectId(7)), None);
 }
+
+#[test]
+fn a_path_in_the_home_folder_starts_with_a_tilde() {
+    let home = std::fs::canonicalize(dirs_home()).unwrap();
+    let inside = home.join("Developer").join("web");
+    assert_eq!(
+        workspace::home_relative(&inside),
+        std::path::Path::new("~")
+            .join("Developer")
+            .join("web")
+            .display()
+            .to_string()
+    );
+    assert_eq!(workspace::home_relative(&home), "~");
+    let outside = std::path::Path::new("/opt/web");
+    assert_eq!(
+        workspace::home_relative(outside),
+        outside.display().to_string()
+    );
+}
+
+fn dirs_home() -> std::path::PathBuf {
+    std::env::var_os("HOME")
+        .map(Into::into)
+        .expect("HOME is set")
+}

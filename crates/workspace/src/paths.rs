@@ -1,5 +1,6 @@
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
+use std::sync::OnceLock;
 
 use crate::AddProjectError;
 
@@ -41,5 +42,28 @@ pub(crate) fn expand_home(path: &Path) -> PathBuf {
             None => path.to_path_buf(),
         },
         _ => path.to_path_buf(),
+    }
+}
+
+/// The path as a person reads it: inside the home folder it starts with `~`,
+/// the counterpart of `expand_home`. The home folder is found once, as given
+/// and with its links resolved, so a path written either way is shortened.
+pub fn home_relative(path: &Path) -> String {
+    static HOMES: OnceLock<Vec<PathBuf>> = OnceLock::new();
+    let homes = HOMES.get_or_init(|| {
+        let Some(home) = dirs::home_dir() else {
+            return Vec::new();
+        };
+        let canonical = std::fs::canonicalize(&home).unwrap_or_else(|_| home.clone());
+        let mut homes = vec![home];
+        if canonical != homes[0] {
+            homes.push(canonical);
+        }
+        homes
+    });
+    match homes.iter().find_map(|home| path.strip_prefix(home).ok()) {
+        Some(inside) if inside.as_os_str().is_empty() => "~".to_owned(),
+        Some(inside) => Path::new("~").join(inside).display().to_string(),
+        None => path.display().to_string(),
     }
 }
