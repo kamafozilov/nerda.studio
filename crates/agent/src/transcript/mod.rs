@@ -14,8 +14,10 @@ pub use turn::{Ending, Finished, Item, Text, ToolCall, ToolStatus, Turn, TurnSta
 
 use crate::event::Event;
 use crate::failure::{self, Failure, Signals, StderrTail};
+use crate::models::{self, Offered};
 use crate::protocol::{
-    Command, Decision, Incoming, MessageId, Outcome, RequestId, Stage, ToolUseId, TurnResult,
+    Command, Decision, INITIALIZE, Incoming, MessageId, Outcome, RequestId, Stage, ToolUseId,
+    TurnResult,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -31,6 +33,8 @@ pub struct Transcript {
     signals: Signals,
     /// The last of what the process wrote on stderr.
     stderr: StderrTail,
+    /// The models the agent offered when it last answered `initialize`.
+    offered: Vec<Offered>,
 }
 
 impl Default for Transcript {
@@ -49,6 +53,7 @@ impl Transcript {
             spent: 0.0,
             signals: Signals::default(),
             stderr: StderrTail::default(),
+            offered: Vec::new(),
         }
     }
 
@@ -58,6 +63,10 @@ impl Transcript {
 
     pub fn status(&self) -> &Status {
         &self.status
+    }
+
+    pub(crate) fn offered(&self) -> &[Offered] {
+        &self.offered
     }
 
     /// The prompts waiting for the person, oldest first.
@@ -193,6 +202,12 @@ impl Transcript {
                 }
             }
             Incoming::Result(result) => self.finish(result),
+            Incoming::Response {
+                id,
+                result: Ok(answer),
+            } if id.0 == INITIALIZE => {
+                self.offered = models::offered(answer);
+            }
             _ => {}
         }
     }

@@ -3,6 +3,7 @@
 
 mod event;
 mod failure;
+mod models;
 mod program;
 pub mod protocol;
 mod session;
@@ -11,6 +12,7 @@ mod transcript;
 
 pub use event::Event;
 pub use failure::Failure;
+pub use models::ModelOption;
 pub use program::prewarm;
 pub use protocol::{
     Ask, Attachment, Choice, Command, ConversationId, Decision, Image, ImageFormat, Incoming,
