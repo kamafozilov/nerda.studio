@@ -75,7 +75,15 @@ clear of the card's sides. A draft shows its composer alone, as before.
   went, the list lays out anew, so streaming text grows only its own row.
 - **Sticking to the bottom.** Newest is at the bottom, and the list keeps to it while
   output streams. Scrolled up, it stays where it is, however much streams below, until
-  scrolled back to the bottom.
+  scrolled back to the bottom, or until "Scroll to the end" is pressed: a `CONTROL_SIZE`
+  circle centered over the composer, `SPACE_2` above the list's bottom, on
+  `popover_background` under a `popover_border` hairline with `popover_shadow`, its
+  down arrow `ICON_SIZE` in `text_secondary`, `text_primary` under the pointer. It shows
+  only while the list is scrolled up from its end. While more lies below, the rows fade
+  into the card over their last `SCROLL_EDGE_FADE`, thinning out as the end comes. The
+  list keeps `SCROLL_EDGE_FADE` and `SPACE_2` (40) of room under its last row, inside
+  the scroll: at the end the last row stands that far clear of the composer and out of
+  the fade, and rows scrolled up still pass under the fade into the composer.
 - **The person's message** sits at the column's trailing edge, at most
   `MESSAGE_MAX_WIDTH` (80%) of it, on `field_background` with `COMPOSER_RADIUS` corners,
   `SPACE_3` by `SPACE_2` in, its text in `TEXT_BODY` `text_primary` with its line breaks.
@@ -92,30 +100,62 @@ clear of the card's sides. A draft shows its composer alone, as before.
   markers in a 20 pt column; quotes behind a `border` rule. Links show as their text.
   A line break stays one, as in the terminal the agent writes for. Text renders as it
   streams; a code fence not closed yet runs to the end.
-- **Thinking** is one `text_secondary` row with a chevron: "Thinking… 3s" while it
-  streams, "Thinking" after. A click opens it to the summary, in `text_secondary`, in
-  line with the label.
-- **Tool calls and prompts** are one `TEXT_SMALL` `text_secondary` line each for now:
-  "Bash · running", "Read · done"; a prompt that waits says "The agent is waiting for
-  an answer to run Bash." (or that it asked a question, or proposed a plan), then
-  "allowed", "denied" or "not answered". Stop denies a waiting prompt.
+- **Text as it streams** fades in where it ends: each part that arrives goes from clear
+  to full color over 320 ms, quick at first, in place, so nothing moves.
+- **Thinking** is a row led by a brain icon: "Thinking" with its clock while it streams,
+  and its latest line in `text_tertiary` after it; then "Thought for 4s" ("Thought" when
+  the app didn't see it stream). A click opens it to the summary, in `text_secondary`, in
+  line with the label; a chevron shows under the pointer.
+- **A tool call** is one line: its icon (`ICON_SIZE_ROW`, `text_secondary`), a verb in
+  the past tense once done and the present while it runs ("Read", "Reading"), what it
+  acted on in `text_primary` (a file by its name, the whole path in its tooltip; a
+  command or pattern in `MONOSPACE_FONT` at `TEXT_CAPTION`), then quieter detail in
+  `text_tertiary` (the file's folder inside the project, "lines 40–119", "3 files"). A
+  change counts its lines, "+2 −1" in `diff_added` and `danger`. A failed call turns
+  its icon into an alert in `danger` and says "failed". Opened by a click, a command
+  shows itself over its output, an edit its diff (removed and added lines on their
+  washes, lines kept between them plain), anything else its output: 16 lines at most,
+  40 for a diff, then how many more. The plan (TodoWrite) shows its steps always: done
+  ones struck through, the one in hand in medium weight. A prompt that waits says "The
+  agent is waiting for an answer to run Bash." (or that it asked a question, or
+  proposed a plan), then "allowed", "denied" or "not answered". Stop denies it.
+- **Groups.** Two or more tool calls and thinking blocks in a row, one of them a call,
+  gather under one line: a chevron where their icons stand and what they did, the kinds
+  that change things first, three at most and the rest counted ("Edited motion.rs, ran
+  2 commands, read 2 files and 3 more"), the lines changed and how many failed. The
+  group is open while the agent adds to it and closes once it moves on; a click opens or
+  closes it for good. Its rows hang from a `border` rail down from the chevron.
+- **Motion while it works.** A running call's icon breathes and its verb glows: a band
+  of `text_primary` sweeps through `text_secondary` every 2.2 s; a live group's line
+  glows too. A row that comes while the agent works fades in and rises 4 pt on a
+  critically damped spring of 0.3 s response. The conversation redraws 30 times a
+  second while anything moves, once a second for the clocks under Reduce motion, and not
+  at all while idle. Reduce motion holds every glow, wave and fade still.
 - **How a turn ended**, in `TEXT_SMALL` under it: "Worked for 1m 12s" (whole seconds,
-  at least one; minutes and hours past them) in `text_secondary`; "Stopped"; or a failure
-  as the problem line says it, `text_primary`: what went wrong, then what to do, such as
-  "The agent isn't signed in." over "Run `claude auth login` in a terminal, then try
-  again."
-- **Working.** While a turn runs or a message waits, "Working… 12s" in `TEXT_SMALL`
-  `text_secondary` stands over the composer, in line with its text. Its `CONTROL_SIZE`
-  row is kept while idle, so the composer never moves. The clocks redraw once a second
-  while the agent works.
+  at least one; minutes and hours past them) in `text_secondary`, a `border` hairline
+  running on to the column's edge; "Stopped"; or a failure as the problem line says it,
+  `text_primary`: what went wrong, then what to do, such as "The agent isn't signed
+  in." over "Run `claude auth login` in a terminal, then try again."
+- **Working.** While a turn runs or a message waits, the conversation's last row,
+  `SPACE_3` under the newest, so it stays where the eye is, shows a square of nine dots
+  in the rows' icon slot, three rows in `activity`'s blue, amber and
+  pink, a wave rising through them every 1.2 s; what the agent is doing, glowing
+  ("Thinking", "Writing", "Reading motion.rs", "Running cargo test", "Waiting for your
+  answer", "Starting", "Stopping"); and for how long it has worked, in `TEXT_SMALL`
+  `text_tertiary`. The row goes once the turn ends.
+
+The conversation's own colors are in `crates/theme/src/palette.rs`, computed in OKLCH:
+`danger` (h 27; 6.99:1 dark, 5.68:1 light on the card over the worst desktop),
+`diff_added` (h 150; 9.84 and 5.29), their washes at 12% (dark) or 8% (light), and the
+`activity` dots, on which nothing is read.
 
 Every text here keeps a contrast measured before: `text_primary` and `text_secondary` on
 the card (design.md), `text_primary` on `field_background` (composer.md).
 
 ## Not yet
 
-Answering prompts, questions and plans, tool calls with their input and output, failure
-cards with more than words, the sessions' status in the sidebar, opening links, selecting
+Answering prompts, questions and plans, a subagent's own steps, failure cards with more
+than words, the sessions' status in the sidebar, opening links, selecting
 text and image thumbnails come later. The rows are the seam: a kind of row draws one item
 of the transcript, so a richer one takes its place without touching the rest.
 

@@ -42,6 +42,8 @@ pub struct SessionAgent {
     busy_since: Option<Instant>,
     /// When each thinking block still streaming began, by turn and item.
     thinking_since: HashMap<(usize, usize), Instant>,
+    /// How long each thinking block seen streaming took, by turn and item.
+    thought_for: HashMap<(usize, usize), Duration>,
 }
 
 enum State {
@@ -101,6 +103,7 @@ impl SessionAgent {
             access: None,
             busy_since: None,
             thinking_since: HashMap::new(),
+            thought_for: HashMap::new(),
         }
     }
 
@@ -115,6 +118,19 @@ impl SessionAgent {
     /// When the thinking at `item` of `turn` began, while it streams.
     pub fn thinking_since(&self, turn: usize, item: usize) -> Option<Instant> {
         self.thinking_since.get(&(turn, item)).copied()
+    }
+
+    /// How long the thinking at `item` of `turn` took, once it ended; known
+    /// only for thinking seen streaming since the app opened.
+    pub fn thought_for(&self, turn: usize, item: usize) -> Option<Duration> {
+        self.thought_for.get(&(turn, item)).copied()
+    }
+
+    /// The folder of the session's project, which the agent works in.
+    pub fn folder(&self, cx: &App) -> Option<PathBuf> {
+        let workspace = self.store.read(cx).workspace();
+        let session = workspace.session(self.session)?;
+        Some(workspace.project(session.project)?.path.clone())
     }
 
     /// Whether a turn runs or a message waits for one.
@@ -351,6 +367,10 @@ impl SessionAgent {
                 {
                     let since = self.thinking_since.get(&(at, item)).copied();
                     thinking.insert((at, item), since.unwrap_or(now));
+                } else if let Item::Thinking(_) = part
+                    && let Some(since) = self.thinking_since.get(&(at, item))
+                {
+                    self.thought_for.insert((at, item), now - *since);
                 }
             }
         }

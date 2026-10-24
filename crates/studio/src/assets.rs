@@ -63,6 +63,34 @@ pub enum Icon {
     View,
     /// Sets something aside without letting go of it.
     ViewOff,
+    /// A task handed to another agent.
+    Agent,
+    /// Something failed.
+    Alert,
+    /// The agent's list of steps.
+    Checklist,
+    /// A file the agent wrote whole.
+    FileAdd,
+    /// A search for files by name.
+    FileSearch,
+    /// A file the agent read.
+    FileView,
+    /// A page fetched or a search of the web.
+    Globe,
+    /// A tool from an MCP server.
+    Plug,
+    /// A question the agent asked.
+    Question,
+    /// A skill the agent used.
+    Skill,
+    /// Scrolls a list to its end.
+    ScrollDown,
+    /// A command the agent ran.
+    Terminal,
+    /// The agent's thinking.
+    Thinking,
+    /// Any other tool the agent called.
+    Tool,
 }
 
 impl Icon {
@@ -112,11 +140,81 @@ impl Icon {
             Self::Usage => "icons/gauge.svg",
             Self::View => "icons/view.svg",
             Self::ViewOff => "icons/view-off-slash.svg",
+            Self::Agent => "icons/robot-01.svg",
+            Self::Alert => "icons/alert-circle.svg",
+            Self::Checklist => "icons/check-list.svg",
+            Self::FileAdd => "icons/file-add.svg",
+            Self::FileSearch => "icons/folder-search.svg",
+            Self::FileView => "icons/file-view.svg",
+            Self::Globe => "icons/globe-02.svg",
+            Self::Plug => "icons/plug-socket.svg",
+            Self::Question => "icons/bubble-chat-question.svg",
+            Self::Skill => "icons/magic-wand-01.svg",
+            Self::ScrollDown => "icons/arrow-down-02.svg",
+            Self::Terminal => "icons/command-line.svg",
+            Self::Thinking => "icons/brain-02.svg",
+            Self::Tool => "icons/wrench-01.svg",
         }
     }
 }
 
 const FILES: &[(&str, &[u8])] = &[
+    (
+        "icons/arrow-down-02.svg",
+        include_bytes!("../assets/icons/arrow-down-02.svg"),
+    ),
+    (
+        "icons/robot-01.svg",
+        include_bytes!("../assets/icons/robot-01.svg"),
+    ),
+    (
+        "icons/alert-circle.svg",
+        include_bytes!("../assets/icons/alert-circle.svg"),
+    ),
+    (
+        "icons/check-list.svg",
+        include_bytes!("../assets/icons/check-list.svg"),
+    ),
+    (
+        "icons/file-add.svg",
+        include_bytes!("../assets/icons/file-add.svg"),
+    ),
+    (
+        "icons/folder-search.svg",
+        include_bytes!("../assets/icons/folder-search.svg"),
+    ),
+    (
+        "icons/file-view.svg",
+        include_bytes!("../assets/icons/file-view.svg"),
+    ),
+    (
+        "icons/globe-02.svg",
+        include_bytes!("../assets/icons/globe-02.svg"),
+    ),
+    (
+        "icons/plug-socket.svg",
+        include_bytes!("../assets/icons/plug-socket.svg"),
+    ),
+    (
+        "icons/bubble-chat-question.svg",
+        include_bytes!("../assets/icons/bubble-chat-question.svg"),
+    ),
+    (
+        "icons/magic-wand-01.svg",
+        include_bytes!("../assets/icons/magic-wand-01.svg"),
+    ),
+    (
+        "icons/command-line.svg",
+        include_bytes!("../assets/icons/command-line.svg"),
+    ),
+    (
+        "icons/brain-02.svg",
+        include_bytes!("../assets/icons/brain-02.svg"),
+    ),
+    (
+        "icons/wrench-01.svg",
+        include_bytes!("../assets/icons/wrench-01.svg"),
+    ),
     (
         "icons/archive-03.svg",
         include_bytes!("../assets/icons/archive-03.svg"),

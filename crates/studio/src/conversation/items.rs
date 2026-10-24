@@ -1,26 +1,19 @@
-//! Each kind of row: the person's message, thinking, a tool call or a
-//! prompt, and how a turn ended. Tool calls and prompts are one line each
-//! for now.
+//! Each kind of row but a tool call's: the person's message, thinking, a
+//! prompt, and how a turn ended. Prompts are one line each for now.
 
-use std::{
-    f32::consts::FRAC_PI_2,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
-use agent::{
-    Ask, Attachment, Ending, ImageFormat, Message, Permission, PermissionState, Text, ToolCall,
-    ToolStatus,
-};
+use agent::{Ask, Attachment, Ending, ImageFormat, Message, Permission, PermissionState, Text};
 use gpui::{
     AnyElement, ClickEvent, ElementId, IntoElement, ParentElement, SharedString, Styled, Window,
-    div, prelude::*, radians, relative, svg,
+    div, prelude::*, relative,
 };
 use theme::{
-    COMPOSER_RADIUS, Colors, ICON_SIZE_SMALL, MESSAGE_MAX_WIDTH, SPACE_1, SPACE_2, SPACE_3,
+    COMPOSER_RADIUS, Colors, HAIRLINE, ICON_SIZE_ROW, MESSAGE_MAX_WIDTH, SPACE_1, SPACE_2, SPACE_3,
     TEXT_SMALL,
 };
 
-use super::render;
+use super::{animation, render, tool_row};
 use crate::{
     assets::Icon,
     composer::{chip, chip_label},
@@ -96,64 +89,95 @@ pub fn message(message: &Message, queued: bool, colors: Colors) -> AnyElement {
         .into_any_element()
 }
 
-/// "Thinking", with how long while it streams, over the summary once open.
+/// Thinking: "Thinking" glowing while it streams, with how long and its
+/// latest line, then "Thought for 4s"; opened, the summary under it.
+#[allow(clippy::too_many_arguments)]
 pub fn thinking(
     text: &Text,
     since: Option<Instant>,
+    took: Option<Duration>,
     open: bool,
     id: ElementId,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut gpui::App) + 'static,
+    still: bool,
     colors: Colors,
 ) -> AnyElement {
-    let label = match (text.streaming, since) {
-        (true, Some(since)) => format!("Thinking\u{2026} {}", elapsed(since.elapsed())),
-        (true, None) => "Thinking\u{2026}".to_owned(),
-        (false, _) => "Thinking".to_owned(),
+    let summary = text.text.trim();
+    let label = match (text.streaming, took) {
+        (true, _) => animation::shimmer(
+            "Thinking",
+            colors.text_secondary,
+            colors.text_primary,
+            still,
+        ),
+        (false, Some(took)) => plain(
+            format!("Thought for {}", elapsed(took)),
+            colors.text_secondary,
+        ),
+        (false, None) => plain("Thought".to_owned(), colors.text_secondary),
     };
-    let chevron = svg()
-        .path(Icon::ChevronDown.path())
-        .flex_none()
-        .size(ICON_SIZE_SMALL)
-        .text_color(colors.text_secondary)
-        .when(!open, |icon| {
-            icon.with_transformation(gpui::Transformation::rotate(radians(-FRAC_PI_2)))
-        });
+    let after = match (text.streaming, open) {
+        (true, false) => summary.lines().rev().find(|line| !line.trim().is_empty()),
+        _ => None,
+    };
+    let group = SharedString::from(format!("thinking-{id:?}"));
     div()
         .flex()
         .flex_col()
         .gap(SPACE_1)
-        .text_color(colors.text_secondary)
         .child(
             div()
                 .id(id)
+                .group(group.clone())
                 .flex()
                 .items_center()
-                .gap(SPACE_1)
+                .gap(SPACE_2)
                 .cursor_pointer()
                 .on_click(on_click)
-                .child(chevron)
-                .child(label),
+                .child(tool_row::icon_slot(Icon::Thinking, colors.text_secondary))
+                .child(div().flex_none().child(label))
+                .when_some(since.filter(|_| text.streaming), |line, since| {
+                    line.child(
+                        supporting(colors)
+                            .flex_none()
+                            .text_color(colors.text_tertiary)
+                            .child(elapsed(since.elapsed())),
+                    )
+                })
+                .when_some(after, |line, after| {
+                    line.child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .truncate()
+                            .text_color(colors.text_tertiary)
+                            .child(SharedString::from(after.trim().to_owned())),
+                    )
+                })
+                .when(!summary.is_empty(), |line| {
+                    line.child(
+                        div()
+                            .flex_none()
+                            .opacity(0.)
+                            .group_hover(group, |chevron| chevron.opacity(1.))
+                            .child(tool_row::chevron(open, colors.text_tertiary)),
+                    )
+                }),
         )
-        .when(open && !text.text.trim().is_empty(), |row| {
+        .when(open && !summary.is_empty(), |row| {
             row.child(
                 div()
-                    .pl(ICON_SIZE_SMALL + SPACE_1)
-                    .child(SharedString::from(text.text.trim().to_owned())),
+                    .pl(ICON_SIZE_ROW + SPACE_2)
+                    .text_color(colors.text_secondary)
+                    .child(SharedString::from(summary.to_owned())),
             )
         })
         .into_any_element()
 }
 
-/// The tool's name and where its call stands.
-pub fn tool(call: &ToolCall, colors: Colors) -> AnyElement {
-    let state = match call.status {
-        ToolStatus::Running => "running",
-        ToolStatus::Done(_) => "done",
-        ToolStatus::Failed(_) => "failed",
-    };
-    supporting(colors)
-        .child(format!("{} \u{b7} {state}", call.name))
-        .into_any_element()
+/// `text` all in `color`, as a styled text, so it stands beside a glowing one.
+fn plain(text: String, color: gpui::Hsla) -> gpui::StyledText {
+    animation::shimmer(text, color, color, true)
 }
 
 /// A prompt: while it waits, that the agent waits for an answer.
@@ -181,10 +205,14 @@ pub fn permission(permission: &Permission, colors: Colors) -> AnyElement {
 pub fn end(ending: &Ending, colors: Colors) -> AnyElement {
     match ending {
         Ending::Finished(finished) => supporting(colors)
+            .flex()
+            .items_center()
+            .gap(SPACE_2)
             .child(format!(
                 "Worked for {}",
                 elapsed(Duration::from_millis(finished.duration_ms))
             ))
+            .child(div().flex_1().h(HAIRLINE).bg(colors.border))
             .into_any_element(),
         Ending::Interrupted => supporting(colors).child("Stopped").into_any_element(),
         Ending::Failed(failure) => div()
