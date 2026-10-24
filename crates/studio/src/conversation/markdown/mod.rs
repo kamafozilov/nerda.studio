@@ -7,6 +7,7 @@
 //! came.
 
 mod links;
+pub mod mention;
 #[cfg(test)]
 mod tests;
 
@@ -303,7 +304,17 @@ impl Builder {
             return;
         };
         let start = inline.text.len();
-        inline.text.push_str(text);
+        // Uzbek's oʻ and gʻ (U+02BB, and U+02BC) as the quotes that look
+        // the same: text wraps inside words of those, not of these.
+        if text.contains(['\u{2BB}', '\u{2BC}']) {
+            inline.text.push_str(
+                &text
+                    .replace('\u{2BB}', "\u{2018}")
+                    .replace('\u{2BC}', "\u{2019}"),
+            );
+        } else {
+            inline.text.push_str(text);
+        }
         if style != Style::default() {
             inline.spans.push((start..inline.text.len(), style));
         }

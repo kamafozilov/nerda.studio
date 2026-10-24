@@ -32,8 +32,24 @@ impl Conversation {
             conversation.copy(*id, text, cx)
         });
         let copied = self.copied.map(|(id, _)| id);
-        let mut env = render::Env::new(colors, window, &mut self.syntax, copied, Rc::new(copy));
-        render::blocks(&blocks, super::key(turn, item), &tail, &mut env)
+        let folder = self.folder.clone();
+        let key = super::key(turn, item);
+        self.selecting.borrow_mut().redraw(key);
+        let menu = cx.listener(|conversation, opened, window, cx| {
+            conversation.open_text_menu(opened, window, cx)
+        });
+        let selecting = render::Selecting {
+            state: self.selecting.clone(),
+            item: key,
+            focus: self.focus.clone(),
+            menu: Rc::new(menu),
+            next: 0,
+            before: "",
+        };
+        let mut env = render::Env::new(colors, window, &mut self.syntax, copied, Rc::new(copy))
+            .text(folder, &blocks);
+        env.selecting = Some(selecting);
+        render::blocks(&blocks, key, &tail, &mut env)
     }
 
     /// The Markdown of item `item` of turn `turn`, parsed again only once
@@ -52,7 +68,7 @@ impl Conversation {
 
     /// Copies code block `id`'s text, and shows its Copy as done for a
     /// moment.
-    fn copy(&mut self, id: u64, text: &SharedString, cx: &mut Context<Self>) {
+    pub(super) fn copy(&mut self, id: u64, text: &SharedString, cx: &mut Context<Self>) {
         cx.write_to_clipboard(ClipboardItem::new_string(text.to_string()));
         let now = Instant::now();
         self.copied = Some((id, now));

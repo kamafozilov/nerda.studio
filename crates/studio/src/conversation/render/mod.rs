@@ -4,25 +4,33 @@
 //! ([`table`]). Text that just streamed in fades in at the end of the last
 //! block.
 
+mod chip_paint;
+mod chips;
 mod code;
 mod inline;
+mod select;
 mod table;
 
-use std::rc::Rc;
+use std::{collections::HashSet, path::PathBuf, rc::Rc};
 
 use gpui::{
-    AnyElement, App, ElementId, FontWeight, IntoElement, ParentElement, Pixels, SharedString,
-    Styled, Window, div, prelude::*, px, svg,
+    AnyElement, App, ElementId, FocusHandle, FontWeight, IntoElement, ParentElement, Pixels,
+    SharedString, Styled, Window, div, prelude::*, px, svg,
 };
 use theme::{
-    Colors, HAIRLINE, ICON_SIZE_ROW, SPACE_1, SPACE_2, SPACE_3, TEXT_BODY, TEXT_HEADING,
-    TEXT_HEADING_2, TEXT_HEADING_3,
+    CONTROL_RADIUS, Colors, FIELD_TARGET_SIZE, HAIRLINE, ICON_SIZE_ROW, SPACE_1, SPACE_2, SPACE_3,
+    TEXT_BODY, TEXT_HEADING, TEXT_HEADING_2, TEXT_HEADING_3,
 };
 
 pub use inline::line;
+pub use select::OpenMenu;
 
-use super::{markdown::Block, syntax};
-use crate::assets::Icon;
+use self::select::Select;
+use super::{markdown::Block, selection, syntax};
+use crate::{
+    assets::Icon,
+    tooltip::{TooltipExt, WithTooltip},
+};
 
 /// The width a list's markers take, as wide as "10." at `TEXT_BODY`; a
 /// list numbered past 99 widens it a digit at a time.
@@ -43,8 +51,25 @@ pub struct Env<'a> {
     /// The code block whose Copy just copied it.
     pub copied: Option<u64>,
     pub copy: Copy,
+    /// The project's folder, which paths the text names read relative to.
+    pub folder: Option<PathBuf>,
+    /// The names of files named at more than one path in the text.
+    pub crowded: HashSet<String>,
+    /// What makes the reply's text selectable, with the number its next
+    /// piece takes and what goes before it when copied.
+    pub selecting: Option<Selecting>,
     /// How deep in lists the blocks being drawn are.
     depth: usize,
+}
+
+/// The selection a reply's pieces share, and how they number.
+pub struct Selecting {
+    pub state: selection::Shared,
+    pub item: u64,
+    pub focus: FocusHandle,
+    pub menu: OpenMenu,
+    pub next: usize,
+    pub before: &'static str,
 }
 
 impl<'a> Env<'a> {
@@ -61,8 +86,47 @@ impl<'a> Env<'a> {
             syntax,
             copied,
             copy,
+            folder: None,
+            crowded: HashSet::new(),
+            selecting: None,
             depth: 0,
         }
+    }
+
+    /// Makes the text a piece of the reply's selection, `piece` as copied;
+    /// what lets the pointer select it, if the reply is selectable.
+    fn piece(
+        &mut self,
+        piece: selection::Piece,
+        targets: Rc<[(std::ops::Range<usize>, selection::Target)]>,
+    ) -> Option<Select> {
+        let selecting = self.selecting.as_mut()?;
+        let number = selecting.next;
+        selecting.next += 1;
+        let piece = selection::Piece {
+            before: std::mem::replace(&mut selecting.before, "\n"),
+            ..piece
+        };
+        selecting
+            .state
+            .borrow_mut()
+            .add(selecting.item, number, piece);
+        Some(Select {
+            state: selecting.state.clone(),
+            item: selecting.item,
+            number,
+            color: self.colors.text_selection,
+            focus: selecting.focus.clone(),
+            menu: selecting.menu.clone(),
+            targets,
+        })
+    }
+
+    /// For the text whose blocks are `blocks`, in `folder`.
+    pub fn text(mut self, folder: Option<PathBuf>, blocks: &[Block]) -> Self {
+        self.folder = folder;
+        self.crowded = chips::crowded(blocks);
+        self
     }
 }
 
@@ -99,7 +163,7 @@ fn block(block: &Block, id: u64, tail: &Tail, env: &mut Env) -> AnyElement {
     let colors = env.colors;
     let text_id = || ElementId::NamedInteger("text".into(), id);
     match block {
-        Block::Paragraph(text) => inline::text(text, text_id(), tail, colors),
+        Block::Paragraph(text) => inline::text(text, text_id(), tail, env),
         Block::Heading(level, text) => div()
             .text_size(match level {
                 1 => TEXT_HEADING,
@@ -108,7 +172,7 @@ fn block(block: &Block, id: u64, tail: &Tail, env: &mut Env) -> AnyElement {
                 _ => TEXT_BODY,
             })
             .font_weight(FontWeight::SEMIBOLD)
-            .child(inline::text(text, text_id(), tail, colors))
+            .child(inline::text(text, text_id(), tail, env))
             .into_any_element(),
         Block::Code(code) => code::block(code, id, tail, env),
         Block::Table(table) => table::block(table, id, tail, env),
@@ -200,4 +264,34 @@ fn task_box(done: bool, line_height: Pixels, colors: Colors) -> AnyElement {
                 }),
         )
         .into_any_element()
+}
+
+/// A Copy button: its icon turns a check, its tooltip "Copied", while
+/// `copied`; `label` names it otherwise.
+pub fn copy_button(
+    id: ElementId,
+    copied: bool,
+    label: &'static str,
+    colors: Colors,
+    copy: impl Fn(&mut Window, &mut App) + 'static,
+) -> WithTooltip {
+    div()
+        .id(id)
+        .group("copy")
+        .size(FIELD_TARGET_SIZE)
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(CONTROL_RADIUS)
+        .hover(|button| button.bg(colors.hover))
+        .on_click(move |_, window, cx| copy(window, cx))
+        .child(
+            svg()
+                .path(if copied { Icon::Check } else { Icon::Copy }.path())
+                .size(ICON_SIZE_ROW)
+                .text_color(colors.text_secondary)
+                .group_hover("copy", |icon| icon.text_color(colors.text_primary)),
+        )
+        .with_tooltip(if copied { "Copied" } else { label })
 }

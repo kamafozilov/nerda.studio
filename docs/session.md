@@ -95,11 +95,23 @@ clear of the card's sides. A draft shows its composer alone, as before.
   GitHub's tables, task lists and strikethrough, by `pulldown-cmark`): paragraphs
   `SPACE_2` apart; headings in semibold at `TEXT_HEADING` (18), `TEXT_HEADING_2` (16),
   `TEXT_HEADING_3` (14), then `TEXT_BODY`, `SPACE_3` more clear of what comes before;
-  bold, italic and struck text; inline code in `MONOSPACE_FONT` on `field_background`.
+  bold, italic and struck text. Uzbek's ʻ and ʼ show as ‘ and ’, which look the same,
+  so a line wraps between words, not inside oʻ or gʻ.
+  - **Inline code** is a chip: `MONOSPACE_FONT` on `field_background` under a `border`
+    hairline, 4 pt corners, two narrow spaces of room each side that don't break, so a
+    short chip wraps to the next line whole; a long one wraps where its text does.
+  - **A file or folder the text names** is a chip too: inline code that is a path (a
+    folder in it and an extension, a trailing `/`, or a line, as `src/app.rs:12` or
+    `#L12`), or a link to one. It shows a file or folder icon in `mention`, the name in
+    medium weight, its folder after a `·` when another path of the same name is named in
+    the text, and its place (`L12`, `L12:C3`) in `text_secondary`, on `mention_background`
+    under a `mention_border` hairline. A path reads inside the project's folder unless
+    absolute or from `~/`. A click opens it in its app; the tooltip gives its path from
+    the home folder and its size, or "Not found".
   A line break stays one, as in the terminal the agent writes for. Text renders as it
   streams; a code fence not closed yet runs to the end, a table shows the rows that came.
   - **Links**, and web addresses written out bare, are in `link`; a click opens a web or
-    mail address in the browser. A link to a path shows as its text.
+    mail address in the browser. A link to a path is a file chip, above.
   - **Lists** keep their markers in a 20 pt column in `text_secondary`, widened a digit
     at a time past 99; bullets go disc, ring, square by depth. A task list's item has a
     `ICON_SIZE_ROW` box with a `text_secondary` hairline instead, checked when done.
@@ -115,12 +127,29 @@ clear of the card's sides. A draft shows its composer alone, as before.
     lines in `diff_added` and `danger`; any other shows plain. A block that streams is
     parsed a line at a time: each finished line once, only the line still coming again.
     The grammars load on a thread of their own at launch.
-  - **Tables** are at `TEXT_SMALL`: the head in semibold, a `border` hairline under each
-    row, no lines between columns, cells `SPACE_2` by `SPACE_3` in but flush on the
-    table's outer edges. Each column is as wide as its widest cell, up to 320, and
-    shares out the room left over; past that cells wrap, never narrower than their
-    longest word. A table whose columns can't go narrower than the column of text
-    scrolls sideways. Columns keep GitHub's alignment.
+  - **Tables** sit in a frame: a `border` hairline with `MENU_RADIUS` corners, the head
+    on `field_background` in semibold, a hairline between rows, no lines between
+    columns, cells `SPACE_3` by `SPACE_2` in, at `TEXT_BODY`. Each column is as wide as
+    its widest cell (code and chips measured in their own fonts), up to 320, and shares
+    out the room left over; past that cells wrap, down to 120 or their longest word, a
+    head never. A table that can't fit scrolls sideways inside its frame. Columns keep
+    GitHub's alignment.
+
+- **Selecting the agent's text.** A press on a reply's text starts a selection there,
+  Shift-press extends it, dragging draws it out across the reply's paragraphs, cells
+  and code blocks; a double press takes a word, a triple the whole paragraph or block.
+  The selection is `text_selection` under the text, inside one reply; a press anywhere
+  else, or Escape, lets it go. The press gives the conversation key focus, so ⌘C copies
+  the selection and ⌘A selects the whole reply. Copied, paragraphs stand a line apart and
+  a table's cells a tab; a chip copies what it stands for, its code or the path as
+  written, and Uzbek's ‘ is its ʻ again.
+- **The text's menu**, on a right press: over a link, Open Link and Copy Link; over a
+  file, Open, Show in Finder and Copy Path; then Copy (⌘C, only with a selection),
+  Select All (⌘A), and Copy Reply, the reply's Markdown. A right press outside the
+  selection lets it go.
+- **Under a turn that ended**, a Copy button leads its "Worked for" or "Stopped" line
+  when the agent wrote something in it: it copies all the turn's text as Markdown, a
+  blank line apart, and shows a check, its tooltip "Copied", for 1.2 s.
 - **Text as it streams** fades in where it ends: each part that arrives goes from clear
   to full color over 320 ms, quick at first, in place, so nothing moves.
 - **Thinking** is a row led by a brain icon: "Thinking" with its clock while it streams,

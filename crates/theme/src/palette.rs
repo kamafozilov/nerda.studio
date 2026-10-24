@@ -53,6 +53,13 @@ pub(crate) struct Palette {
     /// L 0.50 C 0.14 (light), 8.12:1 on a code block and 5.17:1 on the card
     /// over the worst desktop.
     pub link: u32,
+    /// A file or folder named in the agent's text, drawn as a chip: its icon
+    /// in teal at h 215 (L 0.80 C 0.10 dark, L 0.52 C 0.09 light), 8.18:1 and
+    /// 3.58:1 on the chip; the chip's fill and hairline are it at 12% and 30%
+    /// (dark) or 10% and 30% (light). `text_primary` keeps 11.66:1 on it.
+    pub mention: u32,
+    pub mention_background: u32,
+    pub mention_border: u32,
     /// Code's tokens: keyword, string, constant, function and type, at h
     /// 300, 145, 55, 250 and 190. L 0.82 C 0.11 (dark, keyword's cut to
     /// 0.106 by sRGB) keeps 8.96:1 on a code block; L 0.48 or 0.46, C 0.08
@@ -101,6 +108,9 @@ pub(crate) const DARK: Palette = Palette {
     diff_added_background: 0x67d2831f,
     diff_removed_background: 0xf977701f,
     link: 0x80bdfbff,
+    mention: 0x69cee6ff,
+    mention_background: 0x69cee61f,
+    mention_border: 0x69cee64d,
     syntax: [0xceb5ffff, 0x96d798ff, 0xfcb17eff, 0x96c9feff, 0x60dbd4ff],
     activity: [0xabcff0ff, 0xf0b788ff, 0xf78c9eff],
     badges: [
@@ -147,6 +157,9 @@ pub(crate) const LIGHT: Palette = Palette {
     diff_added_background: 0x19703714,
     diff_removed_background: 0xb3232214,
     link: 0x0465afff,
+    mention: 0x097689ff,
+    mention_background: 0x0976891a,
+    mention_border: 0x0976894d,
     syntax: [0x6d41a9ff, 0x016b1aff, 0x8f4802ff, 0x005a9dff, 0x056662ff],
     activity: [0x4886b8ff, 0xbe7125ff, 0xcc4f6aff],
     badges: [

@@ -13,7 +13,10 @@ mod diff;
 mod items;
 mod markdown;
 mod render;
+mod reply;
 mod rows;
+mod scroll;
+mod selection;
 mod summary;
 mod syntax;
 mod text;
@@ -30,19 +33,18 @@ use std::{
 
 use agent::{Item, TurnState};
 use gpui::{
-    AnyElement, Context, Div, ElementId, Entity, FollowMode, Hsla, IntoElement, ListAlignment,
-    ListState, ParentElement, Pixels, Render, Styled, Subscription, Window, canvas, div, fill,
-    linear_color_stop, linear_gradient, list, prelude::*, px, svg,
+    AnyElement, Context, Div, ElementId, Entity, FocusHandle, FollowMode, IntoElement,
+    ListAlignment, ListState, MouseButton, ParentElement, Pixels, Render, Styled, Subscription,
+    Window, div, list, prelude::*, px,
 };
-use theme::{
-    COMPOSER_MAX_WIDTH, CONTROL_SIZE, ICON_SIZE, SCROLL_EDGE_FADE, SPACE_1, SPACE_2, SPACE_3, Theme,
-};
+use theme::{COMPOSER_MAX_WIDTH, SCROLL_EDGE_FADE, SPACE_1, SPACE_2, SPACE_3, Theme};
 
 pub use render::line as markdown_line;
+pub use reply::bind_keys;
 use rows::{Disclosure, Nest, Row, Stamped};
 pub use syntax::prewarm as prewarm_syntax;
 
-use crate::{agents::SessionAgent, assets::Icon, tooltip::TooltipExt};
+use crate::{agents::SessionAgent, menu::Menu};
 
 /// A text's Markdown, with the length of the text it was parsed from.
 type Parsed = (usize, Rc<Vec<markdown::Block>>);
@@ -68,6 +70,11 @@ pub struct Conversation {
     syntax: syntax::Cache,
     /// The code block whose Copy just copied it, and when.
     copied: Option<(u64, Instant)>,
+    /// The text selected in a reply, shared with the text's elements.
+    selecting: selection::Shared,
+    /// Holds key focus once the person presses on a reply's text, for Copy.
+    focus: FocusHandle,
+    text_menu: Menu<Self, reply::TextMenu>,
     /// The project's folder, which paths in tool calls read relative to.
     folder: Option<PathBuf>,
     /// The redraws for the clocks and the motion run.
@@ -92,6 +99,9 @@ impl Conversation {
             parsed: HashMap::new(),
             syntax: syntax::Cache::default(),
             copied: None,
+            selecting: selection::Shared::default(),
+            focus: cx.focus_handle(),
+            text_menu: Menu::new(|conversation| &mut conversation.text_menu, cx),
             folder,
             ticking: false,
             _agent: subscription,
@@ -330,7 +340,10 @@ impl Conversation {
                 )
             }
             Row::End { turn } => match turns.get(turn).map(|turn| &turn.state) {
-                Some(TurnState::Ended(ending)) => (items::end(ending, colors), SPACE_3),
+                Some(TurnState::Ended(ending)) => {
+                    let ending = ending.clone();
+                    (self.end_row(turn, &ending, colors, cx), SPACE_3)
+                }
                 _ => return nothing(),
             },
         };
@@ -364,88 +377,8 @@ fn in_column(content: impl IntoElement, space: Pixels) -> Div {
     )
 }
 
-impl Conversation {
-    /// The rows fade into the composer while more lie below, thinning out
-    /// over the last `SCROLL_EDGE_FADE` of them. Read at paint, once the
-    /// list has laid out this frame.
-    fn edge_fade(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let card = Theme::of(cx).colors.panel_background;
-        let list = self.list.clone();
-        canvas(
-            |_, _, _| {},
-            move |bounds, _, window, _| {
-                let below =
-                    list.max_offset_for_scrollbar().y + list.scroll_px_offset_for_scrollbar().y;
-                let below = (below / SCROLL_EDGE_FADE).clamp(0., 1.);
-                if below > 0. {
-                    let to = card.opacity(below);
-                    let from = Hsla { a: 0., ..to };
-                    window.paint_quad(fill(
-                        bounds,
-                        linear_gradient(
-                            180.,
-                            linear_color_stop(from, 0.),
-                            linear_color_stop(to, 1.),
-                        ),
-                    ));
-                }
-            },
-        )
-        .absolute()
-        .left_0()
-        .right_0()
-        .bottom_0()
-        .h(SCROLL_EDGE_FADE)
-    }
-
-    /// The button that brings a list scrolled up back to its end, centered
-    /// over the composer: a circle on a menu's surface, lifted as a menu is,
-    /// its arrow turning `text_primary` under the pointer.
-    fn scroll_to_end_button(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let colors = Theme::of(cx).colors;
-        let list = self.list.clone();
-        div()
-            .absolute()
-            .left_0()
-            .right_0()
-            .bottom(SPACE_2)
-            .flex()
-            .justify_center()
-            .child(
-                div()
-                    .id("scroll-to-end")
-                    .group("scroll-to-end")
-                    .size(CONTROL_SIZE)
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .rounded_full()
-                    .border_1()
-                    .border_color(colors.popover_border)
-                    .bg(colors.popover_background)
-                    .shadow(colors.popover_shadows())
-                    .cursor_pointer()
-                    .on_click(cx.listener(move |_, _, _, cx| {
-                        list.scroll_to_end();
-                        list.set_follow_mode(FollowMode::Tail);
-                        cx.notify();
-                    }))
-                    .child(
-                        svg()
-                            .path(Icon::ScrollDown.path())
-                            .size(ICON_SIZE)
-                            .text_color(colors.text_secondary)
-                            .group_hover("scroll-to-end", |icon| {
-                                icon.text_color(colors.text_primary)
-                            }),
-                    )
-                    .with_tooltip("Scroll to the end"),
-            )
-    }
-}
-
 impl Render for Conversation {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // The list redraws its view on every scroll, so this follows it.
         let away = !self.list.is_following_tail() && self.list.is_scrolled_to_end() == Some(false);
         let rows = list(
@@ -460,6 +393,7 @@ impl Render for Conversation {
         // clear of the composer and of the edge fade, while rows scrolled up
         // still pass under the fade into the composer.
         .pb(SCROLL_EDGE_FADE + SPACE_2);
+        let menu = self.render_text_menu(window, cx);
         div()
             .relative()
             .flex_1()
@@ -467,8 +401,23 @@ impl Render for Conversation {
             .w_full()
             .flex()
             .flex_col()
+            .track_focus(&self.focus)
+            .key_context(reply::CONTEXT)
+            .on_action(cx.listener(Self::copy_selection))
+            .on_action(cx.listener(Self::select_all))
+            .on_action(cx.listener(Self::deselect))
+            // A press anywhere but on a reply's text lets the selection go.
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, window, _| {
+                    if this.selecting.borrow_mut().selection.take().is_some() {
+                        window.refresh();
+                    }
+                }),
+            )
             .child(rows)
             .child(self.edge_fade(cx))
             .when(away, |view| view.child(self.scroll_to_end_button(cx)))
+            .children(menu)
     }
 }

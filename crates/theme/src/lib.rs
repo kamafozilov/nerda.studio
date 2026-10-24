@@ -122,6 +122,11 @@ pub struct Colors {
     pub diff_removed_background: Hsla,
     /// A link in the agent's text.
     pub link: Hsla,
+    /// A file or folder the agent's text names: the chip's icon, fill and
+    /// hairline.
+    pub mention: Hsla,
+    pub mention_background: Hsla,
+    pub mention_border: Hsla,
     /// Code's tokens by what they are; comments use `text_secondary`, a
     /// diff's lines `diff_added` and `danger`.
     pub syntax: SyntaxColors,
@@ -222,6 +227,9 @@ impl Theme {
                 diff_added_background: rgba(palette.diff_added_background).into(),
                 diff_removed_background: rgba(palette.diff_removed_background).into(),
                 link: rgba(palette.link).into(),
+                mention: rgba(palette.mention).into(),
+                mention_background: rgba(palette.mention_background).into(),
+                mention_border: rgba(palette.mention_border).into(),
                 syntax: SyntaxColors {
                     keyword: rgba(palette.syntax[0]).into(),
                     string: rgba(palette.syntax[1]).into(),

@@ -179,8 +179,8 @@ fn bare_addresses_are_links() {
 fn line_breaks_stay() {
     assert_eq!(parse("one\ntwo  \nthree"), [paragraph("one\ntwo\nthree")]);
     assert_eq!(
-        parse("Кириллица и oʻzbek"),
-        [paragraph("Кириллица и oʻzbek")]
+        parse("Кириллица и oʻzbek, gʼ"),
+        [paragraph("Кириллица и o\u{2018}zbek, g\u{2019}")]
     );
     assert!(parse("  \n\n ").is_empty());
 }

@@ -4,47 +4,43 @@
 
 use gpui::{
     AnyElement, ElementId, HighlightStyle, Hsla, IntoElement, ParentElement, SharedString, Styled,
-    div, prelude::*, svg,
+    div, prelude::*,
 };
 use theme::{
-    CONTROL_RADIUS, Colors, FIELD_TARGET_SIZE, ICON_SIZE_ROW, MENU_RADIUS, MONOSPACE_FONT, SPACE_1,
-    SPACE_2, SPACE_3, TEXT_CAPTION, TEXT_SMALL,
+    Colors, MENU_RADIUS, MONOSPACE_FONT, SPACE_1, SPACE_2, SPACE_3, TEXT_CAPTION, TEXT_SMALL,
 };
 
-use super::{Env, Tail, inline::with_fades};
-use crate::{
-    assets::Icon,
-    conversation::{markdown::Code, syntax::Role},
-    tooltip::TooltipExt,
-};
+use std::rc::Rc;
+
+use super::{Env, Tail, chip_paint::Chipped, inline::with_fades};
+use crate::conversation::{markdown::Code, selection::Piece, syntax::Role};
 
 pub fn block(code: &Code, id: u64, tail: &Tail, env: &mut Env) -> AnyElement {
     let colors = env.colors;
     let runs = env.syntax.runs(id, code.language.as_deref(), &code.text);
     let styles = runs.map_or_else(Vec::new, |runs| colored(&runs, colors));
     let text = with_fades(&code.text, styles, tail);
+    let layout = text.layout().clone();
+    let piece = Piece {
+        text: code.text.clone(),
+        before: "",
+        sources: Vec::new(),
+    };
+    let text = Chipped::new(text.into_any_element(), layout, Vec::new());
+    let text = match env.piece(piece, Rc::from([])) {
+        Some(select) => text.selectable(select).into_any_element(),
+        None => text.into_any_element(),
+    };
     let copied = env.copied == Some(id);
     let copy = env.copy.clone();
     let source = SharedString::from(code.text.clone());
-    let button = div()
-        .id(ElementId::NamedInteger("copy-code".into(), id))
-        .group("copy-code")
-        .size(FIELD_TARGET_SIZE)
-        .flex_none()
-        .flex()
-        .items_center()
-        .justify_center()
-        .rounded(CONTROL_RADIUS)
-        .hover(|button| button.bg(colors.hover))
-        .on_click(move |_, window, cx| copy(&(id, source.clone()), window, cx))
-        .child(
-            svg()
-                .path(if copied { Icon::Check } else { Icon::Copy }.path())
-                .size(ICON_SIZE_ROW)
-                .text_color(colors.text_secondary)
-                .group_hover("copy-code", |icon| icon.text_color(colors.text_primary)),
-        )
-        .with_tooltip(if copied { "Copied" } else { "Copy" });
+    let button = super::copy_button(
+        ElementId::NamedInteger("copy-code".into(), id),
+        copied,
+        "Copy",
+        colors,
+        move |window, cx| copy(&(id, source.clone()), window, cx),
+    );
     let language = code.language.clone().unwrap_or_default();
     div()
         .w_full()
