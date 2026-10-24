@@ -74,6 +74,11 @@ impl TextElement {
 
 pub(super) struct PrepaintState {
     line: Option<ShapedLine>,
+    /// The line height the cursor was placed by. Painting uses it too: a
+    /// deferred element, such as a menu's search field, paints after its
+    /// parents' text style is gone, where `window.line_height()` is the
+    /// window's default and would set the glyphs lower than the cursor.
+    line_height: Pixels,
     scroll_x: Pixels,
     cursor: Option<PaintQuad>,
     selection: Option<PaintQuad>,
@@ -162,6 +167,7 @@ impl Element for TextElement {
         };
         PrepaintState {
             line: Some(line),
+            line_height: window.line_height(),
             scroll_x,
             cursor,
             selection,
@@ -195,7 +201,7 @@ impl Element for TextElement {
             // A glyph that fails to rasterize leaves a gap this frame; the next frame retries.
             let _ = line.paint(
                 point(bounds.left() - scroll_x, bounds.top()),
-                window.line_height(),
+                prepaint.line_height,
                 TextAlign::Left,
                 None,
                 window,
