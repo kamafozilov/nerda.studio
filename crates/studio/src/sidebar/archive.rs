@@ -4,15 +4,17 @@
 //! switches to: the sessions archived, newest first, each to restore.
 
 use gpui::{
-    AnyElement, ClickEvent, Context, IntoElement, Pixels, Point, SharedString, Window, prelude::*,
+    AnyElement, ClickEvent, Context, IntoElement, Pixels, Point, SharedString, Window, div,
+    prelude::*, svg,
 };
-use theme::Theme;
+use theme::{ICON_SIZE_ROW, SESSION_LINE_HEIGHT, Theme};
 use workspace::{ProjectKind, SessionId, Tab, Timestamp};
 
-use super::{Sidebar, header::row_button};
+use super::Sidebar;
 use crate::{
     assets::Icon,
     menu::{Entry, Item, Placement},
+    tooltip::TooltipExt,
 };
 
 /// The session a row's menu opened on, and where.
@@ -61,22 +63,34 @@ impl Sidebar {
         } else {
             (Icon::Archive, "Archive")
         };
-        row_button(
-            SharedString::from(format!("row-action-{}", session.0)),
-            icon,
-            label,
-            colors,
-            |button| {
-                button.on_click(cx.listener(move |sidebar, event: &ClickEvent, _, cx| {
-                    cx.stop_propagation();
-                    let repeat =
-                        matches!(event, ClickEvent::Mouse(click) if click.down.click_count > 1);
-                    if !repeat {
-                        sidebar.archive_or_restore(session, cx);
-                    }
-                }))
-            },
-        )
+        // Only the icon shows: a wash as wide as a control would crowd the
+        // project's line it stands on. The pointer lightens it and turns to a
+        // hand over it.
+        let id = SharedString::from(format!("row-action-{}", session.0));
+        div()
+            .id(id.clone())
+            .group(id.clone())
+            .size(SESSION_LINE_HEIGHT)
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(
+                svg()
+                    .path(icon.path())
+                    .size(ICON_SIZE_ROW)
+                    .text_color(colors.text_secondary)
+                    .group_hover(id, |icon| icon.text_color(colors.text_primary)),
+            )
+            .on_click(cx.listener(move |sidebar, event: &ClickEvent, _, cx| {
+                cx.stop_propagation();
+                let repeat =
+                    matches!(event, ClickEvent::Mouse(click) if click.down.click_count > 1);
+                if !repeat {
+                    sidebar.archive_or_restore(session, cx);
+                }
+            }))
+            .with_tooltip(label)
     }
 
     /// The session whose menu is open, which keeps its row's wash.

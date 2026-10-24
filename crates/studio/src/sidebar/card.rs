@@ -1,34 +1,33 @@
-//! A session row, two lines. Over, in small type, its project's icon and
-//! name, and how long ago it was active; under, its title from the row's
-//! leading edge, and the logo of the agent it runs at its end. The icon is
-//! the project's own favicon or logo where it keeps one, else a folder in the
-//! project's hue; the computer's is its icon.
+//! A session row, three lines. Over, in small type, its project's icon and
+//! name, and how long ago it was active; then its title; under, in small
+//! type, its project's branch, and the faded logo of the agent it runs at
+//! its end.
 
 use std::{
     collections::HashMap,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant, SystemTime},
 };
 
 use gpui::{
-    AnyElement, ClickEvent, Context, Hsla, IntoElement, MouseButton, MouseDownEvent, ObjectFit,
-    ParentElement, SharedString, Styled, StyledImage, Task, div, img, prelude::*, svg,
+    AnyElement, ClickEvent, Context, FontWeight, Hsla, IntoElement, MouseButton, MouseDownEvent,
+    ParentElement, SharedString, Styled, Task, div, prelude::*, svg,
 };
 use theme::{
-    CONTROL_RADIUS, Colors, ICON_SIZE_SMALL, PROJECT_ICON, PROJECT_ICON_RADIUS, ROW_GAP,
-    SESSION_ROW_HEIGHT, SPACE_1, SPACE_2, TEXT_CAPTION, Theme,
+    ICON_SIZE_ROW, ROW_GAP, SESSION_LINE_HEIGHT, SESSION_ROW_HEIGHT, SESSION_ROW_INSET,
+    SESSION_ROW_RADIUS, SESSION_ROW_SPACING, SPACE_1, SPACE_2, TEXT_SESSION_TITLE, TEXT_SMALL,
+    Theme,
 };
-use workspace::{
-    AgentId, Head, Project, ProjectId, ProjectKind, Session, SessionId, Timestamp, compact_age,
-};
+use workspace::{AgentId, Head, ProjectId, SessionId, Timestamp};
 
 use super::{
     Sidebar,
     fade::Key,
-    project_icon::{self, ProjectIcon, Tone},
+    project_face::ProjectFace,
+    project_icon::{self, ProjectIcon},
 };
-use crate::{agents::logo, assets::Icon};
+use crate::agents::logo;
 
 /// What a session row shows, read from the workspace when it changes rather
 /// than on every frame.
@@ -43,139 +42,25 @@ pub(super) struct Row {
     pub project: ProjectFace,
 }
 
-/// A project as its sessions' rows show it, worked out once per refresh and
-/// shared by its rows: its name as the sidebar shows it, and its icon.
-#[derive(Clone)]
-pub(super) enum ProjectFace {
-    /// A folder: its own icon if it keeps one, and its hue.
-    Folder {
-        name: SharedString,
-        icon: Option<Arc<FoundIcon>>,
-        hue: usize,
-    },
-    /// The computer: no folder to draw or color it by.
-    Computer { name: SharedString },
-}
-
-impl ProjectFace {
-    pub fn new(project: &Project, name: String, icon: Option<Arc<FoundIcon>>) -> Self {
-        let name = name.into();
-        match project.kind {
-            ProjectKind::Folder => Self::Folder {
-                name,
-                icon,
-                hue: hue(&project.path),
-            },
-            ProjectKind::Computer => Self::Computer { name },
-        }
-    }
-
-    /// The icon before the project's name in its `PROJECT_ICON` slot: the
-    /// project's own, with `PROJECT_ICON_RADIUS` corners, set on a plate of
-    /// the opposite tone when its mark would vanish on the glass; else a
-    /// folder at `ICON_SIZE_SMALL` in the hue of its badge's initials, which
-    /// reads on the glass and on a row's surface; the computer the same size
-    /// in `secondary`, the line's color.
-    pub fn icon(&self, colors: &Colors, secondary: Hsla) -> AnyElement {
-        let slot = || {
-            div()
-                .size(PROJECT_ICON)
-                .flex_none()
-                .flex()
-                .items_center()
-                .justify_center()
-        };
-        let glyph = |icon: Icon, color: Hsla| {
-            slot()
-                .child(
-                    svg()
-                        .path(icon.path())
-                        .size(ICON_SIZE_SMALL)
-                        .text_color(color),
-                )
-                .into_any_element()
-        };
-        match self {
-            Self::Folder { icon, hue, .. } => {
-                match icon.as_ref().and_then(|found| found.icon.as_ref()) {
-                    Some(icon) => own_icon(slot(), icon, colors),
-                    None => glyph(Icon::Folder, colors.badges[hue % colors.badges.len()].text),
-                }
-            }
-            Self::Computer { .. } => glyph(Icon::Computer, secondary),
-        }
-    }
-
-    pub fn name(&self) -> SharedString {
-        match self {
-            Self::Folder { name, .. } | Self::Computer { name } => name.clone(),
-        }
-    }
-
-    pub fn row(&self, session: &Session, now: Timestamp) -> Row {
-        Row {
-            id: session.id,
-            title: session.display_title().into(),
-            activity: session.activity(),
-            age: compact_age(session.activity(), now).into(),
-            agent: session.choice.agent.clone(),
-            project: self.clone(),
-        }
-    }
-}
-
-/// A project's own icon in its slot. A dark mark on the dark glass, or a
-/// light one on the light, stands on a plate of `text_primary`, which is
-/// the opposite tone, at 90%, inset by `PLATE_INSET` so its corners show.
-fn own_icon(slot: gpui::Div, icon: &ProjectIcon, colors: &Colors) -> AnyElement {
-    let dark_glass = colors.text_primary.l > 0.5;
-    let plated = match icon.tone {
-        Tone::Dark => dark_glass,
-        Tone::Light => !dark_glass,
-        Tone::Own => false,
-    };
-    let picture = img(icon.image.clone()).object_fit(ObjectFit::Contain);
-    if plated {
-        slot.rounded(PROJECT_ICON_RADIUS)
-            .bg(colors.text_primary.opacity(0.9))
-            .child(picture.size(PROJECT_ICON - PLATE_INSET * 2.))
-            .into_any_element()
-    } else {
-        slot.child(picture.size_full().rounded(PROJECT_ICON_RADIUS))
-            .into_any_element()
-    }
-}
-
-/// How far a plated icon stands inside its plate.
-const PLATE_INSET: gpui::Pixels = gpui::px(2.);
-
 /// A project's icon as last found: where, as of when, and drawn; `None` when
 /// the file there didn't read as an icon. Kept between reads, so an icon
 /// that didn't change is never drawn again.
 pub(super) struct FoundIcon {
     path: PathBuf,
     modified: Option<SystemTime>,
-    icon: Option<ProjectIcon>,
+    pub icon: Option<ProjectIcon>,
 }
 
-/// A project's hue, from its folder, so it keeps it across launches.
-fn hue(path: &Path) -> usize {
-    // FNV-1a: stable across builds, unlike the standard library's hasher.
-    let hash = path
-        .as_os_str()
-        .as_encoded_bytes()
-        .iter()
-        .fold(0xcbf29ce484222325_u64, |hash, &byte| {
-            (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3)
-        });
-    (hash % 8) as usize
-}
+/// The narrowest the age's column gets, so a short age ("5m") and a long
+/// one ("12h") leave the project's name the same room.
+const AGE_MIN_WIDTH: gpui::Pixels = gpui::px(32.);
 
-/// The column a session row keeps at its trailing edge for its age and logo.
-/// The button under the pointer, `CONTROL_SIZE` (28) and `SPACE_1` clear of
-/// the row's edge, covers it and the `SPACE_2` padding beside it, less
-/// `SPACE_1`: 28 - 4.
-const TRAILING_WIDTH: gpui::Pixels = gpui::px(24.);
+/// Height of a session row's branch line, under its title.
+const BRANCH_LINE_HEIGHT: gpui::Pixels = gpui::px(16.);
+
+/// How strongly the agent's logo shows: it marks the row without
+/// competing with the title.
+const LOGO_OPACITY: f32 = 0.6;
 
 /// Longest the launch waits for the heads before showing the window without
 /// them.
@@ -303,10 +188,12 @@ impl Sidebar {
         (self.store).update(cx, |store, cx| store.set_heads(folders.heads, cx));
     }
 
-    /// The row at `index`, `ROW_GAP` over the next. The selected row and the
-    /// one under the pointer or the search highlight take their wash and a
-    /// title in `text_primary`, and their project and age `text_secondary`,
-    /// which keeps its contrast there.
+    /// The row at `index`, `SESSION_ROW_SPACING` clear above and below it
+    /// and `ROW_GAP` over the next. The title is `text_primary`; the project
+    /// and the age `text_secondary`, and the branch `text_tertiary`, at rest;
+    /// on the wash of the selected row, or the one under the pointer or the
+    /// search highlight, both turn `text_secondary_on_surface`, which keeps
+    /// its contrast there.
     pub(super) fn render_session_row(
         &mut self,
         index: usize,
@@ -315,8 +202,9 @@ impl Sidebar {
         let colors = Theme::of(cx).colors;
         let slot = div()
             .w_full()
-            .h(SESSION_ROW_HEIGHT + ROW_GAP)
-            .pb(ROW_GAP)
+            .h(SESSION_ROW_HEIGHT + SESSION_ROW_SPACING * 2. + ROW_GAP)
+            .pt(SESSION_ROW_SPACING)
+            .pb(SESSION_ROW_SPACING + ROW_GAP)
             .px(SPACE_2);
         let Some(row) = self.rows.get(index) else {
             return slot.into_any_element();
@@ -333,9 +221,9 @@ impl Sidebar {
         };
         let fill = self.fills.at(Key::Session(id), target, Instant::now());
         let on_surface = selected || hovered;
-        // Under the pointer the row's button fades in over its trailing
-        // edge as the age and the logo fade out. They share one reserved
-        // column, so nothing reflows: the title truncates the same either way.
+        // Under the pointer the row's button fades in over the age as the
+        // age fades out. The age keeps its column, so nothing reflows: the
+        // project's name truncates the same either way.
         let pointed = self.pointer.row == Some(index);
         let shown = Hsla {
             a: if pointed { 1. } else { 0. },
@@ -343,17 +231,9 @@ impl Sidebar {
         };
         let action_opacity = self.fills.at(Key::Action(id), shown, Instant::now()).a;
         let action = (action_opacity > 0.).then(|| self.render_row_action(id, cx));
-        let trailing = |child: AnyElement| {
-            div()
-                .w(TRAILING_WIDTH)
-                .flex_none()
-                .flex()
-                .justify_end()
-                .opacity(1. - action_opacity)
-                .child(child)
-        };
-        let (primary, secondary) = if on_surface {
-            (colors.text_primary, colors.text_secondary)
+        let (secondary, faint) = if on_surface {
+            let text = colors.text_secondary_on_surface;
+            (text, text)
         } else {
             (colors.text_secondary, colors.text_tertiary)
         };
@@ -366,31 +246,65 @@ impl Sidebar {
                 .text_ellipsis()
                 .child(text)
         };
+        let line_gap = SPACE_1 + SPACE_1 / 2.;
         let project = div()
+            .h(SESSION_LINE_HEIGHT)
             .flex()
             .items_center()
-            .gap(SPACE_1 + SPACE_1 / 2.)
-            .text_size(TEXT_CAPTION)
+            .gap(line_gap)
+            .text_size(TEXT_SMALL)
             .text_color(secondary)
             .child(row.project.icon(&colors, secondary))
-            .child(truncated(row.project.name()))
-            .child(trailing(row.age.clone().into_any_element()));
+            .child(truncated(row.project.name.clone()).font_weight(FontWeight::MEDIUM))
+            .child(
+                div()
+                    .min_w(AGE_MIN_WIDTH)
+                    .flex_none()
+                    .flex()
+                    .justify_end()
+                    .opacity(1. - action_opacity)
+                    .child(row.age.clone()),
+            );
         let title = div()
+            .mt(SPACE_1)
+            .h(SESSION_LINE_HEIGHT)
             .flex()
             .items_center()
-            .gap(SPACE_2)
-            .text_color(primary)
-            .child(truncated(row.title.clone()))
-            .child(trailing(
+            .text_size(TEXT_SESSION_TITLE)
+            .font_weight(FontWeight::MEDIUM)
+            .text_color(colors.text_primary)
+            .child(truncated(row.title.clone()));
+        // A branch's two ends both say something, so it is cut in the middle.
+        let branch = row.project.branch.clone().map(|branch| {
+            div()
+                .flex_1()
+                .min_w_0()
+                .overflow_hidden()
+                .whitespace_nowrap()
+                .text_ellipsis_middle()
+                .child(branch)
+        });
+        let details = div()
+            .mt(SPACE_1 / 2.)
+            .h(BRANCH_LINE_HEIGHT)
+            .flex()
+            .items_center()
+            .gap(line_gap)
+            .text_size(TEXT_SMALL)
+            .text_color(faint)
+            .children(branch)
+            .child(
                 div()
+                    .ml_auto()
+                    .flex_none()
+                    .flex()
                     .children(logo(&row.agent, colors).map(|(icon, color)| {
                         svg()
                             .path(icon.path())
-                            .size(ICON_SIZE_SMALL)
-                            .text_color(color)
-                    }))
-                    .into_any_element(),
-            ));
+                            .size(ICON_SIZE_ROW)
+                            .text_color(color.opacity(LOGO_OPACITY))
+                    })),
+            );
         slot.id(("session-slot", id.0))
             .on_hover(cx.listener(move |sidebar, hovered: &bool, _, cx| {
                 sidebar.hover_row(index, *hovered, cx)
@@ -400,12 +314,11 @@ impl Sidebar {
                     .id(("session", id.0))
                     .relative()
                     .h(SESSION_ROW_HEIGHT)
-                    .px(SPACE_2)
+                    .px(SESSION_ROW_INSET)
+                    .py(SPACE_2)
                     .flex()
                     .flex_col()
-                    .justify_center()
-                    .gap(SPACE_1 / 2.)
-                    .rounded(CONTROL_RADIUS)
+                    .rounded(SESSION_ROW_RADIUS)
                     .bg(fill)
                     .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
                         sidebar.open_session(id, cx)
@@ -418,14 +331,14 @@ impl Sidebar {
                     )
                     .child(project)
                     .child(title)
+                    .child(details)
                     .children(action.map(|action| {
+                        // On the project's line, its icon's trailing edge
+                        // on the content's, where the age ends.
                         div()
                             .absolute()
-                            .top_0()
-                            .bottom_0()
-                            .right(SPACE_1)
-                            .flex()
-                            .items_center()
+                            .top(SPACE_2)
+                            .right(SESSION_ROW_INSET - (SESSION_LINE_HEIGHT - ICON_SIZE_ROW) / 2.)
                             .opacity(action_opacity)
                             .child(action)
                     })),

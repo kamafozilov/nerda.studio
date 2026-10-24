@@ -29,40 +29,54 @@ are in [design.md](design.md).
   to where it was taken from, else to the window, as Enter does after opening the
   result the hover marks. Closing the sidebar gives focus back too: typing never goes
   to a field out of sight.
-- **Sessions** are one list, newest first under the sort. Projects are not a level of the
-  list: the filter narrows it to one. Each session is a row `SESSION_ROW_HEIGHT` (44)
-  tall, two lines `SPACE_1` / 2 apart. Over, in `TEXT_CAPTION`: the project's icon,
-  `SPACE_1` × 1.5 before its name as the sidebar shows it, and how long ago the session
-  was active ("now", "5m", "3h", "2d", "4w", "1y") at the trailing edge. Under, the
-  title from the row's leading edge, and at its end the logo of the agent the session
-  runs, at `ICON_SIZE_SMALL` in the agent's color; an agent with no logo in this build
-  shows none. The title is `text_secondary` and the project line `text_tertiary`; on
-  the wash of the selected row or the one under the pointer or the search highlight
-  they turn `text_primary` and `text_secondary`.
-- **A project's icon** stands in a `PROJECT_ICON` (14) slot: the favicon or logo the
+- **Sessions** are one list, newest first under the sort. Projects are not a level of
+  the list: the filter narrows it to one. Each session is a row `SESSION_ROW_HEIGHT`
+  (78) tall with `SESSION_ROW_RADIUS` (8) corners, `SESSION_ROW_SPACING` (2) clear above
+  and below it, so with `ROW_GAP` two rows' surfaces stand 5 apart. Its content stands
+  `SESSION_ROW_INSET` (10) from its sides and `SPACE_2` from its top and bottom, on
+  three lines. First, `SESSION_LINE_HEIGHT` (20) tall in `TEXT_SMALL`, `SPACE_1` × 1.5
+  apart: the project's icon, its name as the sidebar shows it in medium weight, and how
+  long ago the session was active ("now", "5m", "3h", "2d", "4w", "1y") at the trailing
+  edge, in a column at least 32 wide. Then, `SPACE_1` lower and as tall, the title in
+  `TEXT_SESSION_TITLE` (14), medium weight. Last, `SPACE_1` / 2 lower and 16 tall in
+  `TEXT_SMALL`: the branch the project's checkout is on, cut in the middle where it is
+  too long, and at the trailing edge the logo of the agent the session runs, at
+  `ICON_SIZE_ROW` in the agent's color at 60%; an agent with no logo in this build shows
+  none, and a project outside git, or No project, no branch. The title is
+  `text_primary`; the project and the age `text_secondary`, the branch `text_tertiary`;
+  on the wash of the selected row or the one under the pointer or the search highlight
+  both turn `text_secondary_on_surface`.
+- **A project's icon** stands in a `PROJECT_ICON` (16) slot: the favicon or logo the
   project keeps (`favicon.svg`, `.png` or `.ico` at its top, in `public/` or `static/`;
   `icon` in `app/` or `src/app/`; a `logo`; else the first of its `apps/` that has one;
   never built output, nor a file over 512 KB), filling the slot with
-  `PROJECT_ICON_RADIUS` (3) corners. It is made ready off the UI thread with the
+  `PROJECT_ICON_RADIUS` (4) corners. It is made ready off the UI thread with the
   branches, and drawn again only when the file changes: a vector at the slot's pixel
   size, so a 16 px favicon stays sharp, a bitmap scaled down once, either centered so a
-  mark that isn't square keeps its shape. A wordmark more than twice as wide as tall
-  (or tall as wide) is refused. A dark mark on transparency stands on a plate of
+  mark that isn't square keeps its shape. A wordmark more than twice as wide as tall (or
+  tall as wide) is refused. A dark mark on transparency stands on a plate of
   `text_primary` at 90% on the dark glass, inset 2, and a light one likewise on the
   light glass; a mark with colors or a ground of its own stands as it is. A project
-  without an icon, or whose icon doesn't read, shows a folder at `ICON_SIZE_SMALL` in
-  the hue of the badges' initials, which comes from its folder and so stays across
-  launches; No project shows a computer in the line's color.
-- **A session's actions.** A row keeps a 24 wide column at its trailing edge for its
-  age and logo, so its title truncates the same whatever shows there. Under the
-  pointer an icon button, `CONTROL_SIZE` and `SPACE_1` clear of the row's edge,
-  centered on the row, fades in over that column as the age and the logo fade out,
-  over `ROW_FADE` as the row's fill does, and back as the pointer leaves: Archive, or
-  Restore in the archive. It acts on one click; a double click acts once, so its second
-  click never lands on the row that moved up under it. A right click on a row opens its
-  menu at the pointer, the row keeping its wash meanwhile: New Session in Project, Show
-  in Finder for a folder project, Close Tab while the session's tab is on screen, then
-  past a hairline Archive, or Restore.
+  without an icon, or whose icon doesn't read, shows two initials of its own name on a
+  tile with the same corners, in its badge's initials color, the tile that color at 14%:
+  in the monospaced font, bold, `PROJECT_INITIALS_SIZE` (8.25), each letter
+  `PROJECT_INITIAL_WIDTH` (6) wide, so two span 12 of the 16. Words are runs of letters
+  and digits; the first initial is the first word's first letter, the second the first
+  digit after it, else the last word's first letter, else the first word's last
+  ("arcada.next" AN, "web" WB, "app2" A2, "oʻzbek loyiha" OL). The hue comes from its
+  folder and so stays across launches; a name with no letter shows a folder in that
+  color. No project shows a computer in the line's color.
+- **A session's actions.** Under the pointer the row's button fades in over the age as
+  the age fades out, over `ROW_FADE` as the row's fill does, and back as the pointer
+  leaves: only its icon, `ICON_SIZE_ROW` in `text_secondary`, turning `text_primary`
+  under the pointer, which turns to a hand, in a `SESSION_LINE_HEIGHT` square on the
+  project's line, the icon's trailing edge on the content's. The age keeps its column,
+  so the project's name truncates the same whatever shows there. Archive, or Restore in
+  the archive. It acts on one click; a double click acts once, so its second click never
+  lands on the row that moved up under it. A right click on a row opens its menu at the
+  pointer, the row keeping its wash meanwhile: New Session in Project, Show in Finder
+  for a folder project, Close Tab while the session's tab is on screen, then past a
+  hairline Archive, or Restore.
 - **The archive.** Archiving takes a session out of the list and closes its tab as
   closing it would; it keeps its title, its conversation and its agent. Archived in the
   sessions' menu, checked while on, shows the archive in the list's place, titled

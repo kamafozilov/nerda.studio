@@ -56,7 +56,7 @@ the sidebar and the tabs read the same over any desktop. Light keeps its glass.
 | `text_tertiary` | `797979` (L 0.57), 4.55 on the base | `505358` | Section titles, a row's age |
 | `scrim` | `151619` at 64% | `fbfdff` at 60% | Dims the window under a dialog; nothing is read on it |
 | `key_background` | text primary at 10% | text primary at 10% | Key caps; `text_secondary` on it keeps 4.92 / 5.51 under `hover` |
-| `badges` | fill L 0.38 C 0.075, initials L 0.87 C 0.10 | fill L 0.91 C 0.045, initials L 0.43 C 0.12 | Projects' hues, eight (25, 60, 95, 145, 185, 235, 285, 330), chroma cut to fit sRGB; a project without its own icon shows a folder in the initials' color; the initials keep at least 6.73:1 (dark) and 5.98:1 (light) on their fill, 5.27 and 5.39 under a row's surface |
+| `badges` | fill L 0.38 C 0.075, initials L 0.87 C 0.10 | fill L 0.91 C 0.045, initials L 0.43 C 0.12 | Projects' hues, eight (25, 60, 95, 145, 185, 235, 285, 330), chroma cut to fit sRGB; a project without its own icon shows its initials on its fill; the initials keep at least 6.73:1 (dark) and 5.98:1 (light) on their fill, 5.27 and 5.39 under a row's surface |
 
 ### Contrast on glass
 
@@ -99,10 +99,10 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
 - An icon button is `CONTROL_SIZE` (28) square with `CONTROL_RADIUS` (6), its icon
   `ICON_SIZE` (16) in `text_secondary`, turning `text_primary` on `hover`.
 - Text is the platform's UI font (GPUI's `.SystemUIFont`; SF Pro on macOS) at `TEXT_BODY`
-  (13), the size of macOS controls. Emphasis is weight, not size. Two sizes are smaller:
-  `TEXT_SMALL` (12), for a session card's supporting lines, in `text_secondary`, whose
-  contrast does not depend on size; and `TEXT_CAPTION` (11), for a session row's
-  project line and age.
+  (13), the size of macOS controls. Emphasis is weight, not size, but a session's title
+  is `TEXT_SESSION_TITLE` (14). Two sizes are smaller: `TEXT_SMALL` (12), for a session
+  row's supporting lines, whose contrast does not depend on size; and `TEXT_CAPTION`
+  (11), for a code block's and a tool row's labels.
 - A field or a message with a hairline pads its content `HAIRLINE` (1) less, so the
   content stands in the same columns as the unbordered rows around it. A menu does too,
   so its items stand `SPACE_1` in from its outer edge.
@@ -117,9 +117,8 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   same set; take one from elsewhere only when the set has nothing close, at the same
   stroke. The search field's magnifier keeps its ring to 15 of the 24 units: one that
   fills the box looks oversized beside 13 pt text.
-  GPUI paints an SVG in its own `text_color` only. The branch on a
-  session card is the pull request icon's set's branch without its arrow, which is lost
-  at `ICON_SIZE_SMALL`.
+  GPUI paints an SVG in its own `text_color` only. The branch is the pull
+  request icon's set's branch without its arrow, which is lost when small.
 - **A toggle** shows the set's outline icon while off and the same outline with its main
   shape filled while on, in the icon button's colors.
 

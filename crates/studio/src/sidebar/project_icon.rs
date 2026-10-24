@@ -3,7 +3,7 @@
 //! than its own, which may be far smaller; a bitmap is scaled down once.
 //! Either is centered on a transparent square, so a mark that isn't square
 //! keeps its shape. A wordmark wider or taller than twice the other side
-//! reads as nothing at this size and is refused, so the folder shows.
+//! reads as nothing at this size and is refused, so the initials show.
 //!
 //! Its tone is read from its drawn pixels: a dark mark on transparency
 //! would vanish on the dark glass, a light one on the light, so the row
@@ -14,9 +14,9 @@ use std::{path::Path, sync::Arc};
 use gpui::RenderImage;
 use image::{RgbaImage, imageops};
 
-/// The square an icon is drawn to: the slot's 14 points at 3x, so it stays
+/// The square an icon is drawn to: the slot's 16 points at 3x, so it stays
 /// sharp on any display.
-const SIDE: u32 = 42;
+const SIDE: u32 = 48;
 
 /// How far from square a mark may be, as its longer side over its shorter.
 const MAX_ASPECT: f32 = 2.;

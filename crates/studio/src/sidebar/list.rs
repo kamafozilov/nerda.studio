@@ -20,9 +20,9 @@ use workspace::{ProjectId, ProjectKind, ProjectScope, Tab, Timestamp, age_change
 
 use super::{
     Sidebar,
-    card::ProjectFace,
     header::close_button,
     nav::{NEW_SESSION, page_row},
+    project_face::ProjectFace,
 };
 
 /// The longest the ages go without being checked: one minute.
@@ -104,7 +104,12 @@ impl Sidebar {
             };
             let face = faces.entry(project.id).or_insert_with(|| {
                 let name = workspace.display_name(project.id).unwrap_or_default();
-                ProjectFace::new(project, name, self.icons.get(&project.id).cloned())
+                ProjectFace::new(
+                    project,
+                    name,
+                    self.icons.get(&project.id).cloned(),
+                    store.head(project.id),
+                )
             });
             self.rows.push(face.row(session, now));
         }

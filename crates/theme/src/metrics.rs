@@ -42,15 +42,32 @@ pub const ICON_SIZE_SMALL: Pixels = px(12.);
 pub const FIELD_TARGET_SIZE: Pixels = px(24.);
 /// Height of one row in a list or menu; rows use `CONTROL_RADIUS` corners.
 pub const ROW_HEIGHT: Pixels = px(28.);
-/// Height of a session's row in the sidebar: two lines, its project in small
-/// type over its title.
-pub const SESSION_ROW_HEIGHT: Pixels = px(44.);
+/// Height of a session's row in the sidebar: its project over its title
+/// on `SESSION_LINE_HEIGHT` lines, its branch under them on a 16 point one,
+/// `SPACE_2` above and below, 4 and 2 points between: 8 + 20 + 4 + 20 + 2 +
+/// 16 + 8.
+pub const SESSION_ROW_HEIGHT: Pixels = px(78.);
+/// Height of a session row's project line and title line.
+pub const SESSION_LINE_HEIGHT: Pixels = px(20.);
+/// A session row's content inset from its leading and trailing edges.
+pub const SESSION_ROW_INSET: Pixels = px(10.);
+/// Corners of a session row's surface.
+pub const SESSION_ROW_RADIUS: Pixels = px(8.);
+/// Clear space above and below each session row, so with `ROW_GAP` two
+/// rows' surfaces stand 5 points apart.
+pub const SESSION_ROW_SPACING: Pixels = px(2.);
+/// A session's title, a touch over `TEXT_BODY`, so it leads its row.
+pub const TEXT_SESSION_TITLE: Pixels = px(14.);
 /// Side of the slot before a project's name in a session's row, which its
-/// own favicon or logo fills, or a folder at `ICON_SIZE_SMALL` stands in.
-pub const PROJECT_ICON: Pixels = px(14.);
-/// Corners of a project's own icon, so a square bitmap doesn't read sharper
-/// than the glyphs around it.
-pub const PROJECT_ICON_RADIUS: Pixels = px(3.);
+/// own favicon or logo fills, or its initials on a tile.
+pub const PROJECT_ICON: Pixels = px(16.);
+/// Corners of a project's icon or tile: a quarter of its side.
+pub const PROJECT_ICON_RADIUS: Pixels = px(4.);
+/// A project's initials on its tile, in the monospaced font, bold.
+pub const PROJECT_INITIALS_SIZE: Pixels = px(8.25);
+/// The width each of a project's initials takes on its tile, so two of them
+/// span 12 of its 16 points, and one 6, centered.
+pub const PROJECT_INITIAL_WIDTH: Pixels = px(6.);
 /// Space between neighboring rows in the sidebar, where a selected row and a
 /// hovered one can sit side by side and must stay two shapes.
 pub const ROW_GAP: Pixels = px(1.);
@@ -120,7 +137,7 @@ pub const TEXT_BODY: Pixels = px(13.);
 /// branch, or a sidebar section's title; `text_secondary` keeps its contrast
 /// at any size.
 pub const TEXT_SMALL: Pixels = px(12.);
-/// The smallest text: a session row's age.
+/// The smallest text: a code block's and a tool row's labels.
 pub const TEXT_CAPTION: Pixels = px(11.);
 
 pub const SPACE_1: Pixels = px(4.);

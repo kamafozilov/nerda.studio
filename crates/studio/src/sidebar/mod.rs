@@ -14,6 +14,7 @@ mod header;
 mod list;
 mod menu;
 mod nav;
+mod project_face;
 mod project_icon;
 
 pub(crate) use header::icon_button;
