@@ -11,7 +11,9 @@ platform's way: modifiers in ⌥⇧⌘ order run together on macOS (`⌘W`, `⇧
 with a plus elsewhere (`Ctrl+Shift+W`); Return is an icon, Escape `esc` (`Esc`
 elsewhere). A cap is `KEY_CAP_SIZE` (20) high and at least as wide, in `TEXT_BODY`,
 `key_background` fill with no hairline, `SPACE_1` corners, the key in `text_secondary`;
-in a tooltip or a menu item it is `KEY_CAP_SIZE_SMALL` (16) in `TEXT_SMALL`. Inside a
+in a tooltip or a menu item it is `KEY_CAP_SIZE_SMALL` (16) in `TEXT_SMALL`, and in a
+hint that stands alone over the window (the second Cmd-Q) `KEY_CAP_SIZE_LARGE` (26) in
+`TEXT_HEADING_2`. Inside a
 button `FIELD_TARGET_SIZE` (24) high, the cap sits 2 px from its top, bottom and right.
 A hint shows one cap per key (↑ ↓ Navigate).
 

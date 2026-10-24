@@ -5,7 +5,9 @@
 use std::time::Duration;
 
 use gpui::{Context, FontWeight, IntoElement, ParentElement, Styled, div};
-use theme::{DIALOG_RADIUS, HEADER_HEIGHT, KEY_CAP_SIZE, SPACE_2, SPACE_3, TEXT_BODY, Theme};
+use theme::{
+    DIALOG_RADIUS, HEADER_HEIGHT, KEY_CAP_SIZE_LARGE, SPACE_2, SPACE_3, TEXT_HEADING_2, Theme,
+};
 
 use super::Shell;
 use crate::kbd::{Kbd, Shortcut};
@@ -40,8 +42,8 @@ impl Shell {
         self.quit_hint.as_ref()?;
         let colors = Theme::of(cx).colors;
         let hint = div()
-            .h(KEY_CAP_SIZE + SPACE_2 * 2.)
-            .px(SPACE_3)
+            .h(KEY_CAP_SIZE_LARGE + SPACE_2 * 2.)
+            .px(SPACE_2 * 2.)
             .flex()
             .items_center()
             .gap(SPACE_2)
@@ -51,16 +53,16 @@ impl Shell {
             .border_color(colors.popover_border)
             .bg(colors.popover_background)
             .shadow(colors.popover_shadows())
-            .text_size(TEXT_BODY)
+            .text_size(TEXT_HEADING_2)
             .font_weight(FontWeight::MEDIUM)
             .text_color(colors.text_primary)
             .child("Press")
-            .child(Kbd::new(Shortcut::key("Q").cmd()))
+            .child(Kbd::new(Shortcut::key("Q").cmd()).large())
             .child("again to quit");
         Some(
             div()
                 .absolute()
-                .top(HEADER_HEIGHT + SPACE_2)
+                .top(HEADER_HEIGHT + SPACE_3 * 2.)
                 .left_0()
                 .right_0()
                 .flex()

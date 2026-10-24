@@ -178,9 +178,10 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   shortcut.
 - **Quit.** `Cmd-Q` (`Ctrl-Q` elsewhere) in the window quits on a second press within 2 s
   (`crates/studio/src/shell/quit.rs`): the first shows "Press ⌘Q again to quit" (its
-  `Kbd` cap) at the top center of the window, `SPACE_2` under the top row, in
-  `TEXT_BODY` medium. Its surface is a menu's (`popover_background`, `popover_border`,
-  `popover_shadow`) with `DIALOG_RADIUS`, 36 tall with its hairline and `SPACE_3` sides.
+  large `Kbd` cap) at the top center of the window, 24 px under the top row, in
+  `TEXT_HEADING_2` (16) medium, so it reads at a glance. Its surface is a menu's
+  (`popover_background`, `popover_border`, `popover_shadow`) with `DIALOG_RADIUS`, 42
+  tall with its hairline and 16 px sides.
   It takes no clicks or focus and doesn't animate. Held down, the key's repeat is the
   second press. The menu's Quit, and `Cmd-Q` with no window open, quit at once.
 - **Closing the window** leaves the app running, as Mac apps do; a click on its Dock icon

@@ -102,6 +102,9 @@ pub const KEY_CAP_SIZE: Pixels = px(20.);
 /// Height and least width of a small key cap, the shortcut in a tooltip or a
 /// menu item: it stands 3 px inside a tooltip's hairline.
 pub const KEY_CAP_SIZE_SMALL: Pixels = px(16.);
+/// Height and least width of a large key cap, in a hint that stands alone over
+/// the window, such as the one asking for a second Cmd-Q.
+pub const KEY_CAP_SIZE_LARGE: Pixels = px(26.);
 
 /// Widest the session composer grows; past it the composer stays centered in
 /// the card, `SPACE_3` clear of its sides below it.

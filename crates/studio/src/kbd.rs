@@ -6,8 +6,8 @@ use gpui::{
     div, px, svg,
 };
 use theme::{
-    ICON_SIZE, ICON_SIZE_SMALL, KEY_CAP_SIZE, KEY_CAP_SIZE_SMALL, SPACE_1, TEXT_BODY, TEXT_SMALL,
-    Theme,
+    ICON_SIZE, ICON_SIZE_SMALL, KEY_CAP_SIZE, KEY_CAP_SIZE_LARGE, KEY_CAP_SIZE_SMALL, SPACE_1,
+    TEXT_BODY, TEXT_HEADING_2, TEXT_SMALL, Theme,
 };
 
 use crate::assets::Icon;
@@ -81,11 +81,18 @@ impl Shortcut {
     }
 }
 
+#[derive(Clone, Copy)]
+enum Size {
+    Small,
+    Regular,
+    Large,
+}
+
 /// One key cap holding a whole shortcut, such as ⌘W or ⌘↵.
 #[derive(IntoElement)]
 pub struct Kbd {
     shortcut: Shortcut,
-    small: bool,
+    size: Size,
     color: Option<Hsla>,
 }
 
@@ -95,14 +102,21 @@ impl Kbd {
     pub fn new(shortcut: Shortcut) -> Self {
         Self {
             shortcut,
-            small: false,
+            size: Size::Regular,
             color: None,
         }
     }
 
     /// `KEY_CAP_SIZE_SMALL` high in `TEXT_SMALL`, for tooltips and menu items.
     pub fn small(mut self) -> Self {
-        self.small = true;
+        self.size = Size::Small;
+        self
+    }
+
+    /// `KEY_CAP_SIZE_LARGE` high in `TEXT_HEADING_2`, for a hint that stands
+    /// alone over the window.
+    pub fn large(mut self) -> Self {
+        self.size = Size::Large;
         self
     }
 
@@ -117,10 +131,10 @@ impl RenderOnce for Kbd {
     fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
         let color = self.color.unwrap_or(colors.text_secondary);
-        let (height, text_size, icon_size) = if self.small {
-            (KEY_CAP_SIZE_SMALL, TEXT_SMALL, ICON_SIZE_SMALL)
-        } else {
-            (KEY_CAP_SIZE, TEXT_BODY, ICON_SIZE)
+        let (height, text_size, icon_size) = match self.size {
+            Size::Small => (KEY_CAP_SIZE_SMALL, TEXT_SMALL, ICON_SIZE_SMALL),
+            Size::Regular => (KEY_CAP_SIZE, TEXT_BODY, ICON_SIZE),
+            Size::Large => (KEY_CAP_SIZE_LARGE, TEXT_HEADING_2, ICON_SIZE),
         };
         let mut text = self.shortcut.modifiers();
         let icon = match self.shortcut.key {
