@@ -5,6 +5,7 @@ mod age;
 mod agents;
 mod archive;
 mod backdrop;
+mod branches;
 pub mod browse;
 mod error;
 mod git;
@@ -24,6 +25,9 @@ pub use agents::{
     agent,
 };
 pub use backdrop::{Backdrop, BackdropStrength, BackdropStyle, BackdropTint};
+pub use branches::{
+    Branch, Branches, RemoteBranch, Switch, Worktree, branch_name, branches, switch,
+};
 pub use error::{AddProjectError, LoadError};
 pub use git::{Head, head};
 pub use history::Visits;
