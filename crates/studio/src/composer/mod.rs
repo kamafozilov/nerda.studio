@@ -6,6 +6,7 @@
 //! docks to the card's bottom, leaving the space above for the messages.
 
 mod attachments;
+mod backdrop;
 mod chips;
 mod intake;
 mod pasted;
@@ -13,12 +14,16 @@ mod pickers;
 mod projects;
 mod toolbar;
 
-use std::path::{Path, PathBuf};
+use std::{
+    cell::Cell,
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 use gpui::{
-    App, ClickEvent, Context, Entity, FocusHandle, Focusable, IntoElement, KeyBinding,
-    ParentElement, Render, SharedString, Styled, Subscription, Window, actions, div, prelude::*,
-    px, relative, svg,
+    App, Bounds, ClickEvent, Context, Entity, FocusHandle, Focusable, IntoElement, KeyBinding,
+    ParentElement, Pixels, Render, SharedString, Styled, Subscription, Window, actions, canvas,
+    div, prelude::*, px, relative, svg,
 };
 use theme::{
     COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS, CONTROL_SIZE,
@@ -69,6 +74,11 @@ pub struct Composer {
     menu: Menu<Composer, pickers::Picker>,
     /// The project menu, open over or under the project's pill.
     projects: Menu<Composer, ()>,
+    /// The backdrop's menu, open over its button.
+    backdrop_menu: Menu<Composer, ()>,
+    /// Where the column stood when last laid out, which a draft's backdrop
+    /// keeps clear.
+    column: Rc<Cell<Option<Bounds<Pixels>>>>,
     attachments: Attachments,
     /// Why the last attempt to attach, to send or to change the agent fell
     /// short, shown under the box until the next edit.
@@ -107,6 +117,10 @@ impl Composer {
             }),
             cx.observe(&store, |_, _, cx| cx.notify()),
             cx.observe(&agent, |_, _, cx| cx.notify()),
+            // A backdrop image ready, or a moving one's next frame due.
+            cx.observe(&crate::backdrop::Backdrop::global(cx), |_, _, cx| {
+                cx.notify()
+            }),
             cx.subscribe(&agent, |composer, _, Problem(problem), cx| {
                 composer.problem = Some(problem.clone());
                 cx.notify();
@@ -123,6 +137,8 @@ impl Composer {
                 project_search.clone(),
                 cx,
             ),
+            backdrop_menu: Menu::new(|composer| &mut composer.backdrop_menu, cx),
+            column: Rc::default(),
             attachments: Attachments::default(),
             problem: None,
             picking: false,
@@ -303,14 +319,28 @@ impl Render for Composer {
             .workspace()
             .session(self.session)
             .is_none_or(|session| session.is_empty());
+        let measure = {
+            let column = self.column.clone();
+            canvas(
+                move |bounds, _, _| column.set(Some(bounds)),
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .top_0()
+            .left_0()
+            .size_full()
+        };
         let column = div()
+            .relative()
             .w_full()
             .max_w(COMPOSER_MAX_WIDTH)
             .flex()
             .flex_col()
             .children(self.render_context(draft, window, cx))
             .child(self.render_box(window, cx))
-            .children(self.render_problem(cx));
+            .children(self.render_problem(cx))
+            .child(measure);
+        let backdrop = self.render_backdrop(draft, window, cx);
         // A draft's column stands a little above the middle, where the eye
         // rests: the space above it is `DRAFT_RISE` of what is left.
         let space = |share: f32| {
@@ -322,6 +352,7 @@ impl Render for Composer {
             .key_context(CONTEXT)
             .on_action(cx.listener(Self::send))
             .capture_action(cx.listener(Self::paste))
+            .relative()
             .w_full()
             .px(SPACE_3)
             .flex()
@@ -329,8 +360,13 @@ impl Render for Composer {
             .items_center()
             .when(draft, |placement| placement.flex_1().min_h_0())
             .when(!draft, |placement| placement.flex_none().pb(SPACE_3))
+            // Under everything else, so it paints first.
+            .children(backdrop)
             .when(draft, |placement| placement.child(space(DRAFT_RISE)))
             .child(column)
             .when(draft, |placement| placement.child(space(1. - DRAFT_RISE)))
+            .when(draft, |placement| {
+                placement.child(self.render_backdrop_button(window, cx))
+            })
     }
 }

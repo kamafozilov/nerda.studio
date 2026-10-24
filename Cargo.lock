@@ -413,6 +413,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "backdrop"
+version = "0.1.0"
+
+[[package]]
 name = "backtrace"
 version = "0.3.76"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4442,6 +4446,7 @@ version = "0.1.0"
 dependencies = [
  "agent",
  "app_bundle",
+ "backdrop",
  "gpui",
  "gpui_platform",
  "image",

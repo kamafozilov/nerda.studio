@@ -10,7 +10,8 @@ conversation over a docked composer are in [session.md](session.md).
   the box. A draft session, one with no message yet, sets the column a little above the
   card's middle: the space above it is `DRAFT_RISE` (45%) of the height left. A
   session that has seen work docks the column to the card's bottom, `SPACE_3` above its
-  edge, under its conversation. Pages and the welcome are as they were.
+  edge, under its conversation. Pages and the welcome are as they were. A draft's card
+  shows a pattern behind its column, chosen from the card's corner: [backdrop.md](backdrop.md).
 - **The box** reads as a text field: `composer_background`, opaque (`202021` dark, the
   selected tab's gray; white light), a `border` hairline that turns
   `composer_focus` while the text has focus, and `COMPOSER_RADIUS` (12) corners, rounder

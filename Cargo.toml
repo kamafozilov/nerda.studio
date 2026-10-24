@@ -16,6 +16,7 @@ gpui = { git = "https://github.com/zed-industries/zed", rev = "50304070c283519f2
 gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "50304070c283519f2f2338b45671af26374025fe", features = ["font-kit"] }
 agent = { path = "crates/agent" }
 app_bundle = { path = "crates/app_bundle" }
+backdrop = { path = "crates/backdrop" }
 theme = { path = "crates/theme" }
 workspace = { path = "crates/workspace" }
 serde = { version = "1.0", features = ["derive"] }
@@ -32,3 +33,8 @@ block = { path = "vendor/block" }
 # to drop frames in motion. The app's own crates stay quick to rebuild and debug.
 [profile.dev.package."*"]
 opt-level = 2
+
+# The new session's backdrop draws every pixel of the card several times a
+# second while it moves: unoptimized, one frame takes longer than the next.
+[profile.dev.package.backdrop]
+opt-level = 3

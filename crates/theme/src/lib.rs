@@ -94,6 +94,11 @@ pub struct Colors {
     pub tab_selected: Hsla,
     /// Claude Code's logo, in its brand's orange.
     pub claude: Hsla,
+    /// The pattern behind a new session's composer, in gray. Nothing is read
+    /// on it: it clears away around the composer, so it may be faint.
+    pub backdrop: Hsla,
+    /// The same pattern in a warm orange.
+    pub backdrop_warm: Hsla,
     /// Titles and body text.
     pub text_primary: Hsla,
     /// Supporting text and icons at rest.
@@ -178,6 +183,8 @@ impl Theme {
                 tab_background: rgba(palette.tab).into(),
                 tab_selected: rgba(palette.tab_selected).into(),
                 claude: rgba(palette.claude).into(),
+                backdrop: rgba(palette.backdrop).into(),
+                backdrop_warm: rgba(palette.backdrop_warm).into(),
                 text_primary: rgba(palette.text_primary).into(),
                 text_secondary: rgba(palette.text_secondary).into(),
                 text_secondary_on_surface: rgba(palette.text_secondary_on_surface).into(),

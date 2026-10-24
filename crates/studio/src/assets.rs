@@ -13,6 +13,8 @@ use gpui::{AssetSource, Result, SharedString};
 pub enum Icon {
     /// Back to the tab shown before.
     Back,
+    /// Opens the choice of pattern behind a new session's composer.
+    Backdrop,
     Check,
     /// Claude Code's logo, beside its models; a filled mark, not an outline.
     Claude,
@@ -70,6 +72,7 @@ impl Icon {
     pub fn path(self) -> &'static str {
         match self {
             Self::Back => "icons/arrow-left-01.svg",
+            Self::Backdrop => "icons/paint-board.svg",
             Self::Check => "icons/tick-02.svg",
             Self::Claude => "icons/claude.svg",
             Self::ChevronDown => "icons/arrow-down-01.svg",
@@ -184,6 +187,10 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/pencil-edit-02.svg",
         include_bytes!("../assets/icons/pencil-edit-02.svg"),
+    ),
+    (
+        "icons/paint-board.svg",
+        include_bytes!("../assets/icons/paint-board.svg"),
     ),
     (
         "icons/pen-tool-03.svg",

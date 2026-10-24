@@ -3,6 +3,7 @@ mod add_project;
 mod agents;
 mod app_menu;
 mod assets;
+mod backdrop;
 mod background;
 #[cfg(target_os = "macos")]
 mod bundle;
@@ -65,6 +66,7 @@ fn main() {
         app_menu::init(cx);
         let theme = system_theme::current(cx.window_appearance());
         cx.set_global(theme);
+        backdrop::init(cx);
         // The app keeps its projects while no window is open, so the window a
         // click on the Dock icon brings back shows them as they were.
         let store = cx.new(Store::load);
