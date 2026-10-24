@@ -147,6 +147,8 @@ clear of the card's sides. A draft shows its composer alone, as before.
   file, Open, Show in Finder and Copy Path; then Copy (⌘C, only with a selection),
   Select All (⌘A), and Copy Reply, the reply's Markdown. A right press outside the
   selection lets it go.
+- **The person's message** selects and copies the same way, its text as they wrote it,
+  lines kept; its menu ends with Copy Message instead of Copy Reply.
 - **Under a turn that ended**, a Copy button leads its "Worked for" or "Stopped" line
   when the agent wrote something in it: it copies all the turn's text as Markdown, a
   blank line apart, and shows a check, its tooltip "Copied", for 1.2 s.

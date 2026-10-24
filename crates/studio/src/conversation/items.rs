@@ -21,9 +21,14 @@ use crate::{
 };
 
 /// The person's message, at the column's trailing edge on the field's fill:
-/// its attachments as chips over its text, and "Queued" under it while it
-/// waits for the turn before.
-pub fn message(message: &Message, queued: bool, colors: Colors) -> AnyElement {
+/// its attachments as chips over its text, drawn as `text`, and "Queued"
+/// under it while it waits for the turn before.
+pub fn message(
+    message: &Message,
+    text: Option<AnyElement>,
+    queued: bool,
+    colors: Colors,
+) -> AnyElement {
     let chips = (message.attachments.iter().enumerate()).map(|(at, attachment)| {
         let id = ElementId::NamedInteger("sent-attachment".into(), at as u64);
         match attachment {
@@ -61,7 +66,6 @@ pub fn message(message: &Message, queued: bool, colors: Colors) -> AnyElement {
         }
     });
     let chips: Vec<AnyElement> = chips.collect();
-    let text = message.text.trim_end();
     let bubble = div()
         .max_w(relative(MESSAGE_MAX_WIDTH))
         .px(SPACE_3)
@@ -74,9 +78,7 @@ pub fn message(message: &Message, queued: bool, colors: Colors) -> AnyElement {
         .when(!chips.is_empty(), |bubble| {
             bubble.child(div().flex().flex_wrap().gap(SPACE_1).children(chips))
         })
-        .when(!text.is_empty(), |bubble| {
-            bubble.child(SharedString::from(text.to_owned()))
-        });
+        .children(text);
     div()
         .w_full()
         .flex()

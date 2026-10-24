@@ -26,7 +26,10 @@ pub use inline::line;
 pub use select::OpenMenu;
 
 use self::select::Select;
-use super::{markdown::Block, selection, syntax};
+use super::{
+    markdown::{Block, Inline},
+    selection, syntax,
+};
 use crate::{
     assets::Icon,
     tooltip::{TooltipExt, WithTooltip},
@@ -152,6 +155,21 @@ pub fn blocks(blocks: &[Block], id: u64, tail: &Tail, env: &mut Env) -> AnyEleme
         .gap(SPACE_2)
         .children(children)
         .into_any_element()
+}
+
+/// `text` as written, not read as Markdown, its lines kept: the person's
+/// message. `id` names its state.
+pub fn plain(text: &str, id: u64, env: &mut Env) -> AnyElement {
+    let inline = Inline {
+        text: text.to_owned(),
+        ..Inline::default()
+    };
+    inline::text(
+        &inline,
+        ElementId::NamedInteger("text".into(), id),
+        &[],
+        env,
+    )
 }
 
 /// The id of the `at`-th block inside the one `id` names.

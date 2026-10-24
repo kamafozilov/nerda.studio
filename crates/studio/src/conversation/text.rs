@@ -28,12 +28,40 @@ impl Conversation {
     ) -> AnyElement {
         let blocks = self.markdown(turn, item, text);
         let tail = self.tail(turn, item, text.len());
+        let key = super::key(turn, item);
+        let folder = self.folder.clone();
+        let mut env = self.env(key, colors, window, cx).text(folder, &blocks);
+        render::blocks(&blocks, key, &tail, &mut env)
+    }
+
+    /// The text of the person's message in turn `turn`, as they wrote it,
+    /// selectable as a reply is.
+    pub(super) fn message_text(
+        &mut self,
+        turn: usize,
+        text: &str,
+        colors: Colors,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let key = super::key(turn, super::MESSAGE);
+        let mut env = self.env(key, colors, window, cx);
+        render::plain(text, key, &mut env)
+    }
+
+    /// What drawing the text whose key is `key` takes, its pieces in the
+    /// selection anew.
+    fn env<'a>(
+        &'a mut self,
+        key: u64,
+        colors: Colors,
+        window: &'a Window,
+        cx: &mut Context<Self>,
+    ) -> render::Env<'a> {
         let copy = cx.listener(|conversation, (id, text): &(u64, SharedString), _, cx| {
             conversation.copy(*id, text, cx)
         });
         let copied = self.copied.map(|(id, _)| id);
-        let folder = self.folder.clone();
-        let key = super::key(turn, item);
         self.selecting.borrow_mut().redraw(key);
         let menu = cx.listener(|conversation, opened, window, cx| {
             conversation.open_text_menu(opened, window, cx)
@@ -46,10 +74,9 @@ impl Conversation {
             next: 0,
             before: "",
         };
-        let mut env = render::Env::new(colors, window, &mut self.syntax, copied, Rc::new(copy))
-            .text(folder, &blocks);
+        let mut env = render::Env::new(colors, window, &mut self.syntax, copied, Rc::new(copy));
         env.selecting = Some(selecting);
-        render::blocks(&blocks, key, &tail, &mut env)
+        env
     }
 
     /// The Markdown of item `item` of turn `turn`, parsed again only once

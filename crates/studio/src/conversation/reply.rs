@@ -12,7 +12,7 @@ use theme::{Colors, SPACE_1};
 
 use agent::{Ending, Item};
 
-use super::{Conversation, items, render, selection::Target};
+use super::{Conversation, MESSAGE, items, render, selection::Target};
 use crate::{
     background,
     kbd::Shortcut,
@@ -191,9 +191,14 @@ impl Conversation {
             .shortcut(Shortcut::key("A").cmd()),
         ));
         entries.push(Entry::Separator);
+        let whole = if (item & 0xff_ffff) as usize == MESSAGE {
+            "Copy Message"
+        } else {
+            "Copy Reply"
+        };
         entries.push(Entry::Item(MenuItem::new(
             "copy-reply",
-            "Copy Reply",
+            whole,
             move |this: &mut Self, _, cx| {
                 if let Some(text) = this.reply_text(item, cx) {
                     cx.write_to_clipboard(ClipboardItem::new_string(text));
@@ -205,10 +210,15 @@ impl Conversation {
             .render("text-menu", entries, Placement::At(position), window, cx)
     }
 
-    /// The Markdown of the reply whose key is `item`.
+    /// The Markdown of the reply whose key is `item`, or the text of the
+    /// person's message.
     fn reply_text(&self, item: u64, cx: &App) -> Option<String> {
         let (turn, at) = ((item >> 24) as usize, (item & 0xff_ffff) as usize);
         let turns = self.agent.read(cx).transcript().turns();
+        if at == MESSAGE {
+            let text = turns.get(turn)?.message.as_ref()?.text.trim_end();
+            return Some(text.to_owned());
+        }
         match turns.get(turn)?.items.get(at)? {
             Item::Text(text) => Some(text.text.clone()),
             _ => None,

@@ -239,15 +239,18 @@ impl Conversation {
         let nothing = || div().into_any_element();
         let (content, space) = match row {
             Row::Message { turn } => {
-                let Some(turn) = turns.get(turn) else {
+                let Some(each) = turns.get(turn) else {
                     return nothing();
                 };
-                let Some(message) = &turn.message else {
+                let Some(message) = each.message.clone() else {
                     return nothing();
                 };
-                let queued = turn.state == TurnState::Queued;
+                let queued = each.state == TurnState::Queued;
+                let text = message.text.trim_end();
+                let text =
+                    (!text.is_empty()).then(|| self.message_text(turn, text, colors, window, cx));
                 let space = if at == 0 { px(0.) } else { SPACE_3 * 2. };
-                (items::message(message, queued, colors), space)
+                (items::message(&message, text, queued, colors), space)
             }
             Row::Group { turn, first, last } => {
                 let Some(each) = turns.get(turn) else {
@@ -358,6 +361,10 @@ impl Conversation {
             .into_any_element()
     }
 }
+
+/// The item number that stands for a turn's message in `key`, past any
+/// item's.
+const MESSAGE: usize = 0xff_ffff;
 
 /// One number for item `item` of turn `turn`, to name its elements by.
 fn key(turn: usize, item: usize) -> u64 {
