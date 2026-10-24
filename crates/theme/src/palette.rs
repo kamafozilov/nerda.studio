@@ -49,6 +49,15 @@ pub(crate) struct Palette {
     /// `danger` at 12% (dark) or 8% (light); `text_primary` reads on both.
     pub diff_added_background: u32,
     pub diff_removed_background: u32,
+    /// A link in the agent's text, in blue at h 250: L 0.78 C 0.11 (dark) or
+    /// L 0.50 C 0.14 (light), 8.12:1 on a code block and 5.17:1 on the card
+    /// over the worst desktop.
+    pub link: u32,
+    /// Code's tokens: keyword, string, constant, function and type, at h
+    /// 300, 145, 55, 250 and 190. L 0.82 C 0.11 (dark, keyword's cut to
+    /// 0.106 by sRGB) keeps 8.96:1 on a code block; L 0.48 or 0.46, C 0.08
+    /// to 0.16 (light) keeps 5.15:1 there over the worst desktop.
+    pub syntax: [u32; 5],
     /// The dots of the working indicator, top row to bottom: blue, amber and
     /// pink at h 245, 60 and 10 (L 0.84 / 0.82 / 0.76 dark, 0.60 / 0.62 /
     /// 0.60 light). Nothing is read on them.
@@ -91,6 +100,8 @@ pub(crate) const DARK: Palette = Palette {
     diff_added: 0x67d283ff,
     diff_added_background: 0x67d2831f,
     diff_removed_background: 0xf977701f,
+    link: 0x80bdfbff,
+    syntax: [0xceb5ffff, 0x96d798ff, 0xfcb17eff, 0x96c9feff, 0x60dbd4ff],
     activity: [0xabcff0ff, 0xf0b788ff, 0xf78c9eff],
     badges: [
         (0x64312eff, 0xfec4beff),
@@ -135,6 +146,8 @@ pub(crate) const LIGHT: Palette = Palette {
     diff_added: 0x197037ff,
     diff_added_background: 0x19703714,
     diff_removed_background: 0xb3232214,
+    link: 0x0465afff,
+    syntax: [0x6d41a9ff, 0x016b1aff, 0x8f4802ff, 0x005a9dff, 0x056662ff],
     activity: [0x4886b8ff, 0xbe7125ff, 0xcc4f6aff],
     badges: [
         (0xfed6d2ff, 0x852e2cff),

@@ -120,6 +120,11 @@ pub struct Colors {
     pub diff_added_background: Hsla,
     /// Under a diff's removed line.
     pub diff_removed_background: Hsla,
+    /// A link in the agent's text.
+    pub link: Hsla,
+    /// Code's tokens by what they are; comments use `text_secondary`, a
+    /// diff's lines `diff_added` and `danger`.
+    pub syntax: SyntaxColors,
     /// The working indicator's dots, by row from the top; nothing is read
     /// on them.
     pub activity: [Hsla; 3],
@@ -142,6 +147,17 @@ impl Colors {
             })
             .collect()
     }
+}
+
+/// The colors of code's tokens, on a code block's `field_background`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SyntaxColors {
+    pub keyword: Hsla,
+    pub string: Hsla,
+    /// Numbers, `true`, constants.
+    pub constant: Hsla,
+    pub function: Hsla,
+    pub type_name: Hsla,
 }
 
 /// One project badge: its fill and the initials on it.
@@ -205,6 +221,14 @@ impl Theme {
                 diff_added: rgba(palette.diff_added).into(),
                 diff_added_background: rgba(palette.diff_added_background).into(),
                 diff_removed_background: rgba(palette.diff_removed_background).into(),
+                link: rgba(palette.link).into(),
+                syntax: SyntaxColors {
+                    keyword: rgba(palette.syntax[0]).into(),
+                    string: rgba(palette.syntax[1]).into(),
+                    constant: rgba(palette.syntax[2]).into(),
+                    function: rgba(palette.syntax[3]).into(),
+                    type_name: rgba(palette.syntax[4]).into(),
+                },
                 activity: palette.activity.map(|color| rgba(color).into()),
                 badges: palette.badges.map(|(fill, text)| BadgeColors {
                     fill: rgba(fill).into(),

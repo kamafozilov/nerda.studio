@@ -110,6 +110,10 @@ pub const MESSAGE_MAX_WIDTH: f32 = 0.8;
 
 /// A heading over the main area's content, such as a draft session's question.
 pub const TEXT_HEADING: Pixels = px(18.);
+/// The agent's second and third levels of heading; its first is
+/// `TEXT_HEADING`, the rest `TEXT_BODY`, all in semibold.
+pub const TEXT_HEADING_2: Pixels = px(16.);
+pub const TEXT_HEADING_3: Pixels = px(14.);
 /// Body text and titles; macOS's standard control size.
 pub const TEXT_BODY: Pixels = px(13.);
 /// Supporting lines under or over a title, such as a session's project and
