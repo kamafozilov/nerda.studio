@@ -47,7 +47,8 @@ included.
 owner's, so the first build takes seconds; a worktree without `target/` gets one with
 `cp -c -R <owner's checkout>/target target`. Commit on the branch; it reaches `main` when
 the owner asks for it. A session that does run in the owner's checkout keeps every save
-building, since the runner shows each one.
+building, since the runner shows each one. Live reload (`cargo run -p dev`) refuses to
+run in a worktree: its builds would take the owner's window over.
 
 ### Launching the app
 

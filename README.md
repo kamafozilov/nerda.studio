@@ -27,7 +27,8 @@ cargo run -p dev
 Each change to `crates/` or the manifests rebuilds it, and the new build takes the old
 window's place without the window going away: same place and size, same sidebar, in front
 only if the old one was. A build that fails leaves the running app as it is. Ctrl-C stops
-the runner and the app quits with it, its changes saved.
+the runner and the app quits with it, its changes saved. Live reload runs only in the main
+checkout, not in a linked worktree.
 
 To try a build without disturbing the one you work in, as an agent does,
 `cargo run -p dev -- try` runs it with its own data, in the background and behind every

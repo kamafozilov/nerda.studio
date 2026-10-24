@@ -12,6 +12,10 @@
 //! quits, the runner opens its own build again. If the app quits on its own, the
 //! next change brings it back.
 //!
+//! It runs only in the owner's checkout: in a linked git worktree, where a
+//! session works on its own branch, it would put that branch's half-done
+//! builds in the owner's window on every save. A session there uses `try`.
+//!
 //! `cargo run -p dev -- try` runs a build beside the owner's, in the
 //! background; `cargo run -p dev -- install` puts a release build in
 //! `/Applications`.
@@ -61,6 +65,14 @@ fn main() -> ExitCode {
 }
 
 fn live_reload(root: &Path) -> ExitCode {
+    // A linked worktree has a `.git` file that points at the main checkout.
+    if root.join(".git").is_file() {
+        eprintln!(
+            "dev: live reload runs only in the main checkout, as its builds take the \
+             owner's window over; in a worktree, try a build with `cargo run -p dev -- try`"
+        );
+        return ExitCode::FAILURE;
+    }
     let mut running = Running::default();
     if build(root) {
         running.launch(root);
