@@ -90,10 +90,9 @@ impl Sidebar {
         if self.highlighted >= self.rows.len() {
             self.highlighted = 0;
         }
-        let page = match workspace.selected_tab() {
-            Some(Tab::Page(page)) => Page::ALL.iter().position(|&each| each == page),
-            _ => None,
-        };
+        let shown_page = workspace.selected_tab().and_then(Tab::page);
+        let page = shown_page.and_then(|page| Page::LISTED.iter().position(|&each| each == page));
+        self.footer_page = shown_page.filter(|page| !Page::LISTED.contains(page));
         self.page_selection_surface.aim(page);
         self.selected_page = page;
         self.aim_page_hover();

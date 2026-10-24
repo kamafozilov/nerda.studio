@@ -8,7 +8,7 @@ use gpui::{App, Div, InteractiveElement, KeyBinding, Menu, MenuItem, OsAction, a
 use crate::{
     shell::{
         AddProject, CloseAllTabs, CloseOtherTabs, CloseTab, GoBack, GoForward, NewSession, NextTab,
-        PreviousTab, RequestQuit, SearchSessions, ToggleSidebar,
+        OpenSettings, PreviousTab, RequestQuit, SearchSessions, ToggleSidebar,
     },
     text_input::keys::{Copy, Cut, Paste, SelectAll},
 };
@@ -73,6 +73,8 @@ pub fn on_window_actions(root: Div) -> Div {
 fn menus() -> Vec<Menu> {
     vec![
         Menu::new("Nerda Studio").items([
+            MenuItem::action("Settings…", OpenSettings),
+            MenuItem::separator(),
             MenuItem::os_submenu("Services", gpui::SystemMenuType::Services),
             MenuItem::separator(),
             MenuItem::action("Hide Nerda Studio", Hide),

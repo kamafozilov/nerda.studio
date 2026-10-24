@@ -24,8 +24,9 @@ use theme::{MAIN_INSET, MAIN_RADIUS, SIDEBAR_WIDTH, TEXT_BODY, Theme, motion};
 use workspace::{SessionId, Tab, Timestamp, Visits};
 
 use crate::{
-    accessibility, add_project::AddProjectPalette, app_menu, instance::Screen, native_window,
-    sidebar::Sidebar, store::Store, system_theme, tabs::TabStrip, welcome,
+    accessibility, add_project::AddProjectPalette, app_menu, empty_page::empty_page,
+    instance::Screen, native_window, sidebar::Sidebar, store::Store, system_theme, tabs::TabStrip,
+    welcome,
 };
 
 pub use commands::ActivateTab;
@@ -58,6 +59,8 @@ actions!(
         GoBack,
         /// Shows the tab Back left.
         GoForward,
+        /// Shows the Settings page's tab, as the sidebar's button does.
+        OpenSettings,
         /// Cmd-Q in the window: asks before quitting.
         RequestQuit,
     ]
@@ -326,13 +329,13 @@ impl Shell {
     /// The main area: a rounded card with a hairline, `MAIN_INSET` clear of the
     /// window's right and bottom edges and, as the sidebar closes, of its left.
     /// Before the first project it welcomes, unless a page is on screen; a
-    /// session shows its conversation over its composer, and a page nothing
-    /// yet.
+    /// session shows its conversation over its composer, and a page what it
+    /// will hold.
     fn main_area(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
         let workspace = self.store.read(cx).workspace();
-        let page_open = matches!(workspace.selected_tab(), Some(Tab::Page(_)));
-        let welcome = !page_open && !workspace.has_projects();
+        let page = workspace.selected_tab().and_then(Tab::page);
+        let welcome = page.is_none() && !workspace.has_projects();
         let card = div()
             .flex_1()
             .min_w_0()
@@ -346,6 +349,7 @@ impl Shell {
             .bg(colors.panel_background)
             .children(self.shown_conversation(cx))
             .when_some(self.shown_composer(), |card, composer| card.child(composer))
+            .when_some(page, |card, page| card.child(empty_page(page, cx)))
             .when(welcome, |card| {
                 card.child(welcome::no_projects(
                     cx.listener(|shell, _: &ClickEvent, window, cx| {

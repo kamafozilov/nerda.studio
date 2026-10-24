@@ -2,10 +2,11 @@
 //! as the tab menu and the top row's buttons do, so every way in moves the same.
 
 use gpui::{Context, Div, InteractiveElement, Window};
-use workspace::{Tab, Timestamp, Workspace};
+use workspace::{Page, Tab, Timestamp, Workspace};
 
 use super::{
-    CloseAllTabs, CloseOtherTabs, CloseTab, GoBack, GoForward, NextTab, PreviousTab, Shell,
+    CloseAllTabs, CloseOtherTabs, CloseTab, GoBack, GoForward, NextTab, OpenSettings, PreviousTab,
+    Shell,
 };
 
 /// Selects the tab at this index on screen; `ActivateTab::LAST` the last one.
@@ -42,6 +43,9 @@ impl Shell {
         }))
         .on_action(cx.listener(|shell, _: &GoBack, window, cx| shell.go(true, window, cx)))
         .on_action(cx.listener(|shell, _: &GoForward, window, cx| shell.go(false, window, cx)))
+        .on_action(
+            cx.listener(|shell, _: &OpenSettings, _, cx| shell.show(Tab::Page(Page::Settings), cx)),
+        )
     }
 
     /// Runs `change` on the selected tab, if one is on screen.

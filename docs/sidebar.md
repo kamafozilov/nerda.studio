@@ -65,7 +65,10 @@ are in [design.md](design.md).
 - **Before the first project** the sidebar stays blank under its header; the main area
   says what a project is and offers "Add project", centered, unless a page is on screen.
 - **The sidebar footer** holds Usage, Pull requests and Settings at its trailing edge, their
-  bottom on the card's bottom edge. They open nothing yet.
+  bottom on the card's bottom edge. They are pages beside the listed ones: a click shows
+  the page's tab, opening it if it isn't open, and the button of the page on screen keeps
+  its `hover` surface. `Cmd-,` (`Ctrl-,` elsewhere) and the app menu's Settings… show
+  Settings.
 
 ## Motion
 

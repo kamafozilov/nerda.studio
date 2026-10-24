@@ -141,14 +141,14 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
 - GPUI shapes text before hover is known, so a `.hover()` style never changes a text
   color: it changes a fill or an icon. The sidebar's lists track the pointer in their own
   state and redraw, so a row there may change its text color under the pointer.
-- **Tabs** in the top row are the pages open, Notes, Design and Routines, and the
-  sessions open in the project on screen (`crates/studio/src/tabs/`). Each project keeps
-  its own session tabs, saved with the workspace; showing another project's session
-  switches the row to that project's tabs, and the pages stay in it. A page on screen
-  keeps its project's tabs beside it. A tab is `CONTROL_SIZE` high, its title in
-  `text_primary` on `row_selected` when selected and on `hover` under the pointer; a
-  page's tab leads with its sidebar icon in `text_secondary`, `SPACE_2` before the
-  title. Tabs share the row up to `TAB_MAX_WIDTH` (224) each, `TAB_GAP` apart, however
+- **Tabs** in the top row are the pages open (Notes, Design, Routines, and the sidebar
+  footer's Usage, Pull requests and Settings), and the sessions open in the project on
+  screen (`crates/studio/src/tabs/`). Each project keeps its own session tabs, saved with
+  the workspace; showing another project's session switches the row to that project's
+  tabs, and the pages stay in it. A page on screen keeps its project's tabs beside it. A
+  tab is `CONTROL_SIZE` high, its title in `text_primary` on `row_selected` when selected
+  and on `hover` under the pointer; a page's tab leads with its sidebar icon in
+  `text_secondary`, `SPACE_2` before the title. Tabs share the row up to `TAB_MAX_WIDTH` (224) each, `TAB_GAP` apart, however
   many there are; the selected one keeps `TAB_SELECTED_MIN_WIDTH` (112). Under the
   pointer a tab shows its close button if it is at least `TAB_CLOSE_MIN_WIDTH` (72) wide
   or selected.
@@ -210,7 +210,9 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
 - **The sidebar's** header, session cards, messages, empty states and footer follow
   [sidebar.md](sidebar.md).
 - **The composer**, where a session's message is written, follows [composer.md](composer.md).
-- **Pages** are empty for now: a page on screen leaves the main area blank.
+- **Pages** are empty for now: a page on screen shows its title in medium-weight
+  `text_primary` and one `text_secondary` line on what it will hold, centered in the
+  main area, `SPACE_1` apart.
 - **Palettes** are dialogs of one field over a list:
   `PALETTE_WIDTH` (576) centered a tenth of the way down the window and never above the
   top row, `popover_background` with a hairline, a large shadow and `DIALOG_RADIUS` (12),

@@ -8,6 +8,7 @@ mod background;
 mod bundle;
 mod composer;
 mod conversation;
+mod empty_page;
 mod instance;
 mod key_cap;
 mod menu;
@@ -33,7 +34,7 @@ use instance::Screen;
 use native_window::Place;
 use shell::{
     ActivateTab, CloseAllTabs, CloseOtherTabs, CloseTab, GoBack, GoForward, NewSession, NextTab,
-    PreviousTab, SearchSessions, Shell, ToggleSidebar,
+    OpenSettings, PreviousTab, SearchSessions, Shell, ToggleSidebar,
 };
 use store::Store;
 use theme::Theme;
@@ -213,6 +214,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new(key("cmd-k", "ctrl-k"), SearchSessions, None),
         KeyBinding::new(key("cmd-n", "ctrl-n"), NewSession, None),
         KeyBinding::new(key("cmd-t", "ctrl-t"), NewSession, None),
+        KeyBinding::new(key("cmd-,", "ctrl-,"), OpenSettings, None),
         KeyBinding::new(key("cmd-w", "ctrl-w"), CloseTab, None),
         KeyBinding::new(key("cmd-alt-t", "ctrl-alt-t"), CloseOtherTabs, None),
         KeyBinding::new(key("cmd-shift-w", "ctrl-shift-w"), CloseAllTabs, None),

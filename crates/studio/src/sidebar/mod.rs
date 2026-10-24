@@ -24,7 +24,9 @@ use gpui::{
     ParentElement, Render, ScrollStrategy, Styled, Subscription, Task, UniformListScrollHandle,
     Window, actions, div, prelude::*,
 };
-use workspace::{AddProjectError, AddedProject, ProjectId, ProjectScope, SessionId, Timestamp};
+use workspace::{
+    AddProjectError, AddedProject, Page, ProjectId, ProjectScope, SessionId, Timestamp,
+};
 
 use self::{card::Row, glide::Track, shift::Shifts};
 use crate::{
@@ -93,6 +95,8 @@ pub struct Sidebar {
     selected_row: Option<usize>,
     /// The page on screen, as a row of the pages.
     selected_page: Option<usize>,
+    /// The page on screen, when it is one of the footer's.
+    footer_page: Option<Page>,
     selection_surface: Track,
     hover_surface: Track,
     page_selection_surface: Track,
@@ -167,6 +171,7 @@ impl Sidebar {
             drawn_selection: None,
             selected_row: None,
             selected_page: None,
+            footer_page: None,
             selection_surface: Track::default(),
             hover_surface: Track::default(),
             page_selection_surface: Track::default(),

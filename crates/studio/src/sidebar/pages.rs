@@ -43,7 +43,7 @@ impl Sidebar {
             selected_color: colors.row_selected,
             hovered_color: colors.hover,
         };
-        let rows = Page::ALL.into_iter().enumerate().map(|(index, page)| {
+        let rows = Page::LISTED.into_iter().enumerate().map(|(index, page)| {
             // Each slot is `ROW_GAP` taller than its surface, so a selected row and
             // a hovered neighbor stay two shapes.
             div()

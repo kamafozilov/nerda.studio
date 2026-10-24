@@ -55,6 +55,9 @@ impl Icon {
             workspace::Page::Notes => Self::Notes,
             workspace::Page::Design => Self::Design,
             workspace::Page::Routines => Self::Routines,
+            workspace::Page::Usage => Self::Usage,
+            workspace::Page::PullRequests => Self::PullRequests,
+            workspace::Page::Settings => Self::Settings,
         }
     }
 

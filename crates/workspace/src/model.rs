@@ -140,17 +140,33 @@ pub enum Page {
     Notes,
     Design,
     Routines,
+    Usage,
+    PullRequests,
+    Settings,
 }
 
 impl Page {
-    /// Every page, in the order the sidebar lists them.
-    pub const ALL: [Page; 3] = [Page::Notes, Page::Design, Page::Routines];
+    pub const ALL: [Page; 6] = [
+        Page::Notes,
+        Page::Design,
+        Page::Routines,
+        Page::Usage,
+        Page::PullRequests,
+        Page::Settings,
+    ];
+
+    /// The pages the sidebar lists under its search field, in order; the rest
+    /// open from its footer.
+    pub const LISTED: [Page; 3] = [Page::Notes, Page::Design, Page::Routines];
 
     pub fn title(self) -> &'static str {
         match self {
             Page::Notes => "Notes",
             Page::Design => "Design",
             Page::Routines => "Routines",
+            Page::Usage => "Usage",
+            Page::PullRequests => "Pull requests",
+            Page::Settings => "Settings",
         }
     }
 
@@ -160,6 +176,9 @@ impl Page {
             Page::Notes => "notes",
             Page::Design => "design",
             Page::Routines => "routines",
+            Page::Usage => "usage",
+            Page::PullRequests => "pull-requests",
+            Page::Settings => "settings",
         }
     }
 

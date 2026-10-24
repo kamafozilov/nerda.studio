@@ -120,3 +120,28 @@ fn a_page_this_build_does_not_know_is_skipped() {
     assert_eq!(workspace.tabs(), [session(3), NOTES]);
     assert_eq!(workspace.selected_tab(), None);
 }
+
+#[test]
+fn the_footer_pages_save_under_their_own_names() {
+    let temp = TempDir::new();
+    let path = temp.path().join("workspace.json");
+    let mut workspace = Workspace::default();
+    for page in [Page::Usage, Page::PullRequests, Page::Settings] {
+        workspace.open_page(page);
+    }
+    workspace.save(&path).unwrap();
+
+    let json: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    let keys: Vec<&str> = json["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|page| page["page"].as_str().unwrap())
+        .collect();
+    assert_eq!(keys, ["usage", "pull-requests", "settings"]);
+    assert_eq!(json["selected_page"], "settings");
+
+    let loaded = Workspace::load(&path).unwrap();
+    assert_eq!(loaded.tabs(), workspace.tabs());
+    assert_eq!(loaded.selected_tab(), Some(Tab::Page(Page::Settings)));
+}
