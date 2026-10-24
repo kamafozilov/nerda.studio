@@ -45,7 +45,7 @@ the sidebar and the tabs read the same over any desktop. Light keeps its glass.
 | `window_background` (solid) | `0a0a0b` | `f3f5f9` | Window base without blur |
 | `panel_background` | `131314` | `fbfdff` at 72% | Main area over the base |
 | `tab_background` | `131313` | text primary at 4% | A tab that isn't selected |
-| `composer_background` | `202021` | `ffffff` | The composer's box and the project pill |
+| `composer_background` | `202021` | `ffffff` | The composer's box |
 | `popover_background` | `202021` | `fbfdff` | Menus, palettes, dialogs; opaque |
 | `tab_selected` | `202021`, under a `border` hairline | text primary at 10% | The selected tab |
 | `border` | white at 8% | text primary at 10% | Sidebar edge, dividers |

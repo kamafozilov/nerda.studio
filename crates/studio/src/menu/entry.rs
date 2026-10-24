@@ -39,6 +39,11 @@ pub(crate) struct Item<T> {
     /// A mark before the label, in its own color, such as an agent's logo.
     icon: Option<(Icon, Hsla)>,
     shortcut: Option<Shortcut>,
+    /// A short note at the row's end in secondary text: an age, a place.
+    detail: Option<SharedString>,
+    /// The label in secondary text: a choice that stands back, such as a
+    /// remote branch under the local ones.
+    quiet: bool,
     pub(super) enabled: bool,
     pub(super) pick: Pick<T>,
     /// Items that open beside this one, with what is chosen among them now.
@@ -58,6 +63,8 @@ impl<T> Item<T> {
             check_trails: false,
             icon: None,
             shortcut: None,
+            detail: None,
+            quiet: false,
             enabled: true,
             pick: Rc::new(pick),
             submenu: None,
@@ -98,6 +105,16 @@ impl<T> Item<T> {
 
     pub fn shortcut(mut self, keys: impl Into<Option<Shortcut>>) -> Self {
         self.shortcut = keys.into();
+        self
+    }
+
+    pub fn detail(mut self, detail: impl Into<SharedString>) -> Self {
+        self.detail = Some(detail.into());
+        self
+    }
+
+    pub fn quiet(mut self) -> Self {
+        self.quiet = true;
         self
     }
 
@@ -213,8 +230,27 @@ impl<T: 'static, K: 'static> Menu<T, K> {
                     .overflow_hidden()
                     .whitespace_nowrap()
                     .text_ellipsis()
-                    .text_color(colors.text_primary)
+                    .text_color(if item.quiet {
+                        supporting
+                    } else {
+                        colors.text_primary
+                    })
                     .child(item.label),
+            )
+            .children(
+                item.detail
+                    .filter(|detail| !detail.is_empty())
+                    .map(|detail| {
+                        div()
+                            .flex_none()
+                            .max_w(SPACE_3 * 10.)
+                            .pl(SPACE_1)
+                            .overflow_hidden()
+                            .whitespace_nowrap()
+                            .text_ellipsis()
+                            .text_color(supporting)
+                            .child(detail)
+                    }),
             )
             .when(item.check_trails && item.checked == Some(true), |row| {
                 row.child(check(true).ml(SPACE_1))

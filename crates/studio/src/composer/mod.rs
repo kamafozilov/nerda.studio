@@ -1,16 +1,19 @@
 //! The session's composer: where a message to the agent is written. A box of
-//! growing text over a toolbar, and over it where the session runs.
-//!
-//! The project and its branch stand over the box. A draft session centers
-//! the composer in the card; once the session has seen work, the composer
-//! docks to the card's bottom, leaving the space above for the messages.
+//! growing text over a toolbar. Under a draft's box hangs a drawer with the
+//! project and the branch it will run on (`context`); once the session has
+//! seen work they are settled, and the box stands alone. A draft session
+//! centers the composer in the card; once the session has seen work, the
+//! composer docks to the card's bottom, leaving the space above for the
+//! messages.
 
 mod attachments;
 mod backdrop;
 mod backdrop_cards;
 mod backdrop_controls;
 mod backdrop_panel;
+mod branches;
 mod chips;
+mod context;
 mod dock;
 mod intake;
 mod pasted;
@@ -24,13 +27,13 @@ use std::path::{Path, PathBuf};
 use gpui::{
     App, ClickEvent, Context, Entity, FocusHandle, Focusable, IntoElement, KeyBinding,
     ParentElement, Render, SharedString, Styled, Subscription, Window, actions, div, prelude::*,
-    px, relative, svg,
+    px,
 };
 use theme::{
-    COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS, CONTROL_RADIUS,
-    CONTROL_SIZE, HAIRLINE, ICON_SIZE, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
+    COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS, HAIRLINE, SPACE_2,
+    SPACE_3, TEXT_SMALL, Theme,
 };
-use workspace::{Head, ProjectKind, SessionId};
+use workspace::SessionId;
 
 use attachments::Attachments;
 pub(crate) use chips::{chip, chip_label};
@@ -38,12 +41,10 @@ pub use projects::OpenProject;
 
 use crate::{
     agents::{Problem, SessionAgent},
-    assets::Icon,
     conversation,
     menu::Menu,
     store::Store,
     text_input::{Lines, TextInput, TextInputEvent},
-    tooltip::TooltipExt,
 };
 
 actions!(
@@ -76,6 +77,8 @@ pub struct Composer {
     menu: Menu<Composer, pickers::Picker>,
     /// The project menu, open over or under the project's pill.
     projects: Menu<Composer, ()>,
+    /// The branch's chip and its menu.
+    branches: branches::BranchPicker,
     /// The backdrop's panel, open over its button.
     backdrop_panel: Option<backdrop::OpenPanel>,
     /// Holds key focus while the backdrop's panel is open.
@@ -115,7 +118,9 @@ impl Composer {
             )
         });
         let project_search = cx.new(|cx| TextInput::new("Search projects", Lines::Single, cx));
+        let (branches, branch_search) = branches::BranchPicker::new(cx);
         let subscriptions = vec![
+            branch_search,
             cx.subscribe(
                 &project_search,
                 |composer, _, TextInputEvent::Changed, cx| composer.projects.query_changed(cx),
@@ -146,6 +151,7 @@ impl Composer {
                 project_search.clone(),
                 cx,
             ),
+            branches,
             backdrop_panel: None,
             panel_focus: cx.focus_handle(),
             tray_open: false,
@@ -256,78 +262,6 @@ impl Composer {
                 .child(conversation::markdown_line(&problem)),
         )
     }
-
-    /// Where the session runs, over the box: the project's pill on the box's
-    /// leading edge, and the branch its checkout is on, or the commit, at
-    /// the trailing edge, both chips on the box's surface with its hairline,
-    /// their edges on the box's.
-    fn render_context(
-        &self,
-        draft: bool,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Option<impl IntoElement + use<>> {
-        let colors = Theme::of(cx).colors;
-        let surface = self.surfaces(cx).raised;
-        let store = self.store.read(cx);
-        let workspace = store.workspace();
-        let project_id = workspace.session(self.session)?.project;
-        let project = workspace.project(project_id)?;
-        let name: SharedString = workspace.display_name(project_id)?.into();
-        let icon = match project.kind {
-            ProjectKind::Folder => Icon::Folder,
-            ProjectKind::Computer => Icon::Computer,
-        };
-        let branch = store.head(project.id).map(|head| match head {
-            Head::Branch(name) | Head::Detached(name) => SharedString::from(name.clone()),
-        });
-        let pill = self.render_project_pill(icon, name, draft, window, cx);
-        Some(
-            div()
-                .h(CONTROL_SIZE)
-                .mb(SPACE_1)
-                .flex()
-                .items_center()
-                .justify_between()
-                .gap(SPACE_3)
-                .text_color(colors.text_secondary)
-                .child(pill)
-                .when_some(branch, |row, branch| {
-                    row.child(
-                        div()
-                            .id("composer-branch")
-                            .flex_shrink_0()
-                            .min_w_0()
-                            .max_w(relative(0.4))
-                            .h(CONTROL_SIZE)
-                            .px(SPACE_3 - HAIRLINE)
-                            .rounded(CONTROL_RADIUS)
-                            .border_1()
-                            .border_color(colors.border)
-                            .bg(surface)
-                            .flex()
-                            .items_center()
-                            .gap(SPACE_2)
-                            .child(
-                                svg()
-                                    .path(Icon::GitBranch.path())
-                                    .flex_none()
-                                    .size(ICON_SIZE)
-                                    .text_color(colors.text_secondary),
-                            )
-                            .child(
-                                div()
-                                    .min_w_0()
-                                    .overflow_hidden()
-                                    .whitespace_nowrap()
-                                    .text_ellipsis_middle()
-                                    .child(branch.clone()),
-                            )
-                            .with_tooltip(branch),
-                    )
-                }),
-        )
-    }
 }
 
 impl Focusable for Composer {
@@ -349,8 +283,8 @@ impl Render for Composer {
             .max_w(COMPOSER_MAX_WIDTH)
             .flex()
             .flex_col()
-            .children(self.render_context(draft, window, cx))
             .child(self.render_box(window, cx))
+            .children(self.render_context(draft, window, cx))
             .children(self.render_problem(cx))
             .when(draft, |column| {
                 column.relative().child(self.placement.reader(true))
@@ -374,7 +308,7 @@ impl Render for Composer {
             .flex_col()
             .items_center()
             .when(draft, |placement| placement.flex_1().min_h_0())
-            .when(!draft, |placement| placement.flex_none().pb(SPACE_3))
+            .when(!draft, |placement| placement.flex_none().pb(SPACE_2))
             // Under everything else, so it paints first.
             .children(backdrop)
             .when(draft, |placement| placement.child(space(DRAFT_RISE)))

@@ -6,8 +6,8 @@ controls it uses are in [design.md](design.md). What sending does, Stop, and the
 conversation over a docked composer are in [session.md](session.md).
 
 - **Placement.** One column, at most `COMPOSER_MAX_WIDTH` (720) wide, centered in the
-  card and `SPACE_3` clear of its sides when the card is narrower: the context row over
-  the box. A draft session, one with no message yet, sets the column a little above the
+  card and `SPACE_3` clear of its sides when the card is narrower: the box, and under a
+  draft's the drawer. A draft session, one with no message yet, sets the column a little above the
   card's middle: the space above it is `DRAFT_RISE` (45%) of the height left. A
   session that has seen work docks the column to the card's bottom, `SPACE_3` above its
   edge, under its conversation. As a draft's first message goes the column glides
@@ -109,21 +109,26 @@ conversation over a docked composer are in [session.md](session.md).
 - **The problem line** under the box, in `TEXT_SMALL` `text_primary` in line with the
   text, also says why a message couldn't be sent or a choice was refused, a command in
   backticks in the monospaced font, until the next edit.
-- **The context row**, over the box and `SPACE_1` above it, `CONTROL_SIZE` tall, in
-  `TEXT_BODY` `text_secondary`, its icons at `ICON_SIZE` in the column of the box's text:
-  - On the box's leading edge, the project's pill: a folder, or a computer for No
-    project, the project's name as the sidebar shows it and a chevron at
-    `ICON_SIZE_SMALL`, `SPACE_2` apart, on
-    `composer_background` under a `border` hairline with `CONTROL_RADIUS`, padded as the
-    box is, `hover` washed over it under the pointer and while its menu is open; no
-    tooltip. A long name truncates before the branch does.
-  - On the box's trailing edge, the branch its checkout is on, or the commit, on a chip
-    like the pill (the same fill, hairline, corners and padding, without the chevron),
-    cut in the middle, at most 40% of the row, the whole of it in the tooltip. Outside git, and in
-    No project, there is no branch. It is read as [sidebar.md](sidebar.md) says.
-- **The project menu**, from the pill's leading edge, so the pill, the menu and the box
-  stand on one edge, never two side by side: downward from a draft, upward from a docked
-  composer, 256 wide at least. It leads with a "Search projects" field, 36 tall over a
+- **The drawer**, under a draft's box (`crates/studio/src/composer/context.rs`): where the
+  draft will run. It hangs from the box's bottom edge, 20 pt narrower on each side, past
+  the box's rounded corners, so it meets a straight edge; the box's bottom hairline is
+  the seam, and the drawer's sides and bottom take a `border` hairline, its bottom corners
+  `COMPOSER_RADIUS`. Its fill is the card's, or the box's glass over a pattern or an
+  image; on a dark card a shade falls 8 pt from the seam, black at 18% fading out, so it
+  reads as tucked under the box. Its content stands `SPACE_1` in, one line in
+  `TEXT_SMALL` `text_secondary`, two controls `FIELD_TARGET_SIZE` tall, each an icon at
+  `ICON_SIZE_ROW`, the words and a chevron at `ICON_SIZE_SMALL` in `text_tertiary`,
+  `SPACE_2` in, `hover` washed under the pointer and while its menu is open:
+  - Leading, the project: a folder, or a computer for No project, and its name as the
+    sidebar shows it, cut at the end.
+  - Trailing, the branch its checkout is on, or the commit, cut in the middle, at most
+    40% of the drawer, the whole of it in the tooltip. Outside git, and in No project,
+    there is none; it is read as [sidebar.md](sidebar.md) says.
+  - Once the session has seen work, where it runs is settled: the drawer goes, with
+    both choices, and the docked box stands alone.
+  - Its words keep at least 5.41:1 over any Bold pattern or image, 6.81:1 light,
+    measured on the running app; 7.11 / 7.49 on the plain card.
+- **The project menu**, from the project's leading edge, downward, 256 wide at least. It leads with a "Search projects" field, 36 tall over a
   hairline, its text starting in the items' icon column, which takes the focus and
   starts empty; then "No project" after a computer, for a session that works on the
   computer itself rather than in a folder, and a hairline; then the folder projects,
@@ -134,6 +139,31 @@ conversation over a docked composer are in [session.md](session.md).
   run edge to edge. Arrows move the highlight, Enter picks it, else the first item.
   Picking another project shows its draft, reopened if it has one, as New session there
   would; picking the session's own changes nothing.
+- **The branch menu**, downward from the branch's trailing edge, read off the UI thread
+  with git each time it opens, the last reading showing meanwhile ("Reading branches…"
+  the first time; git's reason, such as no repository, if it fails). A "Search or create
+  a branch" field leads it; then one list with no groups, each row while its name
+  contains the search, each after a branch icon:
+  - The branch checked out, checked; a detached checkout reads "Detached at 9c894a9".
+  - The other branches, newest commit first, at most 50, each with its commit's age
+    ("3h") at the end; picking one switches the checkout to it. A branch another
+    checkout of the repository is on shows that checkout's folder at the end instead,
+    since git keeps a branch in one checkout: picking it adds that folder as a project,
+    or finds it, and opens a draft there.
+  - A checkout on no branch, after a folder, by its folder's name with its commit at the
+    end; picking it opens a draft there the same way.
+  - The remote branches with no local branch of their name, as `origin/feature`, last,
+    at most 50, their icon in `text_tertiary` and their name in `text_secondary`, as
+    they stand back: picking one makes that local branch, tracking it, and switches.
+  - **Create branch “name”**, after a hairline, while the search names no branch: the
+    search with its spaces as hyphens, made at the current commit and switched to.
+    Enter picks it when nothing else matches; with nothing matching, "No matching
+    branches" stands over it.
+  A switch runs off the UI thread, one at a time, and the chip shows the new head when
+  it lands. When git refuses, the checkout stays and the problem line says why in a
+  sentence: "Uncommitted changes would be overwritten. Commit or stash them first.",
+  "A branch with that name already exists.", "That isn't a valid branch name.". Only a
+  draft has the menu, so no agent is working in the checkout while it switches.
 - **No project** is a project of its own kind, made the first time it is picked, at
   most one: its sessions run in the home folder, and no branch is read for it. Adding
   the home folder with Add project opens it, as adding any folder already there opens

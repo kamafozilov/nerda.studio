@@ -20,12 +20,16 @@ Five patterns, each a field of lightness over the card marked in one ink (`crate
 With an image, None becomes **Image only**: the image itself, every pixel, read between
 pixels so a small image scaled up stays smooth.
 
-**The composer stands on glass** whenever a pattern or an image shows: its box, its
-project pill, its branch and the tray's controls turn `composer_glass`,
-`composer_background` at 88%, so what is under them shows faintly through. The
-placeholder and the branch keep at least 6.38:1 over a Bold pattern (7.70:1 light) and,
-over the worst image (white behind dark, black behind light, at Bold), 4.76:1 (dark) and
-6.22:1 (light). With None and no image in use the surfaces are opaque.
+**The composer stands on glass** whenever a pattern or an image shows: its box and the
+tray's controls turn `composer_glass`, `composer_background` at 88%, so what is under
+them shows faintly through. The placeholder keeps at least 6.38:1 over a Bold pattern
+(7.70:1 light) and, over the worst image (white behind dark, black behind light, at
+Bold), 4.76:1 (dark) and 6.22:1 (light). With None and no image in use the surfaces are
+opaque.
+
+**The drawer under a draft's box** takes the box's glass too, so its small words keep
+at least 5.41:1 over any Bold pattern or image (6.81:1 light) (`composer/context.rs`;
+[composer.md](composer.md)).
 
 - The dither marks 2 pt dots against an 8 by 8 Bayer threshold, fixed to the card, so a
   moving pattern changes only where its field does. Sizes are in points, scaled to the

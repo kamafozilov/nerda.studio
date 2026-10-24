@@ -1,16 +1,14 @@
-//! The project over the box: a pill whose menu offers No project, searches
+//! The draft's project, under the box: a control whose menu offers No project, searches
 //! the folder projects, opens a draft in the one picked, and adds a new one.
 
 use gpui::{
     Anchor, App, ClickEvent, Context, EventEmitter, Focusable, IntoElement, ParentElement,
-    SharedString, Styled, Window, div, prelude::*, svg,
+    SharedString, Styled, Window, div, prelude::*,
 };
-use theme::{
-    CONTROL_RADIUS, CONTROL_SIZE, HAIRLINE, ICON_SIZE, ICON_SIZE_SMALL, SPACE_2, SPACE_3, Theme,
-};
+use theme::Theme;
 use workspace::{NO_PROJECT, ProjectId, ProjectKind, Timestamp, matches_search};
 
-use super::Composer;
+use super::{Composer, context::Side};
 use crate::{
     assets::Icon,
     menu::{Entry, Item, Placement},
@@ -90,18 +88,12 @@ impl Composer {
         entries
     }
 
-    /// The project's icon, name and a chevron on the composer's fill
-    /// under its hairline, lighter under the pointer and while the menu is
-    /// open. The pill stands on the box's leading edge and pads its content
-    /// as the box does, so its icon is in the column of the box's text. The
-    /// menu hangs from that same edge, downward from a draft, which has the
-    /// card below it, and upward from a docked composer, which sits at the
-    /// card's bottom: three edges on one line, never two side by side.
+    /// The drawer's leading side: the project's icon, name and a chevron.
+    /// Its menu hangs downward from its leading edge.
     pub(super) fn render_project_pill(
         &self,
         icon: Icon,
         name: SharedString,
-        draft: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
@@ -109,82 +101,32 @@ impl Composer {
         let open = self.projects.opened().is_some();
         let menu = if open {
             let entries = self.project_entries(cx);
-            let anchor = if draft {
-                Anchor::TopLeft
-            } else {
-                Anchor::BottomLeft
-            };
             (self.projects).render(
                 "composer-project-menu",
                 entries,
-                Placement::Hang(anchor),
+                Placement::Hang(Anchor::TopLeft),
                 window,
                 cx,
             )
         } else {
             None
         };
-        let pill = div()
-            .id("composer-project")
-            .group("composer-project")
-            .relative()
-            .min_w_0()
-            .h(CONTROL_SIZE)
-            .px(SPACE_3 - HAIRLINE)
-            .flex()
-            .items_center()
-            .gap(SPACE_2)
-            .rounded(CONTROL_RADIUS)
-            .border_1()
-            .border_color(colors.border)
-            .bg(self.surfaces(cx).raised)
-            // The wash goes over the fill, so the pill lightens as a
-            // control does under the pointer.
-            .child(
-                div()
-                    .absolute()
-                    .inset_0()
-                    .rounded(CONTROL_RADIUS)
-                    .when(open, |wash| wash.bg(colors.hover))
-                    .group_hover("composer-project", |wash| wash.bg(colors.hover)),
-            )
-            .on_click(cx.listener(|composer, _: &ClickEvent, window, cx| {
-                let text = composer.input.focus_handle(cx);
-                composer.projects.open_from((), Some(text), window, cx);
-            }))
-            .child(
-                svg()
-                    .path(icon.path())
-                    .flex_none()
-                    .size(ICON_SIZE)
-                    .text_color(colors.text_secondary),
-            )
-            .child(
-                div()
-                    .min_w_0()
-                    .overflow_hidden()
-                    .whitespace_nowrap()
-                    .text_ellipsis()
-                    .child(name),
-            )
-            .child(
-                svg()
-                    .path(Icon::ChevronDown.path())
-                    .flex_none()
-                    .size(ICON_SIZE_SMALL)
-                    .text_color(colors.text_secondary),
-            );
+        let side = Side {
+            id: "composer-project",
+            icon,
+            label: name,
+            cut_middle: false,
+            open,
+        }
+        .render(&colors)
+        .on_click(cx.listener(|composer, _: &ClickEvent, window, cx| {
+            let text = composer.input.focus_handle(cx);
+            composer.projects.open_from((), Some(text), window, cx);
+        }));
         div()
             .relative()
             .min_w_0()
-            .child(pill)
-            .children(menu.map(|menu| {
-                let hang = div().absolute().left_0();
-                match draft {
-                    true => hang.bottom_0(),
-                    false => hang.top_0(),
-                }
-                .child(menu)
-            }))
+            .child(side)
+            .children(menu.map(|menu| div().absolute().left_0().bottom_0().child(menu)))
     }
 }

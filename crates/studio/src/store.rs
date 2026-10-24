@@ -165,6 +165,17 @@ impl Store {
         }
     }
 
+    /// Takes one project's head, read just after the app changed it.
+    pub fn set_head(&mut self, project: ProjectId, head: Option<Head>, cx: &mut Context<Self>) {
+        let changed = match head {
+            Some(head) => self.heads.insert(project, head.clone()) != Some(head),
+            None => self.heads.remove(&project).is_some(),
+        };
+        if changed {
+            cx.notify();
+        }
+    }
+
     /// Shows `notice` under the sidebar's header until dismissed.
     pub fn show_notice(&mut self, notice: SharedString, cx: &mut Context<Self>) {
         self.notice = Some(notice);
