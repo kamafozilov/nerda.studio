@@ -24,6 +24,10 @@ pub const PANEL_ENTER: SpringConfig = spring(0.2, 1.);
 /// A panel sliding out: quicker than its entrance, since nothing new arrives.
 pub const PANEL_EXIT: SpringConfig = spring(0.17, 1.);
 
+/// A new session's composer docking to the card's bottom as its first
+/// message goes: slower than a panel, as it travels most of the card.
+pub const COMPOSER_DOCK: SpringConfig = spring(0.4, 1.);
+
 /// A tab's slot opening in the top row, or a dragged tab settling into its slot.
 pub const TAB_ENTER: SpringConfig = spring(0.25, 1.);
 /// A closed tab's slot collapsing before it leaves the row.

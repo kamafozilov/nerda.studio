@@ -11,6 +11,7 @@ mod backdrop_cards;
 mod backdrop_controls;
 mod backdrop_panel;
 mod chips;
+mod dock;
 mod intake;
 mod pasted;
 mod pickers;
@@ -89,6 +90,10 @@ pub struct Composer {
     problem: Option<SharedString>,
     /// The system's file picker is open: a second click must not open another.
     picking: bool,
+    /// Where the draft's composer stands, read as it is laid out.
+    placement: dock::Placement,
+    /// The composer's glide to the card's bottom, while it lasts.
+    docking: Option<dock::Docking>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -148,6 +153,8 @@ impl Composer {
             attachments: Attachments::default(),
             problem: None,
             picking: false,
+            placement: dock::Placement::default(),
+            docking: None,
             _subscriptions: subscriptions,
         }
     }
@@ -182,9 +189,14 @@ impl Composer {
         let paths: Vec<PathBuf> = (self.attachments.iter())
             .map(|attachment| attachment.path.clone())
             .collect();
+        let draft = (self.store.read(cx).workspace().session(self.session))
+            .is_none_or(|session| session.is_empty());
         let sent = (self.agent).update(cx, |agent, cx| agent.send(text, &paths, cx));
         match sent {
             Ok(()) => {
+                if draft {
+                    self.start_docking(cx);
+                }
                 self.input.update(cx, |input, cx| input.set_text("", cx));
                 self.attachments = Attachments::default();
                 self.problem = None;
@@ -339,7 +351,10 @@ impl Render for Composer {
             .flex_col()
             .children(self.render_context(draft, window, cx))
             .child(self.render_box(window, cx))
-            .children(self.render_problem(cx));
+            .children(self.render_problem(cx))
+            .when(draft, |column| {
+                column.relative().child(self.placement.reader(true))
+            });
         let backdrop = self.render_backdrop(draft, window, cx);
         // A draft's column stands a little above the middle, where the eye
         // rests: the space above it is `DRAFT_RISE` of what is left.
@@ -348,7 +363,7 @@ impl Render for Composer {
             space.style().flex_grow = Some(share);
             space
         };
-        div()
+        let placement = div()
             .key_context(CONTEXT)
             .on_action(cx.listener(Self::send))
             .capture_action(cx.listener(Self::paste))
@@ -366,7 +381,14 @@ impl Render for Composer {
             .child(column)
             .when(draft, |placement| placement.child(space(1. - DRAFT_RISE)))
             .when(draft, |placement| {
-                placement.child(self.render_tray(window, cx))
-            })
+                placement
+                    .child(self.render_tray(window, cx))
+                    .child(self.placement.reader(false))
+            });
+        if draft {
+            placement.into_any_element()
+        } else {
+            self.docked(placement)
+        }
     }
 }
