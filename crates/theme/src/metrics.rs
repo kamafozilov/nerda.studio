@@ -49,6 +49,9 @@ pub const BADGE_TEXT: Pixels = px(9.);
 /// Space between neighboring rows in the sidebar, where a selected row and a
 /// hovered one can sit side by side and must stay two shapes.
 pub const ROW_GAP: Pixels = px(1.);
+/// Height over which a list fades out into the bar it scrolls under while
+/// more of it lies past that edge.
+pub const SCROLL_EDGE_FADE: Pixels = px(32.);
 /// Width of a menu that opens from a control.
 pub const MENU_WIDTH: Pixels = px(220.);
 /// Corners of a menu: a little rounder than its items' `CONTROL_RADIUS`,

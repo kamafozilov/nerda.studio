@@ -65,11 +65,16 @@ are in [design.md](design.md).
 - **Names truncate** at the end: a session's title, a project's name in a menu.
 - **Before the first project** the list stays blank under the sessions' title; the main area
   says what a project is and offers "Add project", centered, unless a page is on screen.
-- **The sidebar footer**, under a `border` hairline, holds Usage, Pull requests and
-  Settings at its trailing edge, their bottom on the card's bottom edge. They are pages
-  beside the listed ones: a click shows the page's tab, opening it if it isn't open, and
-  the button of the page on screen keeps its `hover` surface. `Cmd-,` (`Ctrl-,` elsewhere) and the app menu's Settings… show
-  Settings.
+- **The sidebar footer** is one row, its bottom on the card's bottom edge: Settings as a
+  row like the pages above the list, taking the width, then Usage and Pull requests as
+  icon buttons with tooltips at its trailing edge, all `ROW_GAP` apart, the buttons'
+  trailing edge in line with the sessions' title row. They are pages beside the listed ones:
+  a click shows the page's tab, opening it if it isn't open, and the page on screen keeps
+  the selected wash. `Cmd-,` (`Ctrl-,` elsewhere) and the app menu's Settings… show Settings.
+- **The list's bottom edge** has no hairline. While more sessions lie below, the rows
+  fade out over `SCROLL_EDGE_FADE` (32) into the footer, which takes on the sidebar's
+  material (`window_background`) under its row; both thin out over the last 32 px of
+  scrolling, so nothing appears or goes at once. A list that fits shows neither.
 
 ## Motion
 

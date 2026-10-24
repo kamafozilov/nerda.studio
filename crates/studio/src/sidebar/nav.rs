@@ -1,7 +1,8 @@
 //! The rows at the top of the sidebar: New session, then the pages, Notes,
-//! Design and Routines. New session opens its project's draft and stays marked
-//! while a draft is on screen; a page shows its tab, opening it if it isn't
-//! open, and stays marked while on screen. Each row's fill fades on its own.
+//! Design and Routines; the footer's pages are rows of the same kind. New
+//! session opens its project's draft and stays marked while a draft is on
+//! screen; a page shows its tab, opening it if it isn't open, and stays marked
+//! while on screen. Each row's fill fades on its own.
 
 use std::time::Instant;
 
@@ -21,13 +22,14 @@ use crate::{
     tooltip::TooltipExt,
 };
 
-/// New session's place among the rows; the pages follow it.
+/// New session's place among the rows; the pages follow it, the listed ones
+/// first, then the footer's.
 pub(super) const NEW_SESSION: usize = 0;
 
-/// The row the page takes, if it is one of the listed pages.
-pub(super) fn page_row(page: Page) -> Option<usize> {
-    let at = Page::LISTED.iter().position(|&each| each == page)?;
-    Some(NEW_SESSION + 1 + at)
+/// The row the page takes.
+pub(super) fn page_row(page: Page) -> usize {
+    let at = Page::ALL.iter().position(|&each| each == page);
+    NEW_SESSION + 1 + at.expect("every page is in Page::ALL")
 }
 
 impl Sidebar {
@@ -59,17 +61,7 @@ impl Sidebar {
         let has_projects = self.store.read(cx).workspace().has_projects();
         let mut rows = vec![self.render_new_session(has_projects, now, cx)];
         for page in Page::LISTED {
-            let Some(index) = page_row(page) else {
-                continue;
-            };
-            let row = self
-                .nav_row(index, Icon::page(page), page.title().into(), true, now, cx)
-                .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
-                    sidebar.store.update(cx, |store, cx| {
-                        store.update(cx, |workspace| workspace.open_page(page))
-                    });
-                }));
-            rows.push(row.into_any_element());
+            rows.push(self.render_page_row(page, now, cx).into_any_element());
         }
         if self.fills.fading(now) {
             window.request_animation_frame();
@@ -82,6 +74,28 @@ impl Sidebar {
             .gap(ROW_GAP)
             .children(rows)
             .into_any_element()
+    }
+
+    /// A page's row: a click shows its tab, opening it if it isn't open.
+    pub(super) fn render_page_row(
+        &mut self,
+        page: Page,
+        now: Instant,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        self.nav_row(
+            page_row(page),
+            Icon::page(page),
+            page.title().into(),
+            true,
+            now,
+            cx,
+        )
+        .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
+            sidebar.store.update(cx, |store, cx| {
+                store.update(cx, |workspace| workspace.open_page(page))
+            });
+        }))
     }
 
     fn render_new_session(

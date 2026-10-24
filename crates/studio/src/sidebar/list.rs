@@ -3,16 +3,20 @@
 //! With no projects the list is blank: the main area offers the first step.
 
 use gpui::{
-    AnyElement, ClickEvent, Context, IntoElement, ParentElement, ScrollStrategy, SharedString,
-    Styled, Task, Window, div, prelude::*, uniform_list,
+    AnyElement, ClickEvent, Context, Hsla, IntoElement, ParentElement, ScrollStrategy,
+    SharedString, Styled, Task, UniformListScrollHandle, Window, canvas, div, fill,
+    linear_color_stop, linear_gradient, prelude::*, uniform_list,
 };
 use std::{
     collections::HashMap,
     time::{Duration, Instant},
 };
-use theme::{CONTROL_RADIUS, HAIRLINE, NOTICE_MAX_HEIGHT, ROW_HEIGHT, SPACE_1, SPACE_2, Theme};
+use theme::{
+    CONTROL_RADIUS, HAIRLINE, NOTICE_MAX_HEIGHT, ROW_HEIGHT, SCROLL_EDGE_FADE, SPACE_1, SPACE_2,
+    Theme,
+};
 
-use workspace::{Page, ProjectId, ProjectKind, ProjectScope, Tab, Timestamp, age_changes_in};
+use workspace::{ProjectId, ProjectKind, ProjectScope, Tab, Timestamp, age_changes_in};
 
 use super::{
     Sidebar,
@@ -23,6 +27,17 @@ use super::{
 
 /// The longest the ages go without being checked: one minute.
 const AGE_CHECK_MS: u64 = 60_000;
+
+/// How much of the list lies below what shows, from none (0) to
+/// `SCROLL_EDGE_FADE` or more (1), as of the list's last layout. The fade
+/// into the footer follows it, so it thins out over the last stretch rather
+/// than going at once.
+pub(super) fn more_below(scroll: &UniformListScrollHandle) -> f32 {
+    let state = scroll.0.borrow();
+    let handle = &state.base_handle;
+    let below = handle.max_offset().y + handle.offset().y;
+    (below / SCROLL_EDGE_FADE).clamp(0., 1.)
+}
 
 impl Sidebar {
     pub(super) fn render_notice(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
@@ -91,7 +106,6 @@ impl Sidebar {
             self.highlighted = 0;
         }
         let shown_page = workspace.selected_tab().and_then(Tab::page);
-        self.footer_page = shown_page.filter(|page| !Page::LISTED.contains(page));
         let selected = workspace.selected_session();
         // A draft on screen is New session's: it isn't listed until its first
         // message.
@@ -99,7 +113,7 @@ impl Sidebar {
             .and_then(|id| workspace.session(id))
             .is_some_and(|session| session.is_empty());
         self.selected_nav = match shown_page {
-            Some(page) => page_row(page),
+            Some(page) => Some(page_row(page)),
             None if draft => Some(NEW_SESSION),
             None => None,
         };
@@ -212,7 +226,10 @@ impl Sidebar {
         if self.fills.fading(Instant::now()) {
             window.request_animation_frame();
         }
+        let material = Theme::of(cx).colors.window_background;
+        let scroll = self.scroll.clone();
         div()
+            .relative()
             .flex_1()
             .min_h_0()
             .pt(SPACE_1)
@@ -235,6 +252,33 @@ impl Sidebar {
                 .track_scroll(&self.scroll)
                 .flex_1()
                 .min_h_0(),
+            )
+            // The rows fade into the footer while more lie below. Read at
+            // paint, once the list has laid out this frame.
+            .child(
+                canvas(
+                    |_, _, _| {},
+                    move |bounds, _, window, _| {
+                        let below = more_below(&scroll);
+                        if below > 0. {
+                            let to = material.opacity(below);
+                            let from = Hsla { a: 0., ..to };
+                            window.paint_quad(fill(
+                                bounds,
+                                linear_gradient(
+                                    180.,
+                                    linear_color_stop(from, 0.),
+                                    linear_color_stop(to, 1.),
+                                ),
+                            ));
+                        }
+                    },
+                )
+                .absolute()
+                .left_0()
+                .right_0()
+                .bottom_0()
+                .h(SCROLL_EDGE_FADE),
             )
             .into_any_element()
     }

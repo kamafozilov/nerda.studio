@@ -23,9 +23,7 @@ use gpui::{
     ParentElement, Render, ScrollStrategy, Styled, Subscription, Task, UniformListScrollHandle,
     Window, actions, div, prelude::*,
 };
-use workspace::{
-    AddProjectError, AddedProject, Page, ProjectId, ProjectScope, SessionId, Timestamp,
-};
+use workspace::{AddProjectError, AddedProject, ProjectId, ProjectScope, SessionId, Timestamp};
 
 use self::{card::Row, fade::Fills};
 use crate::{
@@ -90,10 +88,8 @@ pub struct Sidebar {
     /// into view.
     drawn_selection: Option<SessionId>,
     /// New session while a draft is on screen, or the page on screen, as a
-    /// row above the list.
+    /// row above the list or in the footer.
     selected_nav: Option<usize>,
-    /// The page on screen, when it is one of the footer's.
-    footer_page: Option<Page>,
     /// Each row's fill on its way to what it should show.
     fills: Fills,
     menu: Menu<Sidebar, ()>,
@@ -166,7 +162,6 @@ impl Sidebar {
             waiting: Hovered::default(),
             drawn_selection: None,
             selected_nav: None,
-            footer_page: None,
             fills: Fills::default(),
             menu: Menu::new(|sidebar| &mut sidebar.menu, cx),
             focus_before_search: None,
@@ -420,6 +415,6 @@ impl Render for Sidebar {
             .child(self.render_header(window, cx))
             .children(notice)
             .child(list)
-            .child(self.render_footer(cx))
+            .child(self.render_footer(window, cx))
     }
 }
