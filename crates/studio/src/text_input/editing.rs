@@ -311,11 +311,10 @@ impl TextInput {
         }
     }
 
-    /// Deletes `range`, or rings the bell when there is nothing to delete.
+    /// Deletes `range`. With nothing to delete it does nothing, silently: a
+    /// held Delete in an empty field would ring the bell on every repeat.
     fn delete_range(&mut self, range: Range<usize>, window: &mut Window, cx: &mut Context<Self>) {
-        if range.is_empty() {
-            window.play_system_bell();
-        } else {
+        if !range.is_empty() {
             self.replace(range, "", window, cx);
         }
     }
