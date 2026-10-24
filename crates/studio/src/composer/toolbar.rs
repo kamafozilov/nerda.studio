@@ -1,4 +1,5 @@
-//! The composer's toolbar: Attach, the session's choices as pills, and Send,
+//! The composer's toolbar: Attach, a hairline, the session's choices as
+//! pills, and Send,
 //! which turns into Stop while the agent works and there is nothing to send.
 //! Attach opens the system's file picker and each pill its menu.
 
@@ -7,8 +8,8 @@ use gpui::{
     Pixels, Stateful, Styled, Window, div, prelude::*, px, svg,
 };
 use theme::{
-    CONTROL_RADIUS, CONTROL_SIZE, Colors, DISABLED_OPACITY, ICON_SIZE, ICON_SIZE_SMALL, SPACE_1,
-    SPACE_2, Theme,
+    CONTROL_RADIUS, CONTROL_SIZE, Colors, DISABLED_OPACITY, HAIRLINE, ICON_SIZE, ICON_SIZE_SMALL,
+    SPACE_1, SPACE_2, Theme,
 };
 
 use super::{Composer, Send, pickers::Picker};
@@ -37,8 +38,10 @@ impl Composer {
             .into_iter()
             .map(|picker| self.render_pill(picker, window, cx))
             .collect();
+        // Attach's glyph, not its button, stands in the text's column.
         div()
             .h(CONTROL_SIZE)
+            .ml(-(CONTROL_SIZE - ICON_SIZE) / 2.)
             .flex()
             .items_center()
             .gap(SPACE_1)
@@ -51,6 +54,14 @@ impl Composer {
                 colors,
                 |button| button.on_click(cx.listener(Self::pick_attachments)),
             ))
+            .child(
+                div()
+                    .flex_none()
+                    .mx(SPACE_1)
+                    .w(HAIRLINE)
+                    .h(ICON_SIZE)
+                    .bg(colors.border),
+            )
             .children(pills)
             .child(div().flex_1())
             .child(if stop {
@@ -98,7 +109,7 @@ impl Composer {
         .detach();
     }
 
-    /// A choice's current value and a chevron, filled under the pointer and
+    /// A choice's mark, its current value and a chevron, filled under the pointer and
     /// while its menu is open. The menu opens upward from the pill's leading
     /// edge: the composer sits low in the card, and a menu that never covers
     /// its pill can't take the next click on it as a pick.
@@ -110,6 +121,8 @@ impl Composer {
     ) -> impl IntoElement + use<> {
         let colors = Theme::of(cx).colors;
         let open = self.menu.opened() == Some(&picker);
+        let choice = self.choice(cx);
+        let mark = picker.mark(&choice, colors);
         let menu = if open {
             let entries = self.picker_entries(picker, cx);
             let placement = Placement::Hang(Anchor::BottomLeft);
@@ -137,12 +150,19 @@ impl Composer {
                 let text = composer.input.focus_handle(cx);
                 composer.menu.open_from(picker, Some(text), window, cx);
             }))
+            .children(mark.map(|(icon, color)| {
+                svg()
+                    .path(icon.path())
+                    .flex_none()
+                    .size(ICON_SIZE)
+                    .text_color(color)
+            }))
             .child(
                 div()
                     .min_w_0()
                     .overflow_hidden()
                     .text_ellipsis()
-                    .child(picker.value(&self.choice(cx))),
+                    .child(picker.value(&choice)),
             )
             .child(
                 svg()

@@ -278,7 +278,8 @@ impl Sidebar {
         }
     }
 
-    fn new_session_in(&mut self, project: ProjectId, cx: &mut Context<Self>) {
+    /// Starts a session in `project`, or reopens its empty one, and shows it.
+    pub fn new_session_in(&mut self, project: ProjectId, cx: &mut Context<Self>) {
         let session = self.store.update(cx, |store, cx| {
             store.update(cx, |workspace| {
                 workspace.new_session(project, Timestamp::now())

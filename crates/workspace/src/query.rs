@@ -49,6 +49,20 @@ impl Workspace {
         sessions
     }
 
+    /// Projects whose name, as shown, contains the query, most recently
+    /// active first; matching folds as [`Self::visible_sessions`] does.
+    pub fn matching_projects(&self, query: &str) -> Vec<&Project> {
+        let needle = fold(&query.split_whitespace().collect::<Vec<_>>().join(" "));
+        self.projects()
+            .into_iter()
+            .filter(|project| {
+                needle.is_empty()
+                    || (self.display_name(project.id))
+                        .is_some_and(|name| fold(&name).contains(&needle))
+            })
+            .collect()
+    }
+
     /// The project a new session should go to: the one on screen, the scoped one, else the most recently active.
     pub fn context_project(&self) -> Option<ProjectId> {
         if let Some(project) = self.project_on_screen {

@@ -92,7 +92,7 @@ pub const COMPOSER_MAX_WIDTH: Pixels = px(720.);
 pub const COMPOSER_RADIUS: Pixels = px(12.);
 /// Lines of text the composer starts at, so a draft's composer and a docked
 /// one stand the same height.
-pub const COMPOSER_MIN_LINES: usize = 2;
+pub const COMPOSER_MIN_LINES: usize = 3;
 /// Lines of text the composer grows to before it scrolls inside.
 pub const COMPOSER_MAX_LINES: usize = 10;
 /// Widest an attachment chip grows; a longer name truncates in the middle.

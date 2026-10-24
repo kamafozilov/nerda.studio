@@ -6,7 +6,11 @@ use gpui::{App, AppContext, Context, Entity, Focusable, Subscription, Window};
 use workspace::{SessionId, Tab};
 
 use super::Shell;
-use crate::{agents, composer::Composer, conversation::Conversation};
+use crate::{
+    agents,
+    composer::{Composer, OpenProject},
+    conversation::Conversation,
+};
 
 pub(super) struct OpenComposer {
     pub composer: Entity<Composer>,
@@ -14,6 +18,8 @@ pub(super) struct OpenComposer {
     /// Sends focus on to the composer on screen, should it come back here
     /// while this session is off screen, as when a palette closes.
     _focus: Subscription,
+    /// Opens the draft of the project picked over the composer.
+    _open_project: Subscription,
 }
 
 impl Shell {
@@ -56,10 +62,15 @@ impl Shell {
                 shell.focus_shown(window, cx);
             }
         });
+        let open_project = cx.subscribe(&composer, |shell, _, OpenProject(project), cx| {
+            let project = *project;
+            (shell.sidebar).update(cx, |sidebar, cx| sidebar.new_session_in(project, cx));
+        });
         OpenComposer {
             composer,
             conversation,
             _focus: subscription,
+            _open_project: open_project,
         }
     }
 

@@ -1,32 +1,34 @@
 //! The session's composer: where a message to the agent is written. A box of
-//! growing text over a toolbar, and under it where the session runs.
+//! growing text over a toolbar, and over it where the session runs.
 //!
-//! A draft session centers the composer in the card under a question naming
-//! its project; once the session has seen work, the composer docks to the
-//! card's bottom, leaving the space above for the messages.
+//! The project and its branch stand over the box. A draft session centers
+//! the composer in the card; once the session has seen work, the composer
+//! docks to the card's bottom, leaving the space above for the messages.
 
 mod attachments;
 mod chips;
 mod intake;
 mod pasted;
 mod pickers;
+mod projects;
 mod toolbar;
 
 use std::path::{Path, PathBuf};
 
 use gpui::{
-    App, ClickEvent, Context, Entity, FocusHandle, Focusable, FontWeight, IntoElement, KeyBinding,
+    App, ClickEvent, Context, Entity, FocusHandle, Focusable, IntoElement, KeyBinding,
     ParentElement, Render, SharedString, Styled, Subscription, Window, actions, div, prelude::*,
-    svg,
+    px, relative, svg,
 };
 use theme::{
-    CARD_LINE, COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS,
-    HAIRLINE, ICON_SIZE_SMALL, SPACE_1, SPACE_2, SPACE_3, TEXT_HEADING, TEXT_SMALL, Theme,
+    COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS, CONTROL_SIZE,
+    HAIRLINE, ICON_SIZE, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
 };
 use workspace::{Head, SessionId};
 
 use attachments::Attachments;
 pub(crate) use chips::{chip, chip_label};
+pub use projects::OpenProject;
 
 use crate::{
     agents::{Problem, SessionAgent},
@@ -35,6 +37,7 @@ use crate::{
     menu::Menu,
     store::Store,
     text_input::{Lines, TextInput, TextInputEvent},
+    tooltip::TooltipExt,
 };
 
 actions!(
@@ -46,6 +49,10 @@ actions!(
 );
 
 const CONTEXT: &str = "Composer";
+
+/// The share of a draft card's free height above its composer: under half,
+/// so the composer sits above the middle.
+const DRAFT_RISE: f32 = 0.45;
 
 /// Enter sends; Shift-Enter, bound by the text input, breaks the line.
 pub fn bind_keys(cx: &mut App) {
@@ -60,6 +67,8 @@ pub struct Composer {
     input: Entity<TextInput>,
     /// The picker open over the toolbar, if one is.
     menu: Menu<Composer, pickers::Picker>,
+    /// The project menu, open over or under the project's pill.
+    projects: Menu<Composer, ()>,
     attachments: Attachments,
     /// Why the last attempt to attach, to send or to change the agent fell
     /// short, shown under the box until the next edit.
@@ -86,7 +95,12 @@ impl Composer {
                 cx,
             )
         });
+        let project_search = cx.new(|cx| TextInput::new("Search projects", Lines::Single, cx));
         let subscriptions = vec![
+            cx.subscribe(
+                &project_search,
+                |composer, _, TextInputEvent::Changed, cx| composer.projects.query_changed(cx),
+            ),
             cx.subscribe(&input, |composer, _, TextInputEvent::Changed, cx| {
                 composer.problem = None;
                 cx.notify();
@@ -104,6 +118,11 @@ impl Composer {
             agent,
             input,
             menu: Menu::new(|composer| &mut composer.menu, cx),
+            projects: Menu::with_search(
+                |composer| &mut composer.projects,
+                project_search.clone(),
+                cx,
+            ),
             attachments: Attachments::default(),
             problem: None,
             picking: false,
@@ -159,7 +178,7 @@ impl Composer {
     }
 
     /// The box: the text over the toolbar, on the field's fill, its hairline
-    /// turning `focus_ring` while the text has focus. A click anywhere in it
+    /// turning `composer_focus` while the text has focus. A click anywhere in it
     /// puts the cursor in the text.
     fn render_box(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
@@ -177,11 +196,11 @@ impl Composer {
             .rounded(COMPOSER_RADIUS)
             .border_1()
             .border_color(if focused {
-                colors.focus_ring
+                colors.composer_focus
             } else {
                 colors.border
             })
-            .bg(colors.field_background)
+            .bg(colors.composer_background)
             .cursor_text()
             .on_click(
                 cx.listener(move |_, _: &ClickEvent, window, cx| window.focus(&input_focus, cx)),
@@ -204,79 +223,65 @@ impl Composer {
         )
     }
 
-    /// Where the session runs, under the box and in line with its text: the
-    /// project's folder, then the branch its checkout is on, when known.
-    fn render_context(&self, cx: &App) -> Option<impl IntoElement> {
+    /// Where the session runs, over the box: the project's pill at the
+    /// leading edge, and the branch its checkout is on, or the commit, at
+    /// the trailing edge. Their icons stand in the column of the box's text.
+    fn render_context(
+        &self,
+        draft: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<impl IntoElement + use<>> {
         let colors = Theme::of(cx).colors;
         let store = self.store.read(cx);
         let workspace = store.workspace();
-        let project = workspace.project(workspace.session(self.session)?.project)?;
-        let folder: SharedString = workspace::home_relative(&project.path).into();
+        let project_id = workspace.session(self.session)?.project;
+        let project = workspace.project(project_id)?;
+        let name: SharedString = workspace.display_name(project_id)?.into();
         let branch = store.head(project.id).map(|head| match head {
             Head::Branch(name) | Head::Detached(name) => SharedString::from(name.clone()),
         });
-        let place = |icon: Icon| {
-            div().min_w_0().flex().items_center().gap(SPACE_1).child(
-                svg()
-                    .path(icon.path())
-                    .flex_none()
-                    .size(ICON_SIZE_SMALL)
-                    .text_color(colors.text_secondary),
-            )
-        };
-        let truncated = || {
-            div()
-                .min_w_0()
-                .overflow_hidden()
-                .whitespace_nowrap()
-                .text_ellipsis()
-        };
+        let pill = self.render_project_pill(name, draft, window, cx);
         Some(
             div()
-                .h(CARD_LINE)
-                .mt(SPACE_2)
-                .px(SPACE_3)
+                .h(CONTROL_SIZE)
+                .mb(SPACE_1)
+                .px(SPACE_3 - SPACE_2)
                 .flex()
                 .items_center()
+                .justify_between()
                 .gap(SPACE_3)
-                .text_size(TEXT_SMALL)
-                .line_height(CARD_LINE)
                 .text_color(colors.text_secondary)
-                .child(place(Icon::Folder).child(truncated().text_ellipsis_start().child(folder)))
+                .child(pill)
                 .when_some(branch, |row, branch| {
                     row.child(
-                        place(Icon::GitBranch)
-                            .child(truncated().text_ellipsis_middle().child(branch)),
+                        div()
+                            .id("composer-branch")
+                            .flex_shrink_0()
+                            .min_w_0()
+                            .max_w(relative(0.4))
+                            .pr(SPACE_2)
+                            .flex()
+                            .items_center()
+                            .gap(SPACE_2)
+                            .child(
+                                svg()
+                                    .path(Icon::GitBranch.path())
+                                    .flex_none()
+                                    .size(ICON_SIZE)
+                                    .text_color(colors.text_secondary),
+                            )
+                            .child(
+                                div()
+                                    .min_w_0()
+                                    .overflow_hidden()
+                                    .whitespace_nowrap()
+                                    .text_ellipsis_middle()
+                                    .child(branch.clone()),
+                            )
+                            .with_tooltip(branch),
                     )
                 }),
-        )
-    }
-
-    /// "What should we work on in web?" over a draft's composer; a long name
-    /// truncates and the question mark stays.
-    fn render_heading(&self, cx: &App) -> Option<impl IntoElement> {
-        let workspace = self.store.read(cx).workspace();
-        let session = workspace.session(self.session)?;
-        let name = workspace.display_name(session.project)?;
-        Some(
-            div()
-                .w_full()
-                .mb(SPACE_3 * 2.)
-                .flex()
-                .justify_center()
-                .whitespace_nowrap()
-                .text_size(TEXT_HEADING)
-                .font_weight(FontWeight::SEMIBOLD)
-                .text_color(Theme::of(cx).colors.text_primary)
-                .child(div().flex_none().child("What should we work on in\u{a0}"))
-                .child(
-                    div()
-                        .min_w_0()
-                        .overflow_hidden()
-                        .text_ellipsis()
-                        .child(name),
-                )
-                .child(div().flex_none().child("?")),
         )
     }
 }
@@ -300,10 +305,16 @@ impl Render for Composer {
             .max_w(COMPOSER_MAX_WIDTH)
             .flex()
             .flex_col()
-            .when(draft, |column| column.children(self.render_heading(cx)))
+            .children(self.render_context(draft, window, cx))
             .child(self.render_box(window, cx))
-            .children(self.render_problem(cx))
-            .children(self.render_context(cx));
+            .children(self.render_problem(cx));
+        // A draft's column stands a little above the middle, where the eye
+        // rests: the space above it is `DRAFT_RISE` of what is left.
+        let space = |share: f32| {
+            let mut space = div().flex_basis(px(0.)).min_h_0();
+            space.style().flex_grow = Some(share);
+            space
+        };
         div()
             .key_context(CONTEXT)
             .on_action(cx.listener(Self::send))
@@ -313,10 +324,10 @@ impl Render for Composer {
             .flex()
             .flex_col()
             .items_center()
-            .when(draft, |placement| {
-                placement.flex_1().min_h_0().justify_center()
-            })
+            .when(draft, |placement| placement.flex_1().min_h_0())
             .when(!draft, |placement| placement.flex_none().pb(SPACE_3))
+            .when(draft, |placement| placement.child(space(DRAFT_RISE)))
             .child(column)
+            .when(draft, |placement| placement.child(space(1. - DRAFT_RISE)))
     }
 }

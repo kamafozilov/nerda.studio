@@ -5,20 +5,25 @@
 //! picks, and Escape closes. Closing gives focus back, unless focus left the
 //! menu first, which closes it too. The owner keeps a [`Menu`] and draws it
 //! where the menu hangs from; a pick runs in the owner, then the menu closes.
+//!
+//! A menu made [`Menu::with_search`] leads with a search field, which holds
+//! the focus: typing filters, as the owner's entries say, and Enter picks the
+//! highlighted item, else the first.
 
 use std::rc::Rc;
 
 use gpui::{
-    Anchor, AnyElement, App, ClickEvent, Context, ElementId, FocusHandle, IntoElement, MouseButton,
-    MouseDownEvent, MouseMoveEvent, ParentElement, Pixels, Point, ScrollHandle, SharedString,
-    Styled, Subscription, Window, actions, anchored, deferred, div, point, prelude::*, px, svg,
+    Anchor, AnyElement, App, ClickEvent, Context, ElementId, Entity, FocusHandle, Focusable, Hsla,
+    IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent, ParentElement, Pixels, Point,
+    ScrollHandle, SharedString, Styled, Subscription, Window, actions, anchored, deferred, div,
+    point, prelude::*, px, svg,
 };
 use theme::{
     CONTROL_RADIUS, DISABLED_OPACITY, HAIRLINE, ICON_SIZE, MENU_RADIUS, MENU_WIDTH, ROW_HEIGHT,
-    SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
+    SPACE_1, SPACE_2, SPACE_3, Theme,
 };
 
-use crate::assets::Icon;
+use crate::{assets::Icon, text_input::TextInput};
 
 actions!(
     menu,
@@ -42,6 +47,12 @@ const MENU_MAX_HEIGHT: Pixels = px(360.);
 /// Widest a menu grows to fit its lines before they truncate.
 const MENU_MAX_WIDTH: Pixels = px(320.);
 
+/// A searching menu's field, over its hairline.
+const SEARCH_HEIGHT: Pixels = px(36.);
+
+/// A searching menu is wider than a plain one: its field needs room to type.
+const SEARCH_MENU_WIDTH: Pixels = px(256.);
+
 pub fn bind_keys(cx: &mut App) {
     cx.bind_keys([
         gpui::KeyBinding::new("escape", Dismiss, Some(CONTEXT)),
@@ -56,8 +67,10 @@ pub(crate) struct Menu<T, K> {
     /// Finds this menu in its owner, for the menu's own listeners.
     access: fn(&mut T) -> &mut Menu<T, K>,
     open: Option<K>,
-    /// Holds key focus while the menu is open, so its keys reach it.
+    /// Holds key focus while the menu is open, so its keys reach it: the
+    /// search field's, when the menu has one.
     focus: FocusHandle,
+    search: Option<Entity<TextInput>>,
     /// Where focus goes when the menu closes.
     give_back: Option<FocusHandle>,
     /// The entry under the pointer or the keyboard's highlight.
@@ -89,11 +102,13 @@ pub(crate) enum Entry<T> {
 pub(crate) struct Item<T> {
     id: ElementId,
     label: SharedString,
-    /// A line under the label, saying what the choice does.
-    detail: Option<SharedString>,
     /// `None` leaves out the check's slot; `Some(false)` keeps it empty, so
     /// labels stay aligned.
     checked: Option<bool>,
+    /// The check after the label rather than before it.
+    check_trails: bool,
+    /// A mark before the label, in its own color, such as an agent's logo.
+    icon: Option<(Icon, Hsla)>,
     shortcut: Option<SharedString>,
     enabled: bool,
     pick: Pick<T>,
@@ -108,21 +123,30 @@ impl<T> Item<T> {
         Self {
             id: id.into(),
             label: label.into(),
-            detail: None,
             checked: None,
+            check_trails: false,
+            icon: None,
             shortcut: None,
             enabled: true,
             pick: Rc::new(pick),
         }
     }
 
-    pub fn detail(mut self, detail: impl Into<SharedString>) -> Self {
-        self.detail = Some(detail.into());
+    pub fn checked(mut self, checked: bool) -> Self {
+        self.checked = Some(checked);
         self
     }
 
-    pub fn checked(mut self, checked: bool) -> Self {
-        self.checked = Some(checked);
+    /// Checked at the row's end, where a list of places marks the current
+    /// one; unchecked, the row keeps no slot.
+    pub fn checked_at_end(mut self, checked: bool) -> Self {
+        self.checked = checked.then_some(true);
+        self.check_trails = true;
+        self
+    }
+
+    pub fn icon(mut self, icon: Icon, color: Hsla) -> Self {
+        self.icon = Some((icon, color));
         self
     }
 
@@ -143,11 +167,38 @@ impl<T: 'static, K: 'static> Menu<T, K> {
             access,
             open: None,
             focus: cx.focus_handle(),
+            search: None,
             give_back: None,
             highlighted: None,
             scroll: ScrollHandle::new(),
             _focus_out: None,
         }
+    }
+
+    /// A menu that leads with `search`, which takes the focus while it is
+    /// open; each opening starts it empty.
+    pub fn with_search(
+        access: fn(&mut T) -> &mut Menu<T, K>,
+        search: Entity<TextInput>,
+        cx: &mut App,
+    ) -> Self {
+        Self {
+            focus: search.focus_handle(cx),
+            search: Some(search),
+            ..Self::new(access, cx)
+        }
+    }
+
+    /// What the search field holds; empty for a menu without one.
+    pub fn query(&self, cx: &App) -> String {
+        (self.search.as_ref()).map_or_else(String::new, |search| search.read(cx).text().to_owned())
+    }
+
+    /// The entries changed under a new query: the highlight starts over.
+    pub fn query_changed(&mut self, cx: &mut Context<T>) {
+        self.highlighted = None;
+        self.scroll.set_offset(point(px(0.), px(0.)));
+        cx.notify();
     }
 
     /// What the menu is open on, while it is.
@@ -172,6 +223,9 @@ impl<T: 'static, K: 'static> Menu<T, K> {
     ) {
         if self.open.is_none() {
             self.give_back = give_back;
+        }
+        if let Some(search) = self.search.clone().filter(|_| self.open.is_none()) {
+            search.update(cx, |search, cx| search.set_text("", cx));
         }
         self.open = Some(key);
         self.highlighted = None;
@@ -255,7 +309,9 @@ impl<T: 'static, K: 'static> Menu<T, K> {
         let panel = div()
             .id(id)
             .key_context(CONTEXT)
-            .track_focus(&self.focus)
+            .when(self.search.is_none(), |panel| {
+                panel.track_focus(&self.focus)
+            })
             .on_action(cx.listener(move |owner, _: &Dismiss, window, cx| close(owner, window, cx)))
             .on_action(cx.listener({
                 let items = items.clone();
@@ -265,7 +321,11 @@ impl<T: 'static, K: 'static> Menu<T, K> {
                 access(owner).step(&items, false, cx)
             }))
             .on_action(cx.listener(move |owner, _: &Confirm, window, cx| {
-                let highlighted = access(owner).highlighted;
+                let menu = access(owner);
+                let highlighted = match (menu.highlighted, &menu.search) {
+                    (None, Some(_)) => picks.first().map(|(at, _)| *at),
+                    (highlighted, _) => highlighted,
+                };
                 let pick = picks
                     .iter()
                     .find(|(at, _)| Some(*at) == highlighted)
@@ -282,20 +342,45 @@ impl<T: 'static, K: 'static> Menu<T, K> {
                 }
             }))
             .occlude()
-            .min_w(MENU_WIDTH)
+            .min_w(if self.search.is_some() {
+                SEARCH_MENU_WIDTH
+            } else {
+                MENU_WIDTH
+            })
             .max_w(MENU_MAX_WIDTH)
-            .max_h(MENU_MAX_HEIGHT)
-            .overflow_y_scroll()
-            .track_scroll(&self.scroll)
-            .p(SPACE_1 - HAIRLINE)
             .flex()
             .flex_col()
             .rounded(MENU_RADIUS)
             .border_1()
             .border_color(colors.border)
             .bg(colors.popover_background)
-            .shadow_lg()
+            .shadow_lg();
+        let list = div()
+            .id((id, 2u64))
+            .max_h(MENU_MAX_HEIGHT)
+            .overflow_y_scroll()
+            .track_scroll(&self.scroll)
+            .p(SPACE_1 - HAIRLINE)
+            .flex()
+            .flex_col()
             .children(rows);
+        let panel = match &self.search {
+            None => panel.child(list),
+            // The field's text starts in the items' icon column: `SPACE_1` to
+            // the row, `SPACE_2` inside it.
+            Some(search) => panel
+                .child(
+                    div()
+                        .h(SEARCH_HEIGHT)
+                        .flex_none()
+                        .px(SPACE_1 + SPACE_2 - HAIRLINE)
+                        .flex()
+                        .items_center()
+                        .child(div().flex_1().min_w_0().child(search.clone())),
+                )
+                .child(div().flex_none().h(HAIRLINE).bg(colors.border))
+                .child(list),
+        };
         let hung = match placement {
             Placement::Hang(anchor) => {
                 let below = matches!(anchor, Anchor::TopLeft | Anchor::TopRight);
@@ -350,10 +435,13 @@ impl<T: 'static, K: 'static> Menu<T, K> {
                     .child(text)
                     .into_any_element();
             }
+            // A searching menu's hairlines run edge to edge, as the one under
+            // its field does, so its groups read as bands.
             Entry::Separator => {
                 return div()
                     .flex_none()
                     .my(SPACE_1)
+                    .when(self.search.is_some(), |line| line.mx(-(SPACE_1 - HAIRLINE)))
                     .h(HAIRLINE)
                     .bg(colors.border)
                     .into_any_element();
@@ -376,7 +464,6 @@ impl<T: 'static, K: 'static> Menu<T, K> {
             .min_h(ROW_HEIGHT)
             .flex_none()
             .px(SPACE_2)
-            .when(item.detail.is_some(), |row| row.py(SPACE_1))
             .flex()
             .items_center()
             .rounded(CONTROL_RADIUS)
@@ -396,46 +483,53 @@ impl<T: 'static, K: 'static> Menu<T, K> {
                 }))
             })
             .when(!enabled, |row| row.opacity(DISABLED_OPACITY))
-            .when_some(item.checked, |row, checked| {
-                row.child(
-                    div()
-                        .size(ICON_SIZE)
-                        .flex_none()
-                        .mr(SPACE_2)
-                        .when(checked, |slot| {
-                            slot.child(
-                                svg()
-                                    .path(Icon::Check.path())
-                                    .size(ICON_SIZE)
-                                    .text_color(colors.text_primary),
-                            )
-                        }),
-                )
-            })
+            .when_some(
+                item.checked.filter(|_| !item.check_trails),
+                |row, checked| {
+                    row.child(
+                        div()
+                            .size(ICON_SIZE)
+                            .flex_none()
+                            .mr(SPACE_2)
+                            .when(checked, |slot| {
+                                slot.child(
+                                    svg()
+                                        .path(Icon::Check.path())
+                                        .size(ICON_SIZE)
+                                        .text_color(colors.text_primary),
+                                )
+                            }),
+                    )
+                },
+            )
+            .children(item.icon.map(|(icon, color)| {
+                svg()
+                    .path(icon.path())
+                    .size(ICON_SIZE)
+                    .flex_none()
+                    .mr(SPACE_2)
+                    .text_color(color)
+            }))
             .child(
                 div()
                     .flex_auto()
                     .min_w_0()
-                    .flex()
-                    .flex_col()
-                    .child(
-                        div()
-                            .overflow_hidden()
-                            .whitespace_nowrap()
-                            .text_ellipsis()
-                            .text_color(colors.text_primary)
-                            .child(item.label),
-                    )
-                    .children(item.detail.map(|detail| {
-                        div()
-                            .overflow_hidden()
-                            .whitespace_nowrap()
-                            .text_ellipsis()
-                            .text_size(TEXT_SMALL)
-                            .text_color(supporting)
-                            .child(detail)
-                    })),
+                    .overflow_hidden()
+                    .whitespace_nowrap()
+                    .text_ellipsis()
+                    .text_color(colors.text_primary)
+                    .child(item.label),
             )
+            .when(item.check_trails && item.checked == Some(true), |row| {
+                row.child(
+                    svg()
+                        .path(Icon::Check.path())
+                        .flex_none()
+                        .ml(SPACE_3)
+                        .size(ICON_SIZE)
+                        .text_color(colors.text_primary),
+                )
+            })
             .children(item.shortcut.map(|keys| {
                 div()
                     .flex_none()

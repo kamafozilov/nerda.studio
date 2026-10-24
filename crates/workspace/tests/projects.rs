@@ -152,3 +152,21 @@ fn projects_order_by_activity_then_title_then_id() {
         .collect();
     assert_eq!(titles, ["Busy", "Alpha", "alpha", "beta", "Old"]);
 }
+
+#[test]
+fn projects_match_by_shown_name_folding_case_and_apostrophes() {
+    let temp = TempDir::new();
+    let mut workspace = Workspace::default();
+    let web = added(workspace.add_project(&temp.dir("Web"), NOW));
+    let uzbek = added(workspace.add_project(&temp.dir("oʻzbek"), NOW));
+    let names = |query: &str| -> Vec<workspace::ProjectId> {
+        (workspace.matching_projects(query).iter())
+            .map(|project| project.id)
+            .collect()
+    };
+    assert_eq!(names("").len(), 2);
+    assert_eq!(names("  "), names(""));
+    assert_eq!(names("WEB"), [web]);
+    assert_eq!(names("o'z"), [uzbek]);
+    assert!(names("nothing").is_empty());
+}

@@ -14,6 +14,8 @@ pub enum Icon {
     /// Back to the tab shown before.
     Back,
     Check,
+    /// Claude Code's logo, beside its models; a filled mark, not an outline.
+    Claude,
     /// Opens a pill's choices.
     ChevronDown,
     Close,
@@ -65,6 +67,7 @@ impl Icon {
         match self {
             Self::Back => "icons/arrow-left-01.svg",
             Self::Check => "icons/tick-02.svg",
+            Self::Claude => "icons/claude.svg",
             Self::ChevronDown => "icons/arrow-down-01.svg",
             Self::Close => "icons/cancel-01.svg",
             Self::Design => "icons/pen-tool-03.svg",
@@ -125,6 +128,10 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/cancel-01.svg",
         include_bytes!("../assets/icons/cancel-01.svg"),
+    ),
+    (
+        "icons/claude.svg",
+        include_bytes!("../assets/icons/claude.svg"),
     ),
     (
         "icons/file-02.svg",

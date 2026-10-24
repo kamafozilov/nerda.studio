@@ -74,10 +74,19 @@ pub struct Colors {
     /// Fill of an attachment chip in the composer, at rest; its name uses
     /// `text_primary`, its icon `text_secondary`.
     pub chip_background: Hsla,
+    /// Fill of the composer's box and the project pill over it: opaque, the
+    /// selected tab's gray, so the place to type stands out of the card.
+    pub composer_background: Hsla,
+    /// Edge of the composer's box while its text has focus: quieter than
+    /// `focus_ring`, since the box is large and the cursor already shows
+    /// where typing goes.
+    pub composer_focus: Hsla,
     /// Fill of a tab that isn't selected, so each tab reads as a shape.
     pub tab_background: Hsla,
     /// Fill of the selected tab, under a `border` hairline.
     pub tab_selected: Hsla,
+    /// Claude Code's logo, in its brand's orange.
+    pub claude: Hsla,
     /// Titles and body text.
     pub text_primary: Hsla,
     /// Supporting text and icons at rest.
@@ -138,8 +147,11 @@ impl Theme {
                 scrim: rgba(palette.scrim).into(),
                 key_background: rgba(palette.key).into(),
                 chip_background: rgba(palette.chip).into(),
+                composer_background: rgba(palette.composer).into(),
+                composer_focus: rgba(palette.composer_focus).into(),
                 tab_background: rgba(palette.tab).into(),
                 tab_selected: rgba(palette.tab_selected).into(),
+                claude: rgba(palette.claude).into(),
                 text_primary: rgba(palette.text_primary).into(),
                 text_secondary: rgba(palette.text_secondary).into(),
                 text_secondary_on_surface: rgba(palette.text_secondary_on_surface).into(),

@@ -6,19 +6,20 @@ controls it uses are in [design.md](design.md). What sending does, Stop, and the
 conversation over a docked composer are in [session.md](session.md).
 
 - **Placement.** One column, at most `COMPOSER_MAX_WIDTH` (720) wide, centered in the
-  card and `SPACE_3` clear of its sides when the card is narrower. A draft session, one
-  with no message yet, centers the column in the card under a question naming its
-  project, "What should we work on in web?", in semibold `TEXT_HEADING` (18)
-  `text_primary`, 24 above the box; a long name truncates and the question mark stays.
-  A session that has seen work docks the column to the card's bottom, `SPACE_3` above
-  its edge, under its conversation. Pages and the welcome are as they were.
-- **The box** reads as a text field: `field_background`, a `border` hairline that turns
-  `focus_ring` while the text has focus, and `COMPOSER_RADIUS` (12) corners, rounder than
-  a field's since it holds a toolbar too. Its content stands `SPACE_3` in, less the
-  hairline. No shadow and no material of its own. A click anywhere in it puts the cursor
-  in the text.
+  card and `SPACE_3` clear of its sides when the card is narrower: the context row over
+  the box. A draft session, one with no message yet, sets the column a little above the
+  card's middle: the space above it is `DRAFT_RISE` (45%) of the height left. A
+  session that has seen work docks the column to the card's bottom, `SPACE_3` above its
+  edge, under its conversation. Pages and the welcome are as they were.
+- **The box** reads as a text field: `composer_background`, opaque (`202021` dark, the
+  selected tab's gray; white light), a `border` hairline that turns
+  `composer_focus` while the text has focus, and `COMPOSER_RADIUS` (12) corners, rounder
+  than a field's since it holds a toolbar too. `composer_focus` is text primary at 22%,
+  quieter than a field's `focus_ring`: the box is large, and its cursor already shows
+  where typing goes. Its content stands `SPACE_3` in, less the hairline. No shadow and
+  no material of its own. A click anywhere in it puts the cursor in the text.
 - **The text** shows "Ask anything, or describe a change" in `text_secondary` while
-  empty. It starts `COMPOSER_MIN_LINES` (2) lines tall, so a draft's composer and a
+  empty. It starts `COMPOSER_MIN_LINES` (3) lines tall, so a draft's composer and a
   docked one stand the same height, and grows a line at a time as it wraps or breaks, to
   `COMPOSER_MAX_LINES` (10): docked, it grows upward and the toolbar stays put. Past ten
   lines it scrolls inside, keeping the cursor in view; the wheel scrolls it too, until
@@ -31,16 +32,20 @@ conversation over a docked composer are in [session.md](session.md).
   the text (Ctrl-Home and Ctrl-End elsewhere). Pasted text keeps its line breaks, each
   `\r\n` and `\r` read as one. The sidebar's search and the Add project palette hold one
   line, as before: a break pasted there is a space.
-- **The toolbar**, `CONTROL_SIZE` high, `SPACE_2` under the text: Attach, then three
-  pills, the model ("Opus 5.5"), the effort ("High") and the access ("Ask first"), then
-  Send at the trailing edge.
+- **The toolbar**, `CONTROL_SIZE` high, `SPACE_2` under the text, pulled left by half of
+  what Attach's button adds around its icon, so the `+` stands in the text's column: Attach, a `border`
+  hairline `ICON_SIZE` tall that sets it apart from the choices, then two pills, the
+  model (Claude's logo, "Opus 5.5") and the effort (a gauge, "High"), then Send at the
+  trailing edge.
   - Attach, "Attach files", opens the system's picker for files and folders, several at
     once, with an Attach button; cancelling it changes nothing, and a second click while
     it is open opens no other.
-  - A pill is `CONTROL_SIZE` high with `CONTROL_RADIUS`, its value in `TEXT_BODY`
-    `text_secondary` and a chevron at `ICON_SIZE_SMALL`, unfilled at rest and on `hover`
+  - A pill is `CONTROL_SIZE` high with `CONTROL_RADIUS`: its mark at `ICON_SIZE`, the
+    agent's logo in its brand's color (`claude`, `d97757` dark, `c6613f` light) or the
+    gauge in `text_secondary`, its value in `TEXT_BODY` `text_secondary` and a chevron
+    at `ICON_SIZE_SMALL`, unfilled at rest and on `hover`
     under the pointer and while its menu is open, as the sidebar's menu button is. Its
-    tooltip names it: "Model", "Effort", "Access". A long value truncates.
+    tooltip names it: "Model", "Effort". A long value truncates.
   - Send is a `CONTROL_SIZE` circle of `text_primary` with an up arrow in
     `panel_background`: at 40% with "Type a message to send" while there is no
     attachment and the text is empty or only whitespace, full with "Send (↩)" otherwise.
@@ -80,27 +85,45 @@ conversation over a docked composer are in [session.md](session.md).
   rules) upward from the pill's leading edge, draft or docked: the composer sits low in
   the card, and a menu that never covers its pill can't take the next click on the pill
   as a pick. The model menu lists each agent's name ("Claude Code") over its models,
-  Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5; the effort menu Low, Medium, High, Extra
-  high, Max; the access menu Ask first, Accept edits, Plan, Auto and Full access, each
-  over a `TEXT_SMALL` line on what it allows. A check marks the current value. Focus goes
+  Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5, each after the agent's logo; the effort
+  menu Low, Medium, High, Extra high, Max. A check marks the current value. Focus goes
   back to the text when a picker closes.
 - **Choices are saved** with the session at once, and the last one made becomes what a
   new session, and a draft opened again, start from. A file from before choices starts
-  on Opus 5.5, High, Ask first. A model or agent this build doesn't know (a newer
+  on Opus 5.5, High. A model or agent this build doesn't know (a newer
   build's, or a retired model) shows as written, checked under its agent, and stays in
   the file until another is picked; an effort or access it doesn't know reads as the
   default. The agents and their options are a table in `crates/workspace/src/agents.rs`,
   which turns a choice into the agent's arguments: `--model`, `--effort` and
-  `--permission-mode` (Ask first is `manual`, Full access `bypassPermissions`). A choice
-  made while the agent runs goes to it at once.
+  `--permission-mode`. A choice made while the agent runs goes to it at once.
+- **Access is not a choice.** Every session runs in Full access
+  (`--permission-mode bypassPermissions`): the agent edits and runs commands without
+  asking. A session saved with another access by an older build still starts in Full
+  access; the saved value stays in the file.
 - **The problem line** under the box, in `TEXT_SMALL` `text_primary` in line with the
   text, also says why a message couldn't be sent or a choice was refused, a command in
   backticks in the monospaced font, until the next edit.
-- **The context row**, `SPACE_2` under the box and in line with its text: the project's
-  folder, `~` for home and cut at its start, then the branch its checkout is on, or the
-  commit, cut in the middle, each after its `ICON_SIZE_SMALL` icon, in `TEXT_SMALL`
-  `text_secondary`. Outside git there is no branch. It is the branch the sidebar's cards
-  show, read as [sidebar.md](sidebar.md) says.
+- **The context row**, over the box and `SPACE_1` above it, `CONTROL_SIZE` tall, in
+  `TEXT_BODY` `text_secondary`, its icons at `ICON_SIZE` in the column of the box's text:
+  - At the leading edge, the project's pill: a folder, the project's name as the sidebar
+    shows it and a chevron at `ICON_SIZE_SMALL`, `SPACE_2` apart, on
+    `composer_background` under a `border` hairline with `CONTROL_RADIUS`, as the box
+    is, `hover` washed over it under the pointer and while its menu is open; no tooltip. A long name truncates
+    before the branch does.
+  - At the trailing edge, the branch its checkout is on, or the commit, cut in the
+    middle, at most 40% of the row, the whole of it in the tooltip. Outside git there is
+    no branch. It is the branch the sidebar's cards show, read as
+    [sidebar.md](sidebar.md) says.
+- **The project menu**, from the pill: downward from a draft, upward from a docked
+  composer, 256 wide at least. It leads with a "Search projects" field, 36 tall over a
+  hairline, its text starting in the items' icon column, which takes the focus and
+  starts empty; then the projects whose name contains the search, folding
+  case and apostrophes as the session search does (`o'z` finds `oʻzbek`), most recently
+  active first, each after a folder, the session's own checked at the row's end; "No
+  matching projects" when none does; then a hairline and "New project", which opens Add
+  project. Its hairlines run edge to edge. Arrows move the highlight, Enter picks it, else the first project. Picking
+  another project shows its draft, reopened if it has one, as New session there would;
+  picking the session's own changes nothing.
 - **One composer per open session.** A message half written, its attachments included,
   stays with its session while another tab is shown, and goes when its tab closes; it
   isn't saved. A pasted image's file stays in `attachments/`. Showing a
@@ -111,15 +134,20 @@ conversation over a docked composer are in [session.md](session.md).
 
 ## Contrast
 
-WCAG 2 contrast on the composer's field over the card, the lower over a white and a
-black desktop, glass (dark / light):
+WCAG 2 contrast on the composer's box (dark / light). The box is opaque, so its text
+reads the same over any desktop; the rows not recomputed below are from the
+translucent field it had before:
 
 | Against the field | Contrast |
 | --- | --- |
-| Placeholder, `text_secondary` | 6.24 / 5.91 |
-| Text, `text_primary` | 11.95 / 13.19 |
-| `focus_ring` hairline | 3.71 / 3.14 |
+| Placeholder, `text_secondary` | 7.58 / 7.72 |
+| Text, `text_primary` | 14.52 / 17.24 |
+| `composer_focus` hairline | 1.96 sampled, dark |
 | Send's arrow, against its fill | 6.84 / 9.26 |
+
+The focused hairline is under the 3:1 a field's `focus_ring` keeps, on purpose: the
+box's cursor shows focus, and the owner asked for a quieter edge. Over the card it
+reads 2.28.
 
 Sampled on screen over the desktop behind the window at the time, the placeholder read
 6.58 / 6.50 and the text 12.62 / 14.55, between the arithmetic's worst and best.
