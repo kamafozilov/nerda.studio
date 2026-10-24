@@ -3,8 +3,14 @@
 //! and its window opens under the desktop picture, where no screen shows it, so
 //! the owner's screens and keyboard stay theirs. It prints the window's number,
 //! which `screencapture -l` takes to capture the window where it is.
+//!
+//! macOS gives a window on no screen no frames, so the app asks for them
+//! itself, as often as a display would: what animates, animates there, and
+//! its cost can be measured, without bringing the window in front.
 
-use gpui::{ActivationPolicy, App, Window};
+use std::time::Duration;
+
+use gpui::{ActivationPolicy, App, Window, WindowHandle};
 
 use crate::native_window::{self, Place};
 
@@ -28,4 +34,23 @@ pub fn show_hidden(window: &Window) {
     if let Some(number) = native_window::number(window) {
         println!("window {number}");
     }
+}
+
+/// How often a background window draws what changed: a 60 Hz display's pace.
+const FRAME: Duration = Duration::from_micros(16_667);
+
+/// Draws `window` whenever something in it changed, a frame at a time, for
+/// as long as it is open. A frame with nothing changed draws nothing.
+pub fn drive_frames<V: 'static>(window: WindowHandle<V>, cx: &mut App) {
+    cx.spawn(async move |cx| {
+        loop {
+            cx.background_executor().timer(FRAME).await;
+            let Ok(view) = window.update(cx, |_, window, _| native_window::view(window)) else {
+                break;
+            };
+            // Outside the window's update: drawing runs inside this call.
+            native_window::display(view);
+        }
+    })
+    .detach();
 }

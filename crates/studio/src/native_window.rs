@@ -16,6 +16,34 @@ pub fn number(window: &Window) -> Option<isize> {
     }
 }
 
+/// The window's native view, to draw it outside the window's update.
+#[cfg(target_os = "macos")]
+pub type View = objc2::rc::Retained<objc2_app_kit::NSView>;
+#[cfg(not(target_os = "macos"))]
+pub type View = ();
+
+/// The window's native view; `None` when it can't be reached.
+pub fn view(window: &Window) -> Option<View> {
+    #[cfg(target_os = "macos")]
+    return macos::view(window);
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = window;
+        Some(())
+    }
+}
+
+/// Draws the window of `view` now if anything in it changed. Call it
+/// outside any update of the window, since GPUI draws inside it.
+pub fn display(view: Option<View>) {
+    #[cfg(target_os = "macos")]
+    if let Some(view) = view {
+        view.display();
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = view;
+}
+
 /// Where a window that opened hidden goes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Place {
@@ -53,6 +81,16 @@ mod macos {
     #[link(name = "CoreGraphics", kind = "framework")]
     unsafe extern "C" {
         fn CGWindowLevelForKey(key: i32) -> i32;
+    }
+
+    pub fn view(window: &Window) -> Option<Retained<NSView>> {
+        let RawWindowHandle::AppKit(handle) = HasWindowHandle::window_handle(window).ok()?.as_raw()
+        else {
+            return None;
+        };
+        // SAFETY: GPUI hands out its live content view, retained here so it
+        // outlives the window's update.
+        unsafe { Retained::retain(handle.ns_view.cast::<NSView>().as_ptr()) }
     }
 
     pub fn ns_window(window: &Window) -> Option<Retained<NSWindow>> {

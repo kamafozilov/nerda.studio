@@ -72,12 +72,15 @@ What it gives the app:
   a prepared folder (a missing, corrupt or newer `workspace.json`) and keeps it.
 - The background: no Dock icon, no ⌘Tab entry, no menu bar, never activated, its window
   inactive and under the desktop picture, on no screen. The owner keeps the screens and
-  the keyboard.
+  the keyboard. The app draws its own frames there at 60 Hz, so motion runs, a plain
+  `screencapture` shows the current frame, and CPU can be measured.
 - Arguments after `--` go to the app.
 
 `--front` runs it as a regular app in front, for what only that shows: the active
 window's look, the menu bar, an on-screen region (`screencapture -R`), contrast over a
-window put behind it. It takes the owner's focus, so keep that run short. Taking the
+window put behind it. It takes the owner's keyboard and mouse away from their work, so
+run it only when the owner asks for it in the session; never for motion, CPU or
+screenshots, which the background build gives. Taking the
 owner's window over is the one case for `cargo run -p studio`, and only when the change
 is that takeover.
 
@@ -91,10 +94,8 @@ The agent's terminal has no Accessibility permission, so macOS drops synthetic O
 - Motion: log the animated value per frame with timestamps; slow a spring tenfold to
   screenshot its middle.
 - Pixels: `screencapture -x -o -l <window>` for a background build, sampled in sRGB.
-  Under the desktop picture the window draws its first frame only: after a change the
-  probe calls the window's `NSView` `display()` before each capture, outside any window
-  update, as GPUI renders inside it.
-  For contrast, run with `--front` and put a solid borderless window behind the app.
+  Give a change a frame or two (50 ms) before capturing it.
+  For contrast over a window behind the app, `--front` with the owner's go-ahead.
 - Light appearance without touching the system:
   `cargo run -p dev -- try -- -NSRequiresAquaSystemAppearance YES`.
 - Agents: `NERDA_AGENT_PROGRAM=<repo>/target/debug/fake-agent` (`cargo build -p agent

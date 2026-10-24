@@ -198,6 +198,9 @@ fn open_window(
             Arrival::Background => background::show_hidden(window),
         })
         .ok();
+    if arrival == Arrival::Background {
+        background::drive_frames(window, cx);
+    }
     window
 }
 
