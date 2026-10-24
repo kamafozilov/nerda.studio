@@ -5,8 +5,18 @@ use gpui::{Pixels, px};
 /// Height of the window's top row, across the sidebar and the main area. The
 /// macOS traffic lights are centered on it.
 pub const HEADER_HEIGHT: Pixels = px(44.);
-/// Width of the sidebar.
-pub const SIDEBAR_WIDTH: Pixels = px(240.);
+/// Width of the sidebar until its edge is dragged, and again after a
+/// double-click on its edge.
+pub const SIDEBAR_WIDTH: Pixels = px(264.);
+/// Narrowest the sidebar's edge drags to: a session row keeps its title, its
+/// age and its project's name readable.
+pub const SIDEBAR_MIN_WIDTH: Pixels = px(216.);
+/// Widest the sidebar's edge drags to: at the window's 720 minimum the card
+/// keeps over 300 points.
+pub const SIDEBAR_MAX_WIDTH: Pixels = px(400.);
+/// Width of the strip over the sidebar's edge that drags it, centered on the
+/// edge, half over the card.
+pub const SIDEBAR_RESIZE_TARGET: Pixels = px(8.);
 
 /// Gap between the main area's card and the window's edges; on the left only
 /// while the sidebar is closed, since the open sidebar meets the card.

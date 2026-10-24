@@ -65,6 +65,8 @@ struct FileRef<'a> {
     pages: Vec<PageTabRef>,
     last_choice: &'a AgentChoice,
     backdrop: &'a Backdrop,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sidebar_width: Option<f32>,
 }
 
 /// A page's tab and its index among all tabs.
@@ -106,6 +108,9 @@ struct FileV1 {
     /// Files written before there was a backdrop have none.
     #[serde(default)]
     backdrop: Backdrop,
+    /// Files written before the sidebar could be resized have none.
+    #[serde(default)]
+    sidebar_width: Option<f32>,
 }
 
 #[derive(Deserialize)]
@@ -165,6 +170,7 @@ impl Workspace {
                 .collect(),
             last_choice: &self.last_choice,
             backdrop: &self.backdrop,
+            sidebar_width: self.sidebar_width,
         };
         serde_json::to_vec_pretty(&file).map_err(io::Error::other)
     }
@@ -205,6 +211,7 @@ impl Workspace {
             sort: file.sort,
             last_choice: file.last_choice,
             backdrop: file.backdrop,
+            sidebar_width: file.sidebar_width,
             ..Workspace::default()
         };
         workspace.set_scope(file.scope);

@@ -6,6 +6,7 @@
 mod commands;
 mod composers;
 mod quit;
+mod sidebar_edge;
 mod top_row;
 
 use std::{
@@ -15,10 +16,10 @@ use std::{
 
 use gpui::{
     AnimationExt, App, ClickEvent, Context, DismissEvent, Entity, FocusHandle, IntoElement,
-    ParentElement, Render, SpringAnimation, SpringConfig, SpringState, StyleRefinement, Styled,
-    Subscription, Task, Window, actions, div, prelude::*,
+    ParentElement, Pixels, Render, SpringAnimation, SpringConfig, SpringState, StyleRefinement,
+    Styled, Subscription, Task, Window, actions, div, prelude::*,
 };
-use theme::{MAIN_INSET, MAIN_RADIUS, SIDEBAR_WIDTH, TEXT_BODY, Theme, motion};
+use theme::{MAIN_INSET, MAIN_RADIUS, TEXT_BODY, Theme, motion};
 use workspace::{SessionId, Tab, Timestamp, Visits};
 
 use crate::{
@@ -77,6 +78,10 @@ pub struct Shell {
     /// session, whose composer takes focus.
     tab_shown: Option<Tab>,
     sidebar_open: bool,
+    /// The open sidebar's width, as its edge was last dragged.
+    sidebar_width: Pixels,
+    /// While the sidebar's edge is dragged; see `sidebar_edge`.
+    resizing: Option<sidebar_edge::Resize>,
     /// The left button went down on the titlebar; the next move drags the window.
     titlebar_pressed: bool,
     add_project: Option<OpenPalette>,
@@ -178,6 +183,7 @@ impl Shell {
             )
         });
         let tabs = cx.new(|cx| TabStrip::new(store.clone(), cx));
+        let sidebar_width = sidebar_edge::saved_width(store.read(cx));
         let mut shell = Self {
             focus_handle,
             store,
@@ -187,6 +193,8 @@ impl Shell {
             composers: HashMap::new(),
             tab_shown: None,
             sidebar_open,
+            sidebar_width,
+            resizing: None,
             titlebar_pressed: false,
             add_project: None,
             quit_hint: None,
@@ -261,6 +269,11 @@ impl Shell {
         self.sidebar_open
     }
 
+    #[cfg(all(target_os = "macos", test))]
+    pub fn sidebar_width(&self) -> Pixels {
+        self.sidebar_width
+    }
+
     fn toggle_sidebar(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         cx.set_reduce_motion(accessibility::reduce_motion());
         self.sidebar_open = !self.sidebar_open;
@@ -299,6 +312,7 @@ impl Shell {
     /// the sidebar's edge sweeps over them as it narrows, and the card slides
     /// over the space they leave.
     fn sidebar(&self) -> impl IntoElement {
+        let width = self.sidebar_width;
         div()
             .relative()
             .flex_none()
@@ -309,7 +323,7 @@ impl Shell {
                     .absolute()
                     .top_0()
                     .left_0()
-                    .w(SIDEBAR_WIDTH)
+                    .w(width)
                     .h_full()
                     // Cached: a frame of the tabs or the card doesn't lay the
                     // list out again; the sidebar redraws when it changes.
@@ -324,7 +338,7 @@ impl Shell {
                 self.sidebar_spring(),
                 move |sidebar, phase: f32| {
                     let phase = phase.clamp(0., 1.);
-                    sidebar.w(SIDEBAR_WIDTH * phase).opacity(phase)
+                    sidebar.w(width * phase).opacity(phase)
                 },
             )
     }
@@ -423,15 +437,21 @@ impl Render for Shell {
             .child(self.top_row(window, cx))
             .child(
                 div()
+                    .relative()
                     .flex_1()
                     .min_h_0()
                     .flex()
                     .child(self.sidebar())
-                    .child(self.main_area(cx)),
+                    .child(self.main_area(cx))
+                    // Only at rest: while the sidebar slides its edge moves.
+                    .when(self.sidebar_open && self.tabs_held.is_none(), |row| {
+                        row.child(self.sidebar_edge(cx))
+                    }),
             )
             // Over everything, the top row included, while it is open.
             .children(self.add_project.as_ref().map(|open| open.palette.clone()))
             .children(self.quit_hint(cx))
+            .children(self.resize_cover(cx))
     }
 }
 

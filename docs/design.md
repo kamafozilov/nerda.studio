@@ -108,7 +108,11 @@ insets and sizes:
 - The window has one top row, `HEADER_HEIGHT` (44), across the whole window on the glass:
   the macOS traffic lights, the sidebar toggle, Back and Forward, then the tabs over the
   card. Everything in it centers on it.
-- The sidebar is `SIDEBAR_WIDTH` (240), under the top row, and meets the card. `Cmd-B`
+- The sidebar is `SIDEBAR_WIDTH` (264), under the top row, and meets the card. Its edge
+  drags it between `SIDEBAR_MIN_WIDTH` (216) and `SIDEBAR_MAX_WIDTH` (400) on an
+  `SIDEBAR_RESIZE_TARGET` (8) strip centered on the edge, under the resize cursor; a
+  double-click there puts it back to `SIDEBAR_WIDTH`. The width is saved in
+  `workspace.json` when the drag ends (`crates/studio/src/shell/sidebar_edge.rs`). `Cmd-B`
   (`Ctrl-B` elsewhere) or its toggle hides it: the toggle stays in place, Back and Forward
   ride the sidebar's edge, `SPACE_2` inside it in line with the sidebar's own trailing
   controls, and come to rest after the toggle.

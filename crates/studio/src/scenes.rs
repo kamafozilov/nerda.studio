@@ -4,6 +4,8 @@
 
 use crate::scene::{Scene, Settings};
 
+mod sidebar_resize;
+
 /// Relative luminance of an sRGB pixel, 0 to 1.
 fn luminance([r, g, b, _]: [u8; 4]) -> f32 {
     let channel = |c: u8| {

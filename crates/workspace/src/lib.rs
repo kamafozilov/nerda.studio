@@ -70,6 +70,9 @@ pub struct Workspace {
     last_choice: AgentChoice,
     /// What stands behind a new session's composer.
     backdrop: Backdrop,
+    /// The sidebar's width in points as last dragged; `None` keeps the
+    /// app's default.
+    sidebar_width: Option<f32>,
 }
 
 impl Workspace {
@@ -153,6 +156,16 @@ impl Workspace {
 
     pub fn set_backdrop(&mut self, backdrop: Backdrop) {
         self.backdrop = backdrop;
+    }
+
+    /// The sidebar's width as last dragged, unchecked: the app keeps it
+    /// within its bounds.
+    pub fn sidebar_width(&self) -> Option<f32> {
+        self.sidebar_width
+    }
+
+    pub fn set_sidebar_width(&mut self, width: Option<f32>) {
+        self.sidebar_width = width;
     }
 
     pub fn last_choice(&self) -> &AgentChoice {

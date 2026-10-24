@@ -254,6 +254,55 @@ impl Scene {
         }));
     }
 
+    /// Double-clicks at `x`, `y`, as two clicks the second of which counts two.
+    pub fn double_click(&mut self, x: f32, y: f32) {
+        self.click(x, y);
+        let position = point(px(x), px(y));
+        self.input(PlatformInput::MouseDown(MouseDownEvent {
+            button: MouseButton::Left,
+            position,
+            modifiers: Modifiers::default(),
+            click_count: 2,
+            first_mouse: false,
+        }));
+        self.input(PlatformInput::MouseUp(MouseUpEvent {
+            button: MouseButton::Left,
+            position,
+            modifiers: Modifiers::default(),
+            click_count: 2,
+        }));
+    }
+
+    /// Presses at `from`, moves to `to` in ten steps with the button down,
+    /// and lets go there; `to` may lie outside the window.
+    pub fn drag(&mut self, from: (f32, f32), to: (f32, f32)) {
+        self.hover(from.0, from.1);
+        self.input(PlatformInput::MouseDown(MouseDownEvent {
+            button: MouseButton::Left,
+            position: point(px(from.0), px(from.1)),
+            modifiers: Modifiers::default(),
+            click_count: 1,
+            first_mouse: false,
+        }));
+        for step in 1..=10 {
+            let t = step as f32 / 10.;
+            self.input(PlatformInput::MouseMove(MouseMoveEvent {
+                position: point(
+                    px(from.0 + (to.0 - from.0) * t),
+                    px(from.1 + (to.1 - from.1) * t),
+                ),
+                pressed_button: Some(MouseButton::Left),
+                modifiers: Modifiers::default(),
+            }));
+        }
+        self.input(PlatformInput::MouseUp(MouseUpEvent {
+            button: MouseButton::Left,
+            position: point(px(to.0), px(to.1)),
+            modifiers: Modifiers::default(),
+            click_count: 1,
+        }));
+    }
+
     fn input(&mut self, event: PlatformInput) {
         self.cx
             .update_window(self.window.into(), |_, window, cx| {

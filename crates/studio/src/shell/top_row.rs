@@ -6,9 +6,7 @@ use gpui::{
     AnimationExt, ClickEvent, Context, IntoElement, MouseButton, ParentElement, StyleRefinement,
     Styled, Window, div, prelude::*,
 };
-use theme::{
-    CONTROL_RADIUS, CONTROL_SIZE, HEADER_HEIGHT, MAIN_INSET, SIDEBAR_WIDTH, SPACE_2, Theme,
-};
+use theme::{CONTROL_RADIUS, CONTROL_SIZE, HEADER_HEIGHT, MAIN_INSET, SPACE_2, Theme};
 
 use super::{GoBack, GoForward, Shell};
 use crate::{
@@ -26,8 +24,8 @@ fn closed_width() -> gpui::Pixels {
 
 /// The tab strip's width beside the open sidebar, its narrower: the window
 /// less the open navigation and the inset at the right.
-fn open_strip_width(window: &Window) -> gpui::Pixels {
-    window.viewport_size().width - SIDEBAR_WIDTH - MAIN_INSET
+fn open_strip_width(window: &Window, sidebar_width: gpui::Pixels) -> gpui::Pixels {
+    window.viewport_size().width - sidebar_width - MAIN_INSET
 }
 
 impl Shell {
@@ -36,7 +34,7 @@ impl Shell {
         let strip = match self.tabs_held {
             Some(_) => StyleRefinement::default()
                 .flex_none()
-                .w(open_strip_width(window))
+                .w(open_strip_width(window, self.sidebar_width))
                 .h_full(),
             None => StyleRefinement::default().flex_1().min_w_0().h_full(),
         };
@@ -100,6 +98,7 @@ impl Shell {
     /// ride the sidebar's edge, coming to rest beside the toggle once it closes.
     fn navigation(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
+        let sidebar_width = self.sidebar_width;
         let can_go_back = self.visits.can_go_back();
         let can_go_forward = self.visits.can_go_forward();
         div()
@@ -148,7 +147,7 @@ impl Shell {
                     // Open, the arrows end `SPACE_2` inside the sidebar's edge, in
                     // line with the sidebar's own trailing controls.
                     navigation
-                        .w(closed + (SIDEBAR_WIDTH - closed) * phase)
+                        .w(closed + (sidebar_width - closed) * phase)
                         .pr(SPACE_2 * phase)
                 },
             )
