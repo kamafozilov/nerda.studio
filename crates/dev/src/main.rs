@@ -10,7 +10,8 @@
 //!
 //! Another launch, such as an agent's build, takes the window over too; once it
 //! quits, the runner opens its own build again. If the app quits on its own, the
-//! next change brings it back.
+//! next change brings it back. Only the first launch comes to the front; one the
+//! runner makes on its own opens behind the other windows.
 //!
 //! It runs only in the owner's checkout: in a linked git worktree, where a
 //! session works on its own branch, it would put that branch's half-done
@@ -27,6 +28,7 @@ mod trial;
 
 use std::{
     collections::hash_map::DefaultHasher,
+    ffi::OsStr,
     fs,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
@@ -104,13 +106,22 @@ struct Running {
     older: Vec<App>,
     /// Another launch has the window; the runner's build comes back once it quits.
     taken_over: bool,
+    /// The runner has launched a build before, so the next one stays behind
+    /// unless it takes over a window in front.
+    launched: bool,
 }
 
 impl Running {
     fn launch(&mut self, root: &Path) {
         self.older.extend(self.current.take());
         self.taken_over = false;
-        self.current = App::launch(root, &[], &[]).or_else(|| self.older.pop());
+        let env: &[(&str, &OsStr)] = if self.launched {
+            &[("NERDA_STAY_BEHIND", OsStr::new("1"))]
+        } else {
+            &[]
+        };
+        self.launched = true;
+        self.current = App::launch(root, env, &[]).or_else(|| self.older.pop());
     }
 
     /// Notices the builds that quit, and what that leaves running.

@@ -12,7 +12,7 @@ mod top_row;
 use std::time::{Duration, Instant};
 
 use gpui::{
-    AnimationExt, ClickEvent, Context, DismissEvent, Entity, FocusHandle, IntoElement,
+    AnimationExt, App, ClickEvent, Context, DismissEvent, Entity, FocusHandle, IntoElement,
     ParentElement, Render, SpringAnimation, SpringConfig, SpringState, StyleRefinement, Styled,
     Subscription, Task, Window, actions, div, prelude::*,
 };
@@ -20,8 +20,8 @@ use theme::{MAIN_INSET, MAIN_RADIUS, SIDEBAR_WIDTH, TEXT_BODY, Theme, motion};
 use workspace::{Tab, Timestamp, Visits};
 
 use crate::{
-    accessibility, add_project::AddProjectPalette, app_menu, instance::Screen, sidebar::Sidebar,
-    store::Store, system_theme, tabs::TabStrip, welcome,
+    accessibility, add_project::AddProjectPalette, app_menu, instance::Screen, native_window,
+    sidebar::Sidebar, store::Store, system_theme, tabs::TabStrip, welcome,
 };
 
 pub use commands::ActivateTab;
@@ -217,11 +217,16 @@ impl Shell {
     }
 
     /// What a newer instance taking over needs to open where this one is.
-    pub fn screen(&self, window: &Window) -> Screen {
+    pub fn screen(&self, window: &Window, cx: &App) -> Screen {
         Screen {
             bounds: window.window_bounds(),
+            display: window
+                .display(cx)
+                .and_then(|display| display.uuid().ok())
+                .map(|uuid| uuid.as_u128()),
             sidebar_open: self.sidebar_open,
             active: window.is_window_active(),
+            window: native_window::number(window),
         }
     }
 

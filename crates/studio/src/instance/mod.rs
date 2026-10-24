@@ -19,6 +19,10 @@
 //! Live reload (`cargo run -p dev`) is this same takeover: the runner starts
 //! each new build, and the build takes over from whichever instance runs.
 //!
+//! The instance holding the lock also keeps the window's place in
+//! `window.txt` when it quits, so the next launch that takes over from no one
+//! opens there, on the same display, instead of centered on the main one.
+//!
 //! Without Unix sockets (Windows, for now) a second launch can't ask for the
 //! window, so it leaves the running instance alone and quits.
 
@@ -34,6 +38,7 @@ use std::{
 };
 
 use gpui::{App, Entity, Global, Window};
+use screen::Saved;
 pub use screen::Screen;
 
 use crate::{shell::Shell, store::Store};
@@ -50,6 +55,9 @@ const LOCK_WAIT: Duration = Duration::from_secs(2);
 const RESUME_WAIT: Duration = Duration::from_millis(500);
 /// Set by the live-reload runner on the builds it starts.
 const RUNNER: &str = "NERDA_DEV_RUNNER";
+/// Set by the runner when it brings the app back on its own, after the app
+/// quit or another launch that had taken the window over quit.
+const STAY_BEHIND: &str = "NERDA_STAY_BEHIND";
 
 /// The right to run, won at launch before the app starts.
 pub struct Claim {
@@ -59,6 +67,8 @@ pub struct Claim {
     #[cfg(unix)]
     listener: Option<std::os::unix::net::UnixListener>,
     previous: Option<Previous>,
+    /// `window.txt` as this launch found it.
+    saved: Saved,
 }
 
 /// The instance this one took over from, waiting for `ready`.
@@ -94,12 +104,15 @@ struct Files {
     lock: PathBuf,
     #[cfg_attr(not(unix), allow(dead_code))]
     socket: PathBuf,
+    /// Where the window was when the app last quit.
+    place: PathBuf,
 }
 
 impl Files {
     fn find() -> Option<Files> {
         let lock = workspace::default_instance_lock_path()?;
         let folder = lock.parent()?.to_path_buf();
+        let place = folder.join("window.txt");
         let socket = folder.join("instance.sock");
         // A socket's path fits in 103 bytes; a long home folder's goes to the
         // user's own temp folder, named for the data folder.
@@ -110,7 +123,11 @@ impl Files {
             folder.hash(&mut hasher);
             std::env::temp_dir().join(format!("nerda-studio-{:016x}.sock", hasher.finish()))
         };
-        Some(Files { lock, socket })
+        Some(Files {
+            lock,
+            socket,
+            place,
+        })
     }
 
     fn open_lock(&self) -> io::Result<File> {
@@ -134,6 +151,7 @@ pub fn claim() -> Result<Claim, ClaimError> {
         #[cfg(unix)]
         listener: None,
         previous: None,
+        saved: Saved::Kept,
     };
     let Some(files) = Files::find() else {
         return Ok(unguarded);
@@ -203,6 +221,7 @@ impl Claim {
         Claim {
             #[cfg(unix)]
             listener: socket::bind(&files.socket),
+            saved: screen::read(&files.place),
             files: Some(files),
             lock: Some(lock),
             previous,
@@ -214,6 +233,11 @@ impl Claim {
         self.previous.as_ref().and_then(|previous| previous.screen)
     }
 
+    /// Where the window was when the app last quit.
+    pub fn remembered(&self) -> Option<Screen> {
+        self.saved.screen()
+    }
+
     /// Starts answering later launches, and returns the instance this one took
     /// over from, which waits for [`Previous::ready_after_first_frame`].
     pub fn serve(self, store: Entity<Store>, cx: &mut App) -> Option<Previous> {
@@ -223,6 +247,7 @@ impl Claim {
             #[cfg(unix)]
             listener,
             previous,
+            saved,
         } = self;
         if let Some(files) = files {
             cx.set_global(Instance {
@@ -231,6 +256,13 @@ impl Claim {
                 handing_off: false,
                 store,
             });
+            if saved.writable() {
+                cx.on_app_quit(|cx| {
+                    remember(cx);
+                    async {}
+                })
+                .detach();
+            }
             #[cfg(unix)]
             if let Some(listener) = listener {
                 socket::accept(listener, cx);
@@ -276,18 +308,33 @@ fn hand_off(cx: &mut App) -> Option<Option<Screen>> {
     instance.handing_off = true;
     let store = instance.store.clone();
     store.update(cx, |store, _| store.hand_off());
-    let screen = cx
-        .windows()
+    let screen = on_screen(cx);
+    // Only after the last save is on disk, so the new instance loads it.
+    cx.global_mut::<Instance>().lock = None;
+    Some(screen)
+}
+
+/// What the main window shows where, if it is open.
+fn on_screen(cx: &mut App) -> Option<Screen> {
+    cx.windows()
         .into_iter()
         .find_map(|window| window.downcast::<Shell>())
         .and_then(|window| {
             window
-                .update(cx, |shell, window, _| shell.screen(window))
+                .update(cx, |shell, window, cx| shell.screen(window, cx))
                 .ok()
-        });
-    // Only after the last save is on disk, so the new instance loads it.
-    cx.global_mut::<Instance>().lock = None;
-    Some(screen)
+        })
+}
+
+/// At quit, keeps where the window is for the next launch; an instance that
+/// handed off leaves that to the one it handed off to.
+fn remember(cx: &mut App) {
+    if cx.global::<Instance>().lock.is_none() {
+        return;
+    }
+    if let Some(screen) = on_screen(cx) {
+        screen::write(&cx.global::<Instance>().files.place, &screen);
+    }
 }
 
 /// The new instance never took over: saves again if the lock is still free,
@@ -315,6 +362,12 @@ fn resume(cx: &mut App) {
     if let Some(listener) = listener {
         socket::accept(listener, cx);
     }
+}
+
+/// Whether this launch should open behind the other windows, as nobody asked
+/// to see it.
+pub fn stays_behind() -> bool {
+    std::env::var_os(STAY_BEHIND).is_some()
 }
 
 /// Under the live-reload runner the app quits when the runner lets go of its

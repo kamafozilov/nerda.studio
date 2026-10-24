@@ -7,6 +7,7 @@ mod background;
 mod bundle;
 mod instance;
 mod key_cap;
+mod native_window;
 mod shell;
 mod sidebar;
 mod sidebar_glyph;
@@ -20,10 +21,12 @@ mod welcome;
 
 use assets::Assets;
 use gpui::{
-    App, AppContext, Bounds, Entity, Global, KeyBinding, TitlebarOptions, WindowBounds,
+    App, AppContext, Bounds, DisplayId, Entity, Global, KeyBinding, TitlebarOptions, WindowBounds,
     WindowHandle, WindowOptions, px, size,
 };
 use gpui_platform::application;
+use instance::Screen;
+use native_window::Place;
 use shell::{
     ActivateTab, CloseAllTabs, CloseOtherTabs, CloseTab, GoBack, GoForward, NewSession, NextTab,
     PreviousTab, SearchSessions, Shell, ToggleSidebar,
@@ -61,13 +64,18 @@ fn main() {
         // click on the Dock icon brings back shows them as they were.
         let store = cx.new(Store::load);
         cx.set_global(Projects(store.clone()));
-        // Taking over from a running instance, the window opens where its was.
+        // Taking over from a running instance, the window opens where its was;
+        // otherwise where it was when the app last quit.
         let left = claim.screen();
+        let screen = left.or(claim.remembered());
         let previous = claim.serve(store.clone(), cx);
         instance::follow_runner(cx);
-        let bounds = left.map_or_else(|| centered(cx), |left| left.bounds);
-        let sidebar_open = left.is_none_or(|left| left.sidebar_open);
-        let window = open_window(bounds, store, sidebar_open, cx);
+        let (bounds, display) = screen
+            .and_then(|screen| screen.place(cx))
+            .unwrap_or_else(|| (centered(cx), None));
+        let sidebar_open = screen.is_none_or(|screen| screen.sidebar_open);
+        let arrival = arrival(left);
+        let window = open_window(bounds, display, store, sidebar_open, arrival, cx);
         if let Some(previous) = previous {
             window
                 .update(cx, |_, window, _| previous.ready_after_first_frame(window))
@@ -82,11 +90,37 @@ fn main() {
             })
             .detach();
         }
-        // A takeover while the editor is in front leaves it there.
-        if !background::requested() && left.is_none_or(|left| left.active) {
+        if arrival == Arrival::Front {
             cx.activate(true);
         }
     });
+}
+
+/// How the window comes on screen.
+#[derive(Clone, Copy, PartialEq)]
+enum Arrival {
+    /// In front, with the focus.
+    Front,
+    /// Without the focus, at a place among the other windows.
+    Quiet(Place),
+    /// Under the desktop picture, for `cargo run -p dev -- try`.
+    Background,
+}
+
+/// A launch takes the front only when someone asked for the app: a takeover
+/// while the editor is in front leaves it there, the new window taking the old
+/// one's place among the others, and the live-reload runner bringing the app
+/// back after it quit opens it behind them.
+fn arrival(left: Option<Screen>) -> Arrival {
+    if background::requested() {
+        return Arrival::Background;
+    }
+    match left {
+        Some(left) if left.active => Arrival::Front,
+        Some(left) => Arrival::Quiet(left.window.map_or(Place::Behind, Place::Above)),
+        None if instance::stays_behind() => Arrival::Quiet(Place::Behind),
+        None => Arrival::Front,
+    }
 }
 
 /// The projects the windows show, kept while none is open.
@@ -102,7 +136,7 @@ fn reopen(cx: &mut App) {
     let Some(Projects(store)) = cx.try_global::<Projects>() else {
         return;
     };
-    open_window(centered(cx), store.clone(), true, cx);
+    open_window(centered(cx), None, store.clone(), true, Arrival::Front, cx);
     cx.activate(true);
 }
 
@@ -114,16 +148,19 @@ fn centered(cx: &App) -> WindowBounds {
 /// Opens the main window on `store`.
 fn open_window(
     bounds: WindowBounds,
+    display_id: Option<DisplayId>,
     store: Entity<Store>,
     sidebar_open: bool,
+    arrival: Arrival,
     cx: &mut App,
 ) -> WindowHandle<Shell> {
     let theme = *Theme::of(cx);
-    let background = background::requested();
+    let front = arrival == Arrival::Front;
     let window = cx
         .open_window(
             WindowOptions {
                 window_bounds: Some(bounds),
+                display_id,
                 window_min_size: Some(size(px(720.), px(480.))),
                 // Windows keeps its system titlebar until the app draws its own
                 // caption buttons; macOS draws the traffic lights over our glass.
@@ -138,19 +175,21 @@ fn open_window(
                 app_owns_titlebar_drag: true,
                 window_background: theme.window_background_appearance(),
                 app_id: Some("studio.nerda".into()),
-                // In the background it opens hidden, then behind every window.
-                focus: !background,
-                show: !background,
+                // Anywhere but the front it opens hidden, then goes to its place.
+                focus: front,
+                show: front,
                 ..Default::default()
             },
             |window, cx| cx.new(|cx| Shell::new(store, sidebar_open, window, cx)),
         )
         .expect("the main window opens");
-    if background {
-        window
-            .update(cx, |_, window, _| background::show_behind(window))
-            .ok();
-    }
+    window
+        .update(cx, |_, window, _| match arrival {
+            Arrival::Front => {}
+            Arrival::Quiet(place) => native_window::show(window, place),
+            Arrival::Background => background::show_hidden(window),
+        })
+        .ok();
     window
 }
 

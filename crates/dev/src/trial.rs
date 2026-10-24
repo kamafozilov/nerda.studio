@@ -4,7 +4,8 @@
 //! The build gets a data folder of its own, so it neither takes the owner's
 //! window over nor reads or saves the owner's workspace, and it runs in the
 //! background (the app's `background` module): no Dock icon, no focus, its
-//! window behind every other. It prints `window <number>` for
+//! window under the desktop picture. Several run at once, each with its own
+//! folder. It prints `window <number>` for
 //! `screencapture -l`. It quits when this command ends, by Ctrl-C, a kill or
 //! the time limit, so a forgotten build never stays open.
 //!

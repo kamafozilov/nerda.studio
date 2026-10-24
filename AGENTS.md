@@ -50,13 +50,16 @@ the owner asks for it. A session that does run in the owner's checkout keeps eve
 building, since the runner shows each one. Live reload (`cargo run -p dev`) refuses to
 run in a worktree: its builds would take the owner's window over.
 
+Several `try` builds can run at once, from one session or many: each has its own data
+folder and window.
+
 ### Launching the app
 
 Launch with `cargo run -p dev -- try`, never `cargo run -p studio`:
 
 1. Start it as a background task: `cargo run -p dev -- try --for 600`.
 2. Read `window <number>` from its output; `screencapture -x -o -l <number> shot.png`
-   captures the window while it stays behind the others.
+   captures the window where it is, under the desktop picture.
 3. When done, kill the `try` process; the app saves and quits with it. A forgotten one
    quits on its own after `--for` seconds (900 by default).
 
@@ -66,7 +69,8 @@ What it gives the app:
   the owner's window or reads and saves the owner's data. `--data <folder>` starts from
   a prepared folder (a missing, corrupt or newer `workspace.json`) and keeps it.
 - The background: no Dock icon, no ⌘Tab entry, no menu bar, never activated, its window
-  behind every other and inactive. The owner keeps the screen and the keyboard.
+  inactive and under the desktop picture, on no screen. The owner keeps the screens and
+  the keyboard.
 - Arguments after `--` go to the app.
 
 `--front` runs it as a regular app in front, for what only that shows: the active
@@ -85,6 +89,9 @@ The agent's terminal has no Accessibility permission, so macOS drops synthetic O
 - Motion: log the animated value per frame with timestamps; slow a spring tenfold to
   screenshot its middle.
 - Pixels: `screencapture -x -o -l <window>` for a background build, sampled in sRGB.
+  Under the desktop picture the window draws its first frame only: after a change the
+  probe calls the window's `NSView` `display()` before each capture, outside any window
+  update, as GPUI renders inside it.
   For contrast, run with `--front` and put a solid borderless window behind the app.
 - Light appearance without touching the system:
   `cargo run -p dev -- try -- -NSRequiresAquaSystemAppearance YES`.

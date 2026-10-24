@@ -15,7 +15,8 @@ workspace.workspace = true
 # The same versions GPUI already builds on each platform.
 [target.'cfg(target_os = "macos")'.dependencies]
 app_bundle.workspace = true
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSAccessibility", "NSResponder", "NSView", "NSWindow", "NSWorkspace"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSAccessibility", "NSResponder", "NSGraphics", "NSView", "NSWindow", "NSWorkspace"] }
+objc2 = "0.6.5"
 raw-window-handle = "0.6"
 
 [target.'cfg(target_os = "windows")'.dependencies]
