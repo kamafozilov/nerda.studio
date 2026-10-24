@@ -11,33 +11,36 @@ in [design.md](design.md).
 whether or not its tab is open.
 
 - **Starting.** A session's first message starts its agent, in the project folder, on
-  the session's model, effort and access. The app picks the conversation's id and saves
-  it with the session before the agent says anything. A message after the agent quit,
-  as after a restart of the app, starts it again: resuming the conversation when it has
-  a turn on record, anew under the same id when it hasn't. `agent::prewarm()` reads the
-  login shell's PATH at launch, so the first start doesn't wait for it.
+  the session's model and effort, in Full access whatever access the session has saved
+  (composer.md). The app picks the conversation's id and saves it with the session
+  before the agent says anything. A message after the agent quit, as after a restart of
+  the app, starts it again: resuming the conversation when it has a turn on record, anew
+  under the same id when it hasn't. `agent::prewarm()` reads the login shell's PATH at
+  launch, so the first start doesn't wait for it.
 - **Sending.** Send, or Enter, sends the text with its trailing whitespace trimmed, and
-  the attachments: an image by its bytes, anything else by its path. The composer clears
-  both. The session gets its first activity, so it joins the sidebar's list, and a
-  session still called "New session" takes its first line as its title. A message sent
-  while a turn runs waits in the agent's queue.
+  the attachments: an image (PNG, JPEG, GIF or WebP, up to 5 MiB) by its bytes, anything
+  else by its path. The composer clears both. The session gets its first activity, so it
+  joins the sidebar's list (an archived one returns to it), and a session still called
+  "New session" takes its first line as its title. A message sent while a turn runs
+  waits in the agent's queue.
 - **A start that fails** sends nothing: the text and the attachments stay, the session
   stays a draft, and the problem line under the box says why, such as "Couldn't find
   claude. Install it with `curl -fsSL https://claude.ai/install.sh | bash` in a
   terminal, then try again." A command in backticks shows in the monospaced font.
-- **Stop.** While a turn runs or a message waits, and the text is empty, Send is Stop:
-  the same circle with a filled square, drawn from a quad since the icon set's stop is
-  an outline. It interrupts the turn and drops what waits. With text, Send stays Send
-  and queues the message. Escape does nothing new.
-- **Choices mid-session.** A model, effort or access picked while the agent runs goes to
-  it at once. Switching to or from Full access while a turn runs is refused: the problem
-  line gives the reason, and the pill goes back to the access the agent runs in.
+- **Stop.** While a turn runs or a message waits, and there is no text or attachment, Send
+  is Stop: the same circle with a filled square, drawn from a quad since the icon set's
+  stop is an outline. It interrupts the turn and drops what waits. With text, Send stays
+  Send and queues the message. Escape does nothing new.
+- **Choices mid-session.** A model or effort picked while the agent runs goes to it at
+  once. Access is not picked, but should a running agent be told to switch to or from
+  Full access during a turn, it refuses: the problem line gives the reason, and the
+  session's choice goes back to the access the agent runs in.
 - **Tabs.** Closing a session's tab leaves its agent running; opening the session again
   shows the conversation as it went on. Each open tab keeps its own conversation view,
   so where it was scrolled survives switching tabs.
 - **Quitting** ends every agent and waits up to 6 s for each to exit, its last events
-  written: an idle agent quits at once (0.2 s measured, 0.8 s for claude), one mid-turn
-  in about 2.3 s, when the crate's SIGTERM ends it.
+  written: an idle agent quits at once (0.2 s measured, 0.7 to 0.9 s for claude), one
+  mid-turn in about 2.9 s, when the crate's SIGTERM ends it.
 - **A stand-in.** `NERDA_AGENT_PROGRAM=<path>`, read at launch, runs that program in
   place of the agent's own command, such as the agent crate's `fake-agent`, which plays
   `fake-agent.jsonl` from the project folder.
@@ -60,9 +63,12 @@ file was set aside, hands out session ids again.
   line reads.
 - A journal that ends without the agent's exit, as after a crash, ends what it left
   open as the agent quitting, in memory only.
-- A journal that can't be written says so in a notice, once; the conversation goes on.
-- While the workspace isn't saved (its file is from a newer build, or there is no data
-  folder), no journal is written either.
+- A journal file that is there but can't be read says so in the same notice:
+  "“Plan the sidebar” couldn’t be read, so its conversation doesn’t show."
+- A journal that can't be written says so in a notice (“Couldn’t save a conversation in
+  ~/…, so it won’t show after a restart.”); the conversation goes on.
+- While the workspace isn't saved (its file is from a newer build or can't be read, or
+  there is no data folder), no journal is written either.
 
 ## The conversation
 
@@ -71,8 +77,8 @@ composer, in the composer's column: at most `COMPOSER_MAX_WIDTH`, centered, `SPA
 clear of the card's sides. A draft shows its composer alone, as before.
 
 - **Rows.** Each turn is its message, its header, then what came back, item by item,
-  then how it ended. A row whose look changed is measured again where it is; from where rows came or
-  went, the list lays out anew, so streaming text grows only its own row.
+  then how it ended. A row whose look changed is measured again where it is; from where
+  rows came or went, the list lays out anew, so streaming text grows only its own row.
 - **Sticking to the bottom.** Newest is at the bottom, and the list keeps to it while
   output streams. Scrolled up, it stays where it is, however much streams below, until
   scrolled back to the bottom, or until "Scroll to the end" is pressed: a `CONTROL_SIZE`
@@ -89,25 +95,27 @@ clear of the card's sides. A draft shows its composer alone, as before.
   `SPACE_3` by `SPACE_2` in, its text in `TEXT_BODY` `text_primary` with its line breaks.
   Its attachments are the composer's chips without the remove button, over the text: a
   file or folder by its name, the whole path in the tooltip; an image, sent by its
-  bytes, by its format ("PNG image"). One that waits for the turn before shows "Queued"
-  under it, in `TEXT_SMALL` `text_secondary`.
+  bytes, by its format ("PNG image", "JPEG image", "GIF image", "WebP image"). One that
+  waits for the turn before shows "Queued" under it, in `TEXT_SMALL` `text_secondary`.
 - **The agent's text** fills the column in `text_primary`, as Markdown (CommonMark with
   GitHub's tables, task lists and strikethrough, by `pulldown-cmark`): paragraphs
   `SPACE_2` apart; headings in semibold at `TEXT_HEADING` (18), `TEXT_HEADING_2` (16),
   `TEXT_HEADING_3` (14), then `TEXT_BODY`, `SPACE_3` more clear of what comes before;
-  bold, italic and struck text. Uzbek's ʻ and ʼ show as ‘ and ’, which look the same,
-  so a line wraps between words, not inside oʻ or gʻ.
+  bold, italic and struck text; a horizontal rule as a `border` hairline with
+  `SPACE_2` of margin above and below. Uzbek's ʻ and ʼ show as ‘ and ’, which look the
+  same, so a line wraps between words, not inside oʻ or gʻ.
   - **Inline code** is a chip: `MONOSPACE_FONT` on `field_background` under a `border`
     hairline, 4 pt corners, two narrow spaces of room each side that don't break, so a
     short chip wraps to the next line whole; a long one wraps where its text does.
   - **A file or folder the text names** is a chip too: inline code that is a path (a
-    folder in it and an extension, a trailing `/`, or a line, as `src/app.rs:12` or
-    `#L12`), or a link to one. It shows a file or folder icon in `mention`, the name in
-    medium weight, its folder after a `·` when another path of the same name is named in
-    the text, and its place (`L12`, `L12:C3`) in `text_secondary`, on `mention_background`
-    under a `mention_border` hairline. A path reads inside the project's folder unless
-    absolute or from `~/`. A click opens it in its app; the tooltip gives its path from
-    the home folder and its size, or "Not found".
+    folder in it and an extension or a trailing `/`, or an extension and a line, as
+    `src/app.rs:12`, `README.md:3` or `#L12`), or a link to one. It shows a file or
+    folder icon in `mention`, the name in medium weight, its folder after a `·` when
+    another path of the same name is named in the text, and its place (`L12`, `L12:C3`)
+    in `text_secondary`, on `mention_background` under a `mention_border` hairline. A path
+    reads inside the project's folder unless absolute or from `~/`. A click opens it in
+    its app; the tooltip gives its path from the home folder and a file's size, or "Not
+    found".
   A line break stays one, as in the terminal the agent writes for. Text renders as it
   streams; a code fence not closed yet runs to the end, a table shows the rows that came.
   - **Links**, and web addresses written out bare, are in `link`; a click opens a web or
@@ -140,18 +148,19 @@ clear of the card's sides. A draft shows its composer alone, as before.
   and code blocks; a double press takes a word, a triple the whole paragraph or block.
   The selection is `text_selection` under the text, inside one reply; a press anywhere
   else, or Escape, lets it go. The press gives the conversation key focus, so ⌘C copies
-  the selection and ⌘A selects the whole reply. Copied, paragraphs stand a line apart and
-  a table's cells a tab; a chip copies what it stands for, its code or the path as
-  written, and Uzbek's ‘ is its ʻ again.
+  the selection and ⌘A selects the whole reply that holds it, else the newest. Copied,
+  paragraphs stand a line apart and a table's cells a tab; a chip copies what it stands
+  for, its code or the path as written, and Uzbek's ‘ is its ʻ again.
 - **The text's menu**, on a right press: over a link, Open Link and Copy Link; over a
   file, Open, Show in Finder and Copy Path; then Copy (⌘C, only with a selection),
   Select All (⌘A), and Copy Reply, the reply's Markdown. A right press outside the
   selection lets it go.
 - **The person's message** selects and copies the same way, its text as they wrote it,
   lines kept; its menu ends with Copy Message instead of Copy Reply.
-- **Under a turn that ended**, a Copy button, leading its "Stopped" or failure line,
-  when the agent wrote something in it: it copies all the turn's text as Markdown, a
-  blank line apart, and shows a check, its tooltip "Copied", for 1.2 s.
+- **Under a turn that ended**, a Copy button, leading its "Stopped" or failure line
+  (alone under a finished turn), when the agent wrote something in it: it copies all the
+  turn's text as Markdown, a blank line apart, and shows a check, its tooltip "Copied",
+  for 1.2 s.
 - **Text as it streams** fades in where it ends: each part that arrives goes from clear
   to full color over 320 ms, quick at first, in place, so nothing moves.
 - **Thinking** is a row led by a brain icon: "Thinking" with its clock while it streams,
@@ -210,17 +219,21 @@ clear of the card's sides. A draft shows its composer alone, as before.
 The conversation's own colors are in `crates/theme/src/palette.rs`, computed in OKLCH:
 `danger` (h 27; 6.99:1 dark, 5.68:1 light on the card over the worst desktop),
 `diff_added` (h 150; 9.84 and 5.29), their washes at 12% (dark) or 8% (light), and the
-`activity` dots, on which nothing is read.
+`activity` dots, on which nothing is read. `link`, `mention` and `syntax`, used in the
+agent's text, are there too, each with its measured contrast in its comment.
 
 Every text here keeps a contrast measured before: `text_primary` and `text_secondary` on
-the card (design.md), `text_primary` on `field_background` (composer.md).
+the card (design.md), and `text_primary` on `field_background`, the person's message,
+14.78 (dark) and 13.19 (light) over the worst desktop.
 
 ## Not yet
 
 Answering prompts, questions and plans, a subagent's own steps, failure cards with more
-than words, the sessions' status in the sidebar, opening links, selecting
-text and image thumbnails come later. The rows are the seam: a kind of row draws one item
-of the transcript, so a richer one takes its place without touching the rest.
+than words, the sessions' status in the sidebar and image thumbnails come later. The
+rows are the seam: a kind of row draws one item of the transcript, so a richer one
+takes its place without touching the rest.
 
 GPUI wraps lines at characters it doesn't know as part of a word, and the Uzbek ʻ
-(U+02BB) is one of them: a long line can break between "o" and "ʻ".
+(U+02BB) is one of them. The agent's text is spared (it shows ‘, above), but text drawn
+as written, such as the person's message, the thinking summary and a tool's output, is
+not: a long line can break between "o" and "ʻ".

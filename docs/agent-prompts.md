@@ -1,9 +1,17 @@
 # Agent prompts
 
-When a tool needs approval, the agent asks the app and waits. A prompt never times out.
+When a tool needs approval, the agent asks the app and waits. A prompt doesn't time
+out: one left unanswered for five minutes stayed open, and the agent ran the tool once
+it was allowed.
 The agent may withdraw one itself, as it does when the turn stops, and a turn that ends
 cancels the prompts it left open. The rest of the agent's sessions are in
 [agent.md](agent.md).
+
+The app starts every session in Full access, where the agent asks for nothing, so no
+prompt reaches the screen today. If one did, the conversation draws it as a line,
+"The agent is waiting for an answer to run Bash." (or that it asked a question or
+proposed a plan), with no way to answer it yet. What follows is the crate's side, which
+its tests play.
 
 ## What a prompt asks
 

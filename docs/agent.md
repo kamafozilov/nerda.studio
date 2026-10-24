@@ -2,10 +2,9 @@
 
 `crates/agent` runs a session's coding agent as a process and turns what the agent writes
 into a transcript the screen can draw. It has no UI; the studio runs it as
-[session.md](session.md) says. The
-agents a session can run, and the choice of model, effort and access, are the table in
-`crates/workspace/src/agents.rs`. Prompts, the agent's questions and plans are in
-[agent-prompts.md](agent-prompts.md).
+[session.md](session.md) says. The agents a session can run, and the choice of model,
+effort and access, are the table in `crates/workspace/src/agents.rs`. Prompts, the
+agent's questions and plans are in [agent-prompts.md](agent-prompts.md).
 
 ## One process at a time
 
@@ -14,12 +13,14 @@ agents a session can run, and the choice of model, effort and access, are the ta
   app's PATH, then on the PATH the person's login shell sets up, then in the folders
   installers use: `~/.local/bin`, `~/.claude/local`, the newest of
   `~/.local/share/claude/versions/*`, `/opt/homebrew/bin`, `/usr/local/bin` and
-  `~/.npm-global/bin`. An app opened from Finder or the Dock has only a bare PATH, so the
+  `~/.npm-global/bin` (on Windows, also `~/AppData/Roaming/npm`, with `.exe` or `.cmd`
+  added to the name). An app opened from Finder or the Dock has only a bare PATH, so the
   login shell's matters. The session reads it once per run of the app, from
-  `$SHELL -lic` with `-lc` as the fallback, and gives up on an attempt after 5 s. The
-  first start waits for it; `agent::prewarm()` reads it ahead on a thread. The agent
-  runs with its program's folder, the app's PATH and the login shell's PATH, each folder
-  once, so the tools it runs find what the person's terminal finds.
+  `$SHELL -lic` (the account's shell when `$SHELL` isn't set) with `-lc` as the
+  fallback, and gives up on an attempt after 5 s. The first start waits for it;
+  `agent::prewarm()` reads it ahead on a thread. The agent runs with its program's
+  folder, the app's PATH and the login shell's PATH, each folder once, so the tools it
+  runs find what the person's terminal finds.
 - **Starting.** The agent starts in the project folder, in a process group of its own.
   Its arguments make it read and write one JSON object per line, stream its reply, echo
   each message it takes up, write a summary of its thinking, and ask the app before a
@@ -31,7 +32,7 @@ agents a session can run, and the choice of model, effort and access, are the ta
   while another's pipes are being made can keep those pipes open, and an agent whose
   input another child holds open never sees that input close.
 - **Ready.** The first line the session writes is the `initialize` request. The session is
-  starting until the agent answers it, about 0.75 s after launch, and then ready.
+  starting until the agent answers it, about 0.8 s after launch, and then ready.
 - **Messages.** Each message is one line: its images first, then its text, with any other
   attached files by absolute path under "Attached files:". The agent expands a
   `/command` only from the last text block, and only when the command leads it. The
@@ -42,19 +43,22 @@ agents a session can run, and the choice of model, effort and access, are the ta
 - **Attachments.** `Attachment::open` reads a PNG, JPEG, GIF or WebP of at most 5 MiB in
   as an image, known by its first bytes whatever its name. Any other file goes by its
   absolute path, and so does an image that is larger or can't be read, so attaching
-  never fails. A 4.6 MiB PNG went through claude 2.1.309 on haiku as it was.
+  never fails. A 4.6 MiB PNG went through claude 2.1.309 and 2.1.310 on haiku as it was.
 - **Changes mid-session.** A new model takes effect from the agent's next model call, a
   new effort from the next turn, and a new access at once. Ask first goes as `manual`,
   which the agent reads back as `default`. An effort or access the agent doesn't offer
   sends nothing.
-- **Full access.** A running agent can't change into or out of Full access, so switching
-  to or from it ends the agent and starts it again in the new mode, on the current
-  model and effort. The new process resumes the conversation once a turn is on record,
-  and starts it anew under the same id before then: claude 2.1.309 finds nothing to
-  resume for a conversation without a turn. The events show the old process's exit,
-  then `Started`. While a turn runs or a message waits, the switch is refused with
-  `Event::Refused` and its reason in words, and the agent goes on as it was. Only Full
-  access starts the agent with permission checks off.
+- **Full access.** The app starts every session in Full access, a saved choice of
+  another access included, so the agent asks for no permission there; the other modes
+  stay in the crate and its tests. A running agent can't change into or out of Full
+  access, so switching to or from it ends the agent and starts it again in the new
+  mode, on the current model and effort. The new process resumes the conversation once
+  a turn is on record, and starts it anew under the same id before then: claude 2.1.309
+  finds nothing to resume for a conversation without a turn. The events show the old
+  process's exit, then `Started`. While a turn runs or a message waits, the switch is
+  refused with `Event::Refused` and its reason in words, and the agent goes on as it
+  was. Only Full access starts the agent with permission checks off
+  (`bypassPermissions`).
 - **Stop.** `Command::Interrupt` sends `stop_task` for each task the agent runs in the
   background, denies each prompt it waits on, then ends the running turn and drops the
   messages queued behind it. Each of these is reported as sent. A message the agent drops
@@ -71,10 +75,10 @@ agents a session can run, and the choice of model, effort and access, are the ta
   a refresh token works once, and an agent killed mid-refresh would sign the person out.
   Once the agent has quit, what is left of its group and of the processes it started
   gets SIGTERM, then SIGKILL after 1 s. Those processes are found by walking the process
-  table, so a dev server that Bash started in a group of its own goes too. An idle agent quits at once with code 0. The exit comes as the
-  last event, after all of that, so an app that quits drops its sessions and waits for
-  each one's `Exited`. On Windows the agent gets a new process group, and `taskkill /T`
-  ends its tree.
+  table, so a dev server that Bash started in a group of its own goes too. An idle agent
+  quits at once with code 0. The exit comes as the last event, after all of that, so an
+  app that quits drops its sessions and waits for each one's `Exited`. On Windows the
+  agent gets a new process group, and `taskkill /T` ends its tree.
 - **Watching the process.** The session looks at the process itself every 50 ms to see
   that it has ended, rather than waiting for its output to close.
 
@@ -82,10 +86,11 @@ agents a session can run, and the choice of model, effort and access, are the ta
 
 - **No program.** `Session::start` returns a `StartError` in words to show, such as
   "Couldn't find claude. Install it with `curl -fsSL https://claude.ai/install.sh | bash`
-  in a terminal, then try again." It does the same for a project folder that isn't there
-  and for an agent this build doesn't know. The caller applies `Event::Failed` with those
-  words, and the session shows as failed. A start that fails when Full access is switched
-  comes as `Event::Failed` as well.
+  in a terminal, then try again." (On Windows the command is
+  `npm install -g @anthropic-ai/claude-code`.) It does the same for a project folder
+  that isn't there and for an agent this build doesn't know. The caller applies
+  `Event::Failed` with those words, and the session shows as failed. A start that fails
+  when Full access is switched comes as `Event::Failed` as well.
 - **A failed turn.** A turn that fails ends with one `Failure`, each with a sentence to
   show from `message()` and, where there is one, what to do from `suggestion()`:
 
@@ -128,6 +133,7 @@ in the order they happened.
   agent's tasks, and the queue's moves.
 - `Dropped` carries a waiting message the agent dropped on stop.
 - `Unreadable` and `Stderr` are diagnostics.
+- `Failed` carries why a session couldn't start, in words to show.
 - `Exited` comes last for a process, with the exit code, or none when a signal ended it.
 
 Every event, and all it carries, serializes to JSON and reads back as it was, so the
@@ -202,7 +208,8 @@ binary, since it sets the sign-in folder through the environment.
 The agent's task lines are read in the shapes its documented types give; no recorded run
 has them yet.
 
-One test runs the installed `claude` on haiku, which cost $0.0035 on each of its runs.
+One test runs the installed `claude` on haiku, which costs about $0.004 a run ($0.00405
+on claude 2.1.310).
 It is ignored, so run it on purpose:
 
 ```sh

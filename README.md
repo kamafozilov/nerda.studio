@@ -34,7 +34,8 @@ the other windows. Live reload runs only in the main checkout, not in a linked w
 
 To try a build without disturbing the one you work in, as an agent does,
 `cargo run -p dev -- try` runs it with its own data, in the background and under the
-desktop picture, where no screen shows it, until the command ends; `--front` brings it forward. `AGENTS.md` has the details.
+desktop picture, where no screen shows it, until the command ends. `--front` brings it
+forward, but only from a terminal a person types in. `AGENTS.md` has the details.
 
 On macOS every build run from the source tree runs as **Nerda Studio Dev**
 (`studio.nerda.dev`): it puts itself in `target/<profile>/Nerda Studio Dev.app` and runs
@@ -58,24 +59,34 @@ the front.
 
 - `crates/studio`: the app binary: the main window, its shell (the top row with its tabs,
   the sidebar and the main area's card), a session's composer, its agent and its
-  conversation ([docs/session.md](docs/session.md)), and the Add project palette.
+  conversation ([docs/session.md](docs/session.md)), and the Add project palette. The
+  sidebar is in [docs/sidebar.md](docs/sidebar.md), the composer in
+  [docs/composer.md](docs/composer.md), the new session's backdrop in
+  [docs/backdrop.md](docs/backdrop.md), and key caps and tooltips in
+  [docs/key-caps.md](docs/key-caps.md).
 - `crates/theme`: the look every crate shares: materials, colors and sizes. The rules are in
   [docs/design.md](docs/design.md).
-- `crates/workspace`: projects (folders, or the computer itself), sessions, the agents a session can run and its choice
-  among them, and the sessions and pages (Notes, Design, Routines) open as tabs, with no
-  UI: adding folders, browsing them by a typed path,
-  search, sort and filter, opening and closing tabs, and Back and Forward. All but Back
-  and Forward is saved as JSON in the platform's data folder
+- `crates/workspace`: projects (folders, or the computer itself), sessions, the agents a
+  session can run and its choice among them, and the sessions and pages (Notes, Design,
+  Routines, Usage, Pull requests, Settings) open as tabs, with no UI: adding folders,
+  browsing them by a typed path, search, sort and filter, archiving a session and
+  restoring it, opening and closing tabs, Back and Forward, a project's icon, a
+  repository's branches and switching between them, and the choice of the new session's
+  backdrop. All but Back and Forward is saved as JSON in the platform's data folder
   (`Nerda Studio/workspace.json`), beside `instance.lock`, held by the instance that
-  saves.
+  saves; `NERDA_DATA_DIR` names another folder.
 - `crates/agent`: a session's coding agent run as a process, with no UI: what it says
   parsed into typed events and reduced into a transcript of turns, and the session's
   status. [docs/agent.md](docs/agent.md) has the lifecycle and the model, and
   [docs/agent-prompts.md](docs/agent-prompts.md) the prompts and their answers.
-- `crates/dev`: the live-reload runner and `install`; one instance taking over from
-  another is `crates/studio/src/instance`.
+- `crates/backdrop`: the patterns behind a new session's composer drawn into pixels
+  (Horizon, Clouds, Contours, Halftone, Characters), with no UI:
+  [docs/backdrop.md](docs/backdrop.md).
+- `crates/dev`: the live-reload runner, `try` and `install`; one instance taking over
+  from another is `crates/studio/src/instance`.
 - `crates/app_bundle`: the macOS app bundle, its `Info.plist` and its icon, made from
-  `assets/AppIcon.svg`.
+  `crates/app_bundle/assets/AppIcon.svg`.
+- `docs/research/`: what was checked on the platform before a design was settled on.
 
 GPUI is pinned to one commit of its repository in the root `Cargo.toml`: crates.io has
 only an older `gpui` without `gpui_platform`. `vendor/block` is the `block` crate, which

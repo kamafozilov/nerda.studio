@@ -6,19 +6,21 @@ controls it uses are in [design.md](design.md). What sending does, Stop, and the
 conversation over a docked composer are in [session.md](session.md).
 
 - **Placement.** One column, at most `COMPOSER_MAX_WIDTH` (720) wide, centered in the
-  card and `SPACE_3` clear of its sides when the card is narrower: the box, and under a
-  draft's the drawer. A draft session, one with no message yet, sets the column a little above the
-  card's middle: the space above it is `DRAFT_RISE` (45%) of the height left. A
-  session that has seen work docks the column to the card's bottom, `SPACE_3` above its
-  edge, under its conversation. As a draft's first message goes the column glides
-  there from where it stood on `COMPOSER_DOCK` (0.4 s, critically damped), its bottom
-  edge leaving from the draft's box's bottom edge, while the conversation, the
-  backdrop and the tray change at once; under Reduce motion it docks at once.
+  card and `SPACE_3` clear of its sides when the card is narrower: the box and, under a
+  draft's, the drawer. A draft session, one with no message yet, sets the column a
+  little above the card's middle: the space above it is `DRAFT_RISE` (45%) of the height
+  left. A session that has seen work docks the column to the card's bottom, `SPACE_2`
+  above its edge, under its conversation. As a draft's first message goes the column
+  glides there from where it stood on `COMPOSER_DOCK` (a 0.4 s response, critically
+  damped), its bottom edge leaving from where the draft's column ended (the drawer's,
+  or the problem line's when one shows), while the conversation, the backdrop and the
+  tray change at once; under Reduce motion it docks at once.
   Pages and the welcome are as they were. A draft's card
   shows a pattern behind its column, chosen from the button at the card's bottom:
   [backdrop.md](backdrop.md).
 - **The box** reads as a text field: `composer_background`, opaque (`202021` dark, the
-  selected tab's gray; white light), a `border`
+  selected tab's gray; white light) unless a pattern or an image shows behind it, when it
+  is `composer_glass` ([backdrop.md](backdrop.md)), a `border`
   hairline that stays the same while the text has focus (the cursor shows where typing
   goes), and `COMPOSER_RADIUS` (12) corners, rounder than a field's since
   it holds a toolbar too. Its content stands `SPACE_3` in, less the hairline. No shadow and
@@ -34,7 +36,12 @@ conversation over a docked composer are in [session.md](session.md).
   row goes to the start, Down on the last to the end. Home, End and Cmd-Left and
   Cmd-Right keep to the row, and End stops before the space where a row wraps, so the
   cursor never shows on the next row. Cmd-Up and Cmd-Down go to the start and the end of
-  the text (Ctrl-Home and Ctrl-End elsewhere). Pasted text keeps its line breaks, each
+  the text (Ctrl-Home and Ctrl-End elsewhere). Shift with any of these extends a
+  selection, as does dragging or a Shift-click; Cmd-A selects all, Cmd-C, Cmd-X and
+  Cmd-V copy, cut and paste, Option-Left and Option-Right move by word and
+  Option-Backspace deletes one, and Cmd-Backspace deletes to the start of the row. The
+  cursor blinks, solid for a moment after each move or edit, and hides while the window
+  is in the background. Pasted text keeps its line breaks, each
   `\r\n` and `\r` read as one. The sidebar's search and the Add project palette hold one
   line, as before: a break pasted there is a space.
 - **The toolbar**, `CONTROL_SIZE` high, `SPACE_2` under the text, pulled left by half of
@@ -54,7 +61,8 @@ conversation over a docked composer are in [session.md](session.md).
   - Send is a `CONTROL_SIZE` circle of `text_primary` with an up arrow in
     `panel_background`: at 40% with "Type a message to send" while there is no
     attachment and the text is empty or only whitespace, full with "Send (↩)" otherwise.
-    While the agent works and there is nothing to send, it is Stop, "Stop" its tooltip.
+    While the agent works and there is nothing to send, it is Stop, the same circle with
+    a square in place of the arrow, "Stop" its tooltip.
 - **Attachments** are files and folders held as their paths, never their bytes, each
   once, in the order added, at most 20 (`crates/studio/src/composer/attachments.rs`).
   Each is an image (by its extension: png, jpg, jpeg, gif, webp), a folder or a file,
@@ -82,8 +90,9 @@ conversation over a docked composer are in [session.md](session.md).
   set; a thumbnail would mean GPUI decoding each image whole), then its name in
   `TEXT_SMALL` `text_primary`, cut in the middle so the extension stays, the chip at
   most `CHIP_MAX_WIDTH` (200). Under the pointer it shows a remove `×`, `ICON_SIZE_SMALL`
-  in an `ICON_SIZE` square that takes clicks over `FIELD_TARGET_SIZE` and turns
-  `text_primary` on `hover` under the pointer, "Remove" its tooltip; its space is kept while hidden, so nothing shifts. The name's
+  in `text_tertiary`, taking clicks over a `FIELD_TARGET_SIZE` square and turning
+  `text_primary` under the pointer, "Remove" its tooltip; its space is kept while
+  hidden, so nothing shifts. The name's
   tooltip is the whole path, `~` for home, which tells two `notes.txt` apart. Removing
   the last chip removes the row.
 - **Pickers.** A pill's click opens its menu ([design.md](design.md) has the menu
@@ -105,9 +114,10 @@ conversation over a docked composer are in [session.md](session.md).
   (`--permission-mode bypassPermissions`): the agent edits and runs commands without
   asking. A session saved with another access by an older build still starts in Full
   access; the saved value stays in the file.
-- **The problem line** under the box, in `TEXT_SMALL` `text_primary` in line with the
-  text, also says why a message couldn't be sent or a choice was refused, a command in
-  backticks in the monospaced font, until the next edit.
+- **The problem line** under the box (under a draft's drawer too), in `TEXT_SMALL`
+  `text_primary` in line with the text, also says why a message couldn't be sent or a
+  choice was refused, a command in backticks in the monospaced font, until the next
+  edit.
 - **The drawer**, under a draft's box (`crates/studio/src/composer/context.rs`): where the
   draft will run. It hangs from the box's bottom edge, 20 pt narrower on each side, past
   the box's rounded corners, so it meets a straight edge; the box's bottom hairline is
@@ -125,8 +135,9 @@ conversation over a docked composer are in [session.md](session.md).
     there is none; it is read as [sidebar.md](sidebar.md) says.
   - Once the session has seen work, where it runs is settled: the drawer goes, with
     both choices, and the docked box stands alone.
-  - Its words keep at least 5.41:1 over any Bold pattern or image, 6.81:1 light,
-    measured on the running app; 7.11 / 7.49 on the plain card.
+  - Its words keep 7.11:1 on the plain card (7.32:1 light, over a black desktop). Over
+    a Bold pattern they keep 5.40:1 (6.88:1 light, the Warm ink the worst), and over
+    the worst image at Bold 4.76:1 (6.24:1 light), measured on the running app.
 - **The project menu**, from the project's leading edge, downward, 256 wide at least. It leads with a "Search projects" field, 36 tall over a
   hairline, its text starting in the items' icon column, which takes the focus and
   starts empty; then "No project" after a computer, for a session that works on the
@@ -153,7 +164,8 @@ conversation over a docked composer are in [session.md](session.md).
     end; picking it opens a draft there the same way.
   - The remote branches with no local branch of their name, as `origin/feature`, last,
     at most 50, their icon in `text_tertiary` and their name in `text_secondary`, as
-    they stand back: picking one makes that local branch, tracking it, and switches.
+    they stand back, each with its commit's age: picking one makes that local branch,
+    tracking it, and switches.
   - **Create branch “name”**, after a hairline, while the search names no branch: the
     search with its spaces as hyphens, made at the current commit and switched to.
     Enter picks it when nothing else matches; with nothing matching, "No matching
@@ -177,27 +189,23 @@ conversation over a docked composer are in [session.md](session.md).
 
 ## Contrast
 
-WCAG 2 contrast on the composer's box (dark / light). The box is opaque, so its text
-reads the same over any desktop; the rows not recomputed below are from the
-translucent field it had before:
+WCAG 2 contrast on the composer's box (dark / light), by arithmetic on the palette. The
+box is opaque, so its text reads the same over any desktop; Send's arrow in light is
+`panel_background`, translucent, composited over Send's circle:
 
 | Against the field | Contrast |
 | --- | --- |
-| Placeholder, `text_secondary` | 7.58 / 7.72 |
-| Text, `text_primary` | 14.52 / 17.24 |
-| Send's arrow, against its fill | 6.84 / 9.26 |
+| Placeholder, `text_secondary` | 6.23 / 7.72 |
+| Text, `text_primary` | 14.93 / 17.24 |
+| Send's arrow, against its fill | 17.03 / 9.26 |
 
-Sampled on screen over the desktop behind the window at the time, the placeholder read
-6.58 / 6.50 and the text 12.62 / 14.55, between the arithmetic's worst and best.
-
-`chip_background` is text primary at 6% (`eff2f80f` / `191b1f0f`), a new role: a chip
-at rest, which no other fill does. On a chip, over the field, the card and the window
-(glass, dark / light; solid within these):
+`chip_background` is white at 6% in dark and `text_primary` at 6% in light (`ffffff0f` /
+`191b1f0f`), a role of its own: a chip at rest, which no other fill does. On a chip over
+the box's opaque fill (dark / light):
 
 | On a chip | Contrast |
 | --- | --- |
-| Name, `text_primary` | 10.08 / 11.79 |
-| Icon and `×`, `text_secondary` | 5.26 / 5.28 |
-| `×` on its `hover`, `text_primary` | 8.53 / 10.57 |
-
-Sampled on screen, the name read 10.72 / 12.90 and the icon 5.59 / 5.76.
+| Name, `text_primary` | 12.62 / 15.37 |
+| Icon, `text_secondary` | 5.27 / 6.89 |
+| `×` at rest, `text_tertiary` | 3.16 / 6.89 |
+| `×` under the pointer, `text_primary` | 12.62 / 15.37 |

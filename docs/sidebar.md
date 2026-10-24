@@ -14,23 +14,26 @@ are in [design.md](design.md).
   "Sessions" in medium-weight `TEXT_SMALL` `text_tertiary`, with Search and the
   sessions' menu at its trailing edge.
 - **The sessions' menu** (⋯) holds Add project, then Sort and Project, which open
-  beside it with their choices (Last activity or Created; All projects, No project
-  once a session has run in it, then a hairline and the folder projects), each naming
-  its current one, then Archived. The sort and the filter are saved; the archive
-  shows until it is switched off or the app quits. A filter to one project
-  keeps the menu button on `hover`.
+  beside it with their choices (Last activity or Created; All projects, No project once
+  a session has been started in it with a hairline after it, then the folder projects),
+  each naming its current one, then Archived. The sort and the filter are saved; the
+  archive shows until it is switched off or the app quits. A filter to one project keeps
+  the menu button on `hover`.
 - **Search**: the Search button or `Cmd-K` (`Ctrl-K` elsewhere) turns the sessions'
   title into the search field and puts the cursor in it, its text selected, opening the
   sidebar first if it is closed and closing any open menu; `Cmd-K` does nothing while a
   palette is open over the window. The field has no box: the magnifier in
   `text_tertiary`, the text in the title's size and weight, the placeholder in
-  `text_tertiary`. Search becomes Close search beside it. The field stays while focus
-  goes elsewhere; Escape or Close search clears it, puts it away and gives focus back
-  to where it was taken from, else to the window, as Enter does after opening the
-  result the hover marks. Closing the sidebar gives focus back too: typing never goes
-  to a field out of sight.
+  `text_tertiary`. Search becomes Close search beside it. Typing filters the list live;
+  Up and Down move the row the hover marks, wrapping, as the pointer does, and Enter
+  opens it. The field stays while focus goes elsewhere; Escape or Close search clears
+  it, puts it away and gives focus back to where it was taken from, else to the window,
+  as Enter does after opening the result. Closing the sidebar gives focus back too:
+  typing never goes to a field out of sight.
 - **Sessions** are one list, newest first under the sort. Projects are not a level of
-  the list: the filter narrows it to one. Each session is a row `SESSION_ROW_HEIGHT`
+  the list: the filter narrows it to one, and a session shown from elsewhere (New Session
+  in Project, or adding a folder already added) widens it to all if it would hide that
+  session. Each session is a row `SESSION_ROW_HEIGHT`
   (78) tall with `SESSION_ROW_RADIUS` (8) corners, `SESSION_ROW_SPACING` (2) clear above
   and below it, so with `ROW_GAP` two rows' surfaces stand 5 apart. Its content stands
   `SESSION_ROW_INSET` (10) from its sides and `SPACE_2` from its top and bottom, on
@@ -48,9 +51,10 @@ are in [design.md](design.md).
   both turn `text_secondary_on_surface`.
 - **A project's icon** stands in a `PROJECT_ICON` (16) slot: the favicon or logo the
   project keeps (`favicon.svg`, `.png` or `.ico` at its top, in `public/` or `static/`;
-  `icon` in `app/` or `src/app/`; a `logo`; else the first of its `apps/` that has one;
-  never built output, nor a file over 512 KB), filling the slot with
-  `PROJECT_ICON_RADIUS` (4) corners. It is made ready off the UI thread with the
+  `icon` or `favicon.ico` in `app/` or `src/app/`; `icon` or `logo` at its top or in
+  `assets/`; `logo` in `public/`; else the first of its `apps/` that has one; never built
+  output, nor a file over 512 KB), filling the slot with `PROJECT_ICON_RADIUS` (4)
+  corners. It is made ready off the UI thread with the
   branches, and drawn again only when the file changes: a vector at the slot's pixel
   size, so a 16 px favicon stays sharp, a bitmap scaled down once, either centered so a
   mark that isn't square keeps its shape. A wordmark more than twice as wide as tall (or
@@ -84,11 +88,11 @@ are in [design.md](design.md).
   archived sessions". Restore puts a session back where its activity places it, as a
   message sent in it does.
 - **Branches and ages** are read off the UI thread: branches, which the composer shows,
-  from folder projects' checkouts when projects come and go, when the window comes to front
-  and with the ages; at launch the window waits up to 50 ms for them, so its first frame
-  already shows them. Ages redraw when the first of them next reads differently,
-  and at least once a minute and when the window comes to front, since the timer stops
-  while the Mac sleeps.
+  from folder projects' checkouts when projects come and go, when the window comes to
+  front and with the ages; at launch the window waits up to 50 ms for them, so its
+  first frame already shows them. Ages redraw when the first of them next reads
+  differently, and at least once a minute and when the window comes to front, since the
+  timer stops while the Mac sleeps.
 - **Problems** show as a message under the sidebar header until dismissed: what failed and
   what to do next, without parser or error-code detail the reader can't act on ("Nerda
   Studio isn’t allowed to write to ~/Library/…", not the system's error), folders with
@@ -100,13 +104,14 @@ are in [design.md](design.md).
   until its first message, and stays out of the list, search and the projects' order;
   New session in its project opens the same draft again.
 - **An empty list** ("No sessions yet", "No sessions in web yet" or "No sessions
-  without a project yet" under a filter, "No sessions match …") is one `text_secondary` line under the header.
+  without a project yet" under a filter, "No sessions match …") is one `text_secondary`
+  line under the header.
 - **Titles** come from a session's first message, its first line that isn't blank, cut
   to 200 characters, unless the session has a title of its own. They show as one line:
   line breaks, tabs and runs of spaces read as one space,
   and a blank title reads "Untitled session", in the rows and the tabs alike. Search
-  matches them ignoring case, е for ё, and a plain apostrophe for ʻ, ʼ and the curly
-  ones.
+  matches them ignoring case and runs of spaces, е for ё, and a plain apostrophe for ʻ, ʼ,
+  the curly ones and the backtick.
 - **Names truncate** at the end: a session's title, a project's name in a menu.
 - **Before the first project** the list stays blank under the sessions' title; the main area
   says what a project is and offers "Add project", centered, unless a page is on screen.

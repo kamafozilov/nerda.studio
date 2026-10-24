@@ -3,7 +3,8 @@
 A draft session's card shows a pattern behind its composer, drawn from an image of the
 owner's if they add one, so a new session opens on a picture of their own rather than on
 a blank card. Once the session has seen work the pattern goes, and with it the image
-(`crates/studio/src/backdrop/`, `crates/studio/src/composer/backdrop*.rs`).
+(`crates/studio/src/backdrop/`, `crates/studio/src/composer/backdrop*.rs`, and the saved
+choice in `crates/workspace/src/backdrop.rs`).
 
 ## What it draws
 
@@ -22,13 +23,14 @@ pixels so a small image scaled up stays smooth.
 
 **The composer stands on glass** whenever a pattern or an image shows: its box and the
 tray's controls turn `composer_glass`, `composer_background` at 88%, so what is under
-them shows faintly through. The placeholder keeps at least 6.38:1 over a Bold pattern
-(7.70:1 light) and, over the worst image (white behind dark, black behind light, at
-Bold), 4.76:1 (dark) and 6.22:1 (light). With None and no image in use the surfaces are
+them shows faintly through. The placeholder keeps at least 5.40:1 over a Bold pattern
+(6.88:1 light, the Warm ink the worst; 5.71:1 and 7.21:1 in Gray) and, over the worst
+image (white behind dark, black behind light, at Bold), 4.76:1 (dark) and 6.24:1
+(light), measured on the running app. With None and no image in use the surfaces are
 opaque.
 
 **The drawer under a draft's box** takes the box's glass too, so its small words keep
-at least 5.41:1 over any Bold pattern or image (6.81:1 light) (`composer/context.rs`;
+the placeholder's figures: at least 4.76:1 over any Bold pattern or image (6.24:1 light) (`composer/context.rs`;
 [composer.md](composer.md)).
 
 - The dither marks 2 pt dots against an 8 by 8 Bayer threshold, fixed to the card, so a
@@ -49,13 +51,13 @@ at least 5.41:1 over any Bold pattern or image (6.81:1 light) (`composer/context
 
 The draft card's tray, centered 16 pt above its bottom edge (`composer/tray.rs`), holds
 the way in. Closed, it is one quiet round chevron, `CONTROL_SIZE`, on the card's own fill
-under a faint `border` hairline, pointing up, its tooltip "More options". A click raises
-its options over it: they rise 8 pt and fade in on the panel spring while the chevron
-turns to point down, with no tooltip; a second click lowers them on the exit spring, and
-they take no clicks while they go. Under Reduce motion both are instant. Its one option
+(`composer_glass` over a pattern or an image) under a faint `border` hairline, pointing
+up, its tooltip "More options". A click raises its options over it: they rise 8 pt and
+fade in on the panel spring while the chevron turns to point down, with no tooltip; a
+second click lowers them on the exit spring, and they take no clicks while they go. Under Reduce motion both are instant. Its one option
 for now is a quiet pill, its small icon and "Background" in `text_tertiary` at
 `TEXT_SMALL` on the card's own fill under a faint `border` hairline; under the pointer,
-and while the panel is open, it takes `composer_background`, its label `text_primary`.
+and while the panel is open, it takes the composer's fill, its label `text_primary`.
 It opens the panel above it, `SPACE_2` clear; the panel stays open while choices are
 tried, and a click outside it (the chevron included), Escape or the pill closes it and
 gives the cursor back to the text. Lowering the tray closes it too. Left and Right pick
@@ -74,7 +76,8 @@ window is too short for it, staying under the top row:
   strength with an open eye on it ("Show image"), the patterns draw alone and the image's
   colors wait, and a click brings both back. Why an image couldn't be added shows under
   it.
-- **Color**: Gray, Warm and Image as chips with a dot of each; Image's dot is the image.
+- **Color**: Gray, Warm and Image as chips with a dot of each; Image's dot is the image,
+  and it waits, faded with "Add an image first" for its tooltip, until an image reads.
 - **Strength**: Subtle, Medium, Bold in one segmented control.
 - **Move slowly**, with a switch.
 
@@ -87,24 +90,24 @@ default, and the rest of the file loads.
 ## The image
 
 - Adding one reads the file, at most 64 MB, and decodes it (PNG, JPEG, WebP, GIF, BMP,
-  TIFF) to make sure it can be used, then copies it into `backdrops/` beside the workspace
-  under a new name, so it outlives the file it came from. Replacing or removing it deletes
-  the copy before it.
-- It is decoded off the UI thread to at most 2048 pixels a side. A file that can't be read
-  is refused with why ("That image can't be read. Try a PNG, JPEG, WebP or GIF."), and
-  nothing changes. A copy gone missing or unreadable later shows "It no longer reads" in
-  the panel; the pattern draws without it until it is replaced or removed.
-- A saved name that would reach outside `backdrops/` (a separator, a leading dot) reads
-  as no image.
+  TIFF, ICO) to make sure it can be used, then copies it into `backdrops/` beside the
+  workspace under a new name, so it outlives the file it came from. Replacing or removing
+  it deletes the copy before it.
+- It is decoded off the UI thread to at most 2048 pixels a side. A file that can't be used
+  is refused with why ("That image can't be read. Try a PNG, JPEG, WebP or GIF.", "That
+  image is larger than 64 MB.", "That file can't be opened."), and nothing changes. A copy
+  gone missing or unreadable later shows "It no longer reads" in the panel; the pattern
+  draws without it until it is replaced or removed.
+- A saved name that would reach outside `backdrops/` (a separator, a colon, a leading
+  dot) reads as no image.
 
 ## Drawing and motion
 
 - The pattern is drawn off the UI thread into an image of the card's device pixels, 2 to
   12 ms for a full Retina card (Image only, every pixel read between four, 80 to 100 ms,
   drawn once), the crate built optimized even in dev builds. It is drawn again when the
-  card's size, the composer's place, the theme or the choice changes; the last image
-  stays, stretched, until the next is ready, and a replaced one is freed from the
-  window's atlas.
+  card's size, the theme or the choice changes; the last image stays, stretched, until
+  the next is ready, and a replaced one is freed from the window's atlas.
 - **Move slowly** draws a new frame 12 times a second, about 12% of one core, and only
   while the card is painted: a draft off screen, a session's conversation, a window the
   system doesn't draw ask for no frames. Image only holds still and is not drawn again.
