@@ -27,7 +27,7 @@ use gpui::{
     Styled, Task, Window, div, prelude::*,
 };
 use theme::{
-    MAIN_INSET, TAB_GAP, Theme,
+    TAB_GAP, Theme,
     motion::{PHASE_EPSILON, TAB_EXIT},
 };
 use workspace::Tab;
@@ -273,7 +273,6 @@ impl Render for TabStrip {
         div()
             .id("tab-strip")
             .size_full()
-            .pl(MAIN_INSET)
             .flex()
             .items_center()
             .child(

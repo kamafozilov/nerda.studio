@@ -35,13 +35,18 @@ Colors are roles: a token names its job, and a component uses it only in that jo
 that is missing gets a new token, computed and measured as below, never a borrowed one.
 
 Every value comes from OKLCH with one cool neutral hue (h 265, C 0.006; text C 0.009), in
-`crates/theme/src/palette.rs` as `0xRRGGBBAA`.
+`crates/theme/src/palette.rs` as `0xRRGGBBAA`, except the dark base and tabs, which the
+owner picked as near-neutral grays (`0a0a0b`, `131313`, `202021`). Dark appearance has
+no glass: its base is opaque, so the sidebar and the tabs read the same over any
+desktop. Light keeps its glass.
 
 | Role | Dark | Light | Use |
 | --- | --- | --- | --- |
-| `window_background` (glass) | `0e0f12` at 78% (`c7`) | `f3f5f9` at 81% (`ce`) | Window base, sidebar |
-| `window_background` (solid) | `0e0f12` | `f3f5f9` | Window base without blur |
-| `panel_background` | `151619` at 72% | `fbfdff` at 72% | Main area over the base |
+| `window_background` (glass) | `0a0a0b`, opaque | `f3f5f9` at 81% (`ce`) | Window base, sidebar |
+| `window_background` (solid) | `0a0a0b` | `f3f5f9` | Window base without blur |
+| `panel_background` | `141415` at 72% (`111112` on the base) | `fbfdff` at 72% | Main area over the base |
+| `tab_background` | `131313` | text primary at 4% | A tab that isn't selected |
+| `tab_selected` | `202021`, under a `border` hairline | text primary at 10% | The selected tab |
 | `border` | text primary at 10% | text primary at 10% | Sidebar edge, dividers |
 | `hover` | text primary at 6% | text primary at 6% | Hovered control |
 | `text_primary` | `eff2f8` (L 0.96) | `191b1f` (L 0.22) | Titles, body, hovered icons |
@@ -54,7 +59,10 @@ Every value comes from OKLCH with one cool neutral hue (h 265, C 0.006; text C 0
 
 ### Contrast on glass
 
-Each tint is the most transparent 8-bit alpha that keeps `text_secondary` at WCAG AA,
+Dark appearance is opaque now, so its contrast holds over any desktop: `text_primary`
+reads 17.65 on the base, 16.83 on the card, 16.57 on a tab and 14.52 on the selected
+one; `text_secondary` 9.21, 8.78, 8.65 and 7.58. The dark columns below are from its
+glass, kept for the record. In light appearance each tint is the most transparent 8-bit alpha that keeps `text_secondary` at WCAG AA,
 4.5:1, over the worst desktop for its appearance: white behind dark, black behind light.
 A clearer glass would fail it there. WCAG 2 contrast on the composited surface, the lower
 over a white and a black desktop (dark / light):
@@ -146,8 +154,12 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   screen (`crates/studio/src/tabs/`). Each project keeps its own session tabs, saved with
   the workspace; showing another project's session switches the row to that project's
   tabs, and the pages stay in it. A page on screen keeps its project's tabs beside it. A
-  tab is `CONTROL_SIZE` high, its title in `text_primary` on `row_selected` when selected
-  and on `hover` under the pointer; a page's tab leads with its sidebar icon in
+  tab is `CONTROL_SIZE` high on `tab_background`, its title in `text_secondary`; the
+  selected one is `tab_selected` under a `border` hairline, its title in `text_primary`,
+  and another turns `hover` under the pointer. Every tab keeps the hairline's room, so a
+  title holds still as its tab is selected. The first tab stands at the card's left
+  edge: on the sidebar's edge while it is open, `MAIN_INSET` clear of Back and Forward
+  once it closes, moving on the sidebar's spring. A page's tab leads with its sidebar icon in
   `text_secondary`, `SPACE_2` before the title. Tabs share the row up to `TAB_MAX_WIDTH` (224) each, `TAB_GAP` apart, however
   many there are; the selected one keeps `TAB_SELECTED_MIN_WIDTH` (112). Under the
   pointer a tab shows its close button if it is at least `TAB_CLOSE_MIN_WIDTH` (72) wide

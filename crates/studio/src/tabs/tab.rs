@@ -8,8 +8,8 @@ use gpui::{
     relative, svg,
 };
 use theme::{
-    CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, ICON_SIZE, ICON_SIZE_SMALL, SPACE_1,
-    SPACE_2, TAB_CLOSE_MIN_WIDTH, TAB_GAP, TAB_MAX_WIDTH, TAB_SELECTED_MIN_WIDTH,
+    CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, HAIRLINE, ICON_SIZE, ICON_SIZE_SMALL,
+    SPACE_1, SPACE_2, TAB_CLOSE_MIN_WIDTH, TAB_GAP, TAB_MAX_WIDTH, TAB_SELECTED_MIN_WIDTH,
     motion::{PHASE_EPSILON, PIXEL_EPSILON, TAB_ENTER, TAB_EXIT},
 };
 use workspace::Tab;
@@ -166,21 +166,29 @@ fn tab_face(
     colors: Colors,
 ) -> Stateful<gpui::Div> {
     let fill = if selected {
-        colors.row_selected
+        colors.tab_selected
     } else {
-        colors.hover
+        colors.tab_background
     };
     div()
         .id(("tab", id.key()))
         .group(label.group.clone())
         .relative()
         .h(CONTROL_SIZE)
-        .px(SPACE_2)
+        .px(SPACE_2 - HAIRLINE)
         .flex()
         .items_center()
         .gap(SPACE_2)
         .rounded(CONTROL_RADIUS)
-        .when(selected && !lifted, |tab| tab.bg(colors.row_selected))
+        // Every tab keeps the hairline's room, so a title doesn't move as
+        // its tab is selected.
+        .border_1()
+        .border_color(if selected {
+            colors.border
+        } else {
+            gpui::transparent_black()
+        })
+        .when(!lifted, |tab| tab.bg(fill))
         .when(lifted, |tab| {
             tab.bg(colors.popover_background)
                 .shadow_md()
@@ -200,7 +208,11 @@ fn tab_face(
                 .overflow_hidden()
                 .whitespace_nowrap()
                 .text_ellipsis()
-                .text_color(colors.text_primary)
+                .text_color(if selected {
+                    colors.text_primary
+                } else {
+                    colors.text_secondary
+                })
                 .child(label.title.clone()),
         )
 }

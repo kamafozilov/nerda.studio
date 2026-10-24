@@ -49,6 +49,14 @@ impl Shell {
             // First, so every control in the row draws over it.
             .when(MAC, |row| row.child(self.titlebar(cx)))
             .child(self.navigation(cx))
+            // The first tab stands at the card's left edge: on the sidebar's
+            // edge while it is open, `MAIN_INSET` clear of the navigation
+            // once it closes, on the sidebar's spring.
+            .child(div().flex_none().with_spring(
+                "tabs-lead",
+                self.sidebar_spring(),
+                |lead, phase: f32| lead.w(MAIN_INSET * (1. - phase.clamp(0., 1.))),
+            ))
             // Cached: a drag or a tab's motion redraws the tabs alone.
             .child(self.tabs.clone().cached(strip))
             .child(div().flex_none().w(MAIN_INSET))
