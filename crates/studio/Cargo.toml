@@ -17,6 +17,10 @@ resvg = { version = "0.46", default-features = false }
 # spec's worth of rules: a hand parser would get them wrong. Pure Rust, no
 # HTML writer.
 pulldown-cmark = { version = "0.13", default-features = false }
+# Code blocks' colors: Sublime grammars, with the extra ones (TypeScript,
+# TOML, Dockerfile and more) a coding agent writes; pure-Rust regexes, no C.
+syntect = { version = "5.3", default-features = false, features = ["parsing", "regex-fancy"] }
+two-face = { version = "0.5", default-features = false, features = ["syntect-fancy"] }
 # Each session's journal: one event a line.
 serde_json.workspace = true
 theme.workspace = true

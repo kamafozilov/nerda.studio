@@ -91,15 +91,36 @@ clear of the card's sides. A draft shows its composer alone, as before.
   file or folder by its name, the whole path in the tooltip; an image, sent by its
   bytes, by its format ("PNG image"). One that waits for the turn before shows "Queued"
   under it, in `TEXT_SMALL` `text_secondary`.
-- **The agent's text** fills the column in `text_primary`, as Markdown (CommonMark, by
-  `pulldown-cmark`): paragraphs `SPACE_2` apart; headings by weight (semibold), not
-  size; bold, italic and struck text; inline code and code blocks in `MONOSPACE_FONT`,
-  the platform's (SF Mono on macOS); a block on `field_background` with
-  `CONTROL_RADIUS`, scrolling sideways when a line is longer than the column, while a
-  vertical wheel over it still scrolls the conversation; bullet and numbered lists, their
-  markers in a 20 pt column; quotes behind a `border` rule. Links show as their text.
+- **The agent's text** fills the column in `text_primary`, as Markdown (CommonMark with
+  GitHub's tables, task lists and strikethrough, by `pulldown-cmark`): paragraphs
+  `SPACE_2` apart; headings in semibold at `TEXT_HEADING` (18), `TEXT_HEADING_2` (16),
+  `TEXT_HEADING_3` (14), then `TEXT_BODY`, `SPACE_3` more clear of what comes before;
+  bold, italic and struck text; inline code in `MONOSPACE_FONT` on `field_background`.
   A line break stays one, as in the terminal the agent writes for. Text renders as it
-  streams; a code fence not closed yet runs to the end.
+  streams; a code fence not closed yet runs to the end, a table shows the rows that came.
+  - **Links**, and web addresses written out bare, are in `link`; a click opens a web or
+    mail address in the browser. A link to a path shows as its text.
+  - **Lists** keep their markers in a 20 pt column in `text_secondary`, widened a digit
+    at a time past 99; bullets go disc, ring, square by depth. A task list's item has a
+    `ICON_SIZE_ROW` box with a `text_secondary` hairline instead, checked when done.
+  - **Quotes** stand behind a two-hairline `border` rule.
+  - **Code blocks** sit on `field_background` with `MENU_RADIUS` corners: a header with
+    the fence's language in `MONOSPACE_FONT` `TEXT_CAPTION` `text_secondary`, and Copy, a
+    `FIELD_TARGET_SIZE` button whose icon turns a check, its tooltip "Copied", for
+    1.2 s; then the code at `TEXT_SMALL`, scrolling sideways when a line is longer than
+    the column, while a vertical wheel over it still scrolls the conversation. A
+    language a grammar knows (`syntect` with `two-face`'s, by name or extension, and
+    names such as `shell` or `jsonc`) colors its tokens in `syntax`'s keyword, string,
+    constant, function and type colors, comments in italic `text_secondary`, a diff's
+    lines in `diff_added` and `danger`; any other shows plain. A block that streams is
+    parsed a line at a time: each finished line once, only the line still coming again.
+    The grammars load on a thread of their own at launch.
+  - **Tables** are at `TEXT_SMALL`: the head in semibold, a `border` hairline under each
+    row, no lines between columns, cells `SPACE_2` by `SPACE_3` in but flush on the
+    table's outer edges. Each column is as wide as its widest cell, up to 320, and
+    shares out the room left over; past that cells wrap, never narrower than their
+    longest word. A table whose columns can't go narrower than the column of text
+    scrolls sideways. Columns keep GitHub's alignment.
 - **Text as it streams** fades in where it ends: each part that arrives goes from clear
   to full color over 320 ms, quick at first, in place, so nothing moves.
 - **Thinking** is a row led by a brain icon: "Thinking" with its clock while it streams,

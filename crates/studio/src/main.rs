@@ -75,6 +75,7 @@ fn main() {
         let store = cx.new(Store::load);
         cx.set_global(Projects(store.clone()));
         agents::init(store.clone(), cx);
+        conversation::prewarm_syntax();
         // Taking over from a running instance, the window opens where its was;
         // otherwise where it was when the app last quit.
         let left = claim.screen();

@@ -15,6 +15,8 @@ mod markdown;
 mod render;
 mod rows;
 mod summary;
+mod syntax;
+mod text;
 mod tool_row;
 mod tools;
 mod working;
@@ -38,6 +40,7 @@ use theme::{
 
 pub use render::line as markdown_line;
 use rows::{Disclosure, Nest, Row, Stamped};
+pub use syntax::prewarm as prewarm_syntax;
 
 use crate::{agents::SessionAgent, assets::Icon, tooltip::TooltipExt};
 
@@ -61,6 +64,10 @@ pub struct Conversation {
     seen: HashMap<(usize, usize), usize>,
     /// Each text's Markdown, by turn and item, with its length when parsed.
     parsed: HashMap<(usize, usize), Parsed>,
+    /// The code blocks' colors, kept as they stream.
+    syntax: syntax::Cache,
+    /// The code block whose Copy just copied it, and when.
+    copied: Option<(u64, Instant)>,
     /// The project's folder, which paths in tool calls read relative to.
     folder: Option<PathBuf>,
     /// The redraws for the clocks and the motion run.
@@ -83,6 +90,8 @@ impl Conversation {
             arriving: HashMap::new(),
             seen: HashMap::new(),
             parsed: HashMap::new(),
+            syntax: syntax::Cache::default(),
+            copied: None,
             folder,
             ticking: false,
             _agent: subscription,
@@ -204,44 +213,7 @@ impl Conversation {
         self.sync(cx);
     }
 
-    /// The Markdown of item `item` of turn `turn`, parsed again only once
-    /// its text grew.
-    fn markdown(&mut self, turn: usize, item: usize, text: &str) -> Rc<Vec<markdown::Block>> {
-        match self.parsed.get(&(turn, item)) {
-            Some((length, blocks)) if *length == text.len() => blocks.clone(),
-            _ => {
-                let blocks = Rc::new(markdown::parse(text));
-                self.parsed
-                    .insert((turn, item), (text.len(), blocks.clone()));
-                blocks
-            }
-        }
-    }
-
-    /// The parts of the end of item `item` of turn `turn`, `length` long now,
-    /// still fading in, measured from its end.
-    fn tail(&self, turn: usize, item: usize, length: usize) -> Vec<(usize, usize, f32)> {
-        let Some(parts) = self.arriving.get(&(turn, item)) else {
-            return Vec::new();
-        };
-        let ends = parts
-            .iter()
-            .skip(1)
-            .map(|(start, _)| *start)
-            .chain([length]);
-        (parts.iter().zip(ends))
-            .map(|(&(start, since), end)| {
-                let amount = animation::arrived(since.elapsed());
-                (
-                    length.saturating_sub(start),
-                    length.saturating_sub(end),
-                    amount,
-                )
-            })
-            .collect()
-    }
-
-    fn render_row(&mut self, at: usize, _: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn render_row(&mut self, at: usize, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let colors = Theme::of(cx).colors;
         let still = cx.reduce_motion();
         let Some(&(row, _)) = self.rows.get(at) else {
@@ -317,9 +289,8 @@ impl Conversation {
                 });
                 let (content, space) = match part {
                     Item::Text(text) => {
-                        let blocks = self.markdown(turn, item, &text.text);
-                        let tail = self.tail(turn, item, text.text.len());
-                        (render::blocks(&blocks, key, &tail, colors), SPACE_3)
+                        let text = text.text.clone();
+                        (self.text(turn, item, &text, colors, window, cx), SPACE_3)
                     }
                     Item::Thinking(text) => {
                         let since = agent.thinking_since(turn, item);

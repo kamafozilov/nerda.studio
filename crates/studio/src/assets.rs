@@ -22,6 +22,8 @@ pub enum Icon {
     Claude,
     /// Opens a pill's choices.
     ChevronDown,
+    /// Copies something, such as a code block, to the clipboard.
+    Copy,
     Close,
     /// No project: a session working on the computer itself.
     Computer,
@@ -114,6 +116,7 @@ impl Icon {
             Self::Check => "icons/tick-02.svg",
             Self::Claude => "icons/claude.svg",
             Self::ChevronDown => "icons/arrow-down-01.svg",
+            Self::Copy => "icons/copy-01.svg",
             Self::Close => "icons/cancel-01.svg",
             Self::Computer => "icons/computer.svg",
             Self::Design => "icons/pen-tool-03.svg",
@@ -336,6 +339,10 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/tick-02.svg",
         include_bytes!("../assets/icons/tick-02.svg"),
+    ),
+    (
+        "icons/copy-01.svg",
+        include_bytes!("../assets/icons/copy-01.svg"),
     ),
 ];
 
