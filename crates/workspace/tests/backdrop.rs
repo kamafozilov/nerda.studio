@@ -24,6 +24,7 @@ fn a_chosen_backdrop_survives_saving_and_loading() {
         strength: BackdropStrength::Bold,
         moving: true,
         image: Some("4f1c.jpg".to_owned()),
+        image_hidden: true,
     };
     workspace.set_backdrop(chosen.clone());
     workspace.save(&path).unwrap();
@@ -97,4 +98,24 @@ fn the_image_colors_need_an_image() {
     assert_eq!(backdrop.tint_in_use(), BackdropTint::Gray);
     backdrop.image = Some("a.png".to_owned());
     assert_eq!(backdrop.tint_in_use(), BackdropTint::Image);
+}
+
+#[test]
+fn a_hidden_image_is_kept_but_not_in_use() {
+    let mut backdrop = Backdrop {
+        tint: BackdropTint::Image,
+        image: Some("a.png".to_owned()),
+        ..Backdrop::default()
+    };
+    assert_eq!(backdrop.image_in_use(), Some("a.png"));
+    backdrop.image_hidden = true;
+    assert_eq!(backdrop.image_in_use(), None);
+    assert_eq!(backdrop.tint_in_use(), BackdropTint::Gray);
+    assert_eq!(backdrop.image.as_deref(), Some("a.png"));
+    // A shown image isn't written as hidden at all.
+    let mut workspace = Workspace::default();
+    backdrop.image_hidden = false;
+    workspace.set_backdrop(backdrop);
+    let json = String::from_utf8(workspace.encode().unwrap()).unwrap();
+    assert!(!json.contains("image_hidden"), "{json}");
 }

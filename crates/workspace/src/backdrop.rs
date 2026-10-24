@@ -1,5 +1,5 @@
 //! What stands behind a new session's composer: a pattern, its color, how
-//! strong it is, an image it may draw, and whether it moves.
+//! strong it is, an image it may draw (or keep aside), and whether it moves.
 
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -55,6 +55,14 @@ pub struct Backdrop {
         deserialize_with = "file_name"
     )]
     pub image: Option<String>,
+    /// The image is kept but set aside: the pattern draws without it until
+    /// it is shown again.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub image_hidden: bool,
+}
+
+fn is_false(value: &bool) -> bool {
+    !value
 }
 
 impl Backdrop {
@@ -64,9 +72,14 @@ impl Backdrop {
         !name.is_empty() && !name.starts_with('.') && !name.contains(['/', '\\', ':'])
     }
 
-    /// The ink in use: the image's colors only while there is an image.
+    /// The image the pattern draws: the chosen one, unless it is hidden.
+    pub fn image_in_use(&self) -> Option<&str> {
+        self.image.as_deref().filter(|_| !self.image_hidden)
+    }
+
+    /// The ink in use: the image's colors only while an image is in use.
     pub fn tint_in_use(&self) -> BackdropTint {
-        match (self.tint, &self.image) {
+        match (self.tint, self.image_in_use()) {
             (BackdropTint::Image, None) => BackdropTint::Gray,
             (tint, _) => tint,
         }
