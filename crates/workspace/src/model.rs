@@ -109,12 +109,19 @@ pub struct Session {
     /// before, and in files from before sessions ran.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conversation: Option<ConversationId>,
+    /// When the session was archived; `None` while it is listed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archived_at: Option<Timestamp>,
 }
 
 impl Session {
     /// True while no message has been sent, so the session is still a reusable draft.
     pub fn is_empty(&self) -> bool {
         self.last_activity_at.is_none()
+    }
+
+    pub fn is_archived(&self) -> bool {
+        self.archived_at.is_some()
     }
 
     /// The time the session was last touched, falling back to its creation.

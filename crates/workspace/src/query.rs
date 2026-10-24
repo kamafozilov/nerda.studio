@@ -37,11 +37,21 @@ impl Workspace {
     /// spellings people type for each other: е for ё, and a plain apostrophe
     /// for the Uzbek ʻ and ʼ.
     pub fn visible_sessions(&self, query: &str) -> Vec<&Session> {
+        self.listed_sessions(query, false)
+    }
+
+    /// The archived sessions in the current scope whose title contains the
+    /// query, in sort order, matched as [`Self::visible_sessions`] does.
+    pub fn archived_sessions(&self, query: &str) -> Vec<&Session> {
+        self.listed_sessions(query, true)
+    }
+
+    fn listed_sessions(&self, query: &str, archived: bool) -> Vec<&Session> {
         let needle = fold(&query.split_whitespace().collect::<Vec<_>>().join(" "));
         let mut sessions: Vec<&Session> = self
             .sessions
             .iter()
-            .filter(|session| !session.is_empty())
+            .filter(|session| !session.is_empty() && session.is_archived() == archived)
             .filter(|session| match self.scope {
                 ProjectScope::All => true,
                 ProjectScope::Project(id) => session.project == id,
@@ -76,11 +86,12 @@ impl Workspace {
         self.projects().first().map(|project| project.id)
     }
 
-    /// The project's most recently active session, ties by newest id; `None` for an unknown or empty project.
+    /// The project's most recently active session that isn't archived, ties
+    /// by newest id; `None` for an unknown or empty project.
     pub fn latest_session(&self, project: ProjectId) -> Option<&Session> {
         self.sessions
             .iter()
-            .filter(|session| session.project == project)
+            .filter(|session| session.project == project && !session.is_archived())
             .max_by_key(|session| (session.activity(), session.id))
     }
 

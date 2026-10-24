@@ -171,7 +171,7 @@ impl Workspace {
     /// Closes `closing`. If that closes the selection, `preferred` is selected,
     /// else the right neighbor on screen, else the left, else the draft of the
     /// project on screen; with no project, nothing.
-    fn close_tabs(&mut self, closing: &[Tab], preferred: Option<Tab>, now: Timestamp) {
+    pub(crate) fn close_tabs(&mut self, closing: &[Tab], preferred: Option<Tab>, now: Timestamp) {
         let closing: HashSet<Tab> = closing
             .iter()
             .copied()

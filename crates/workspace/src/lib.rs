@@ -3,6 +3,7 @@
 
 mod age;
 mod agents;
+mod archive;
 mod backdrop;
 pub mod browse;
 mod error;
@@ -134,6 +135,7 @@ impl Workspace {
             last_activity_at: None,
             choice: self.last_choice.clone(),
             conversation: None,
+            archived_at: None,
         });
         Some(id)
     }
@@ -163,7 +165,8 @@ impl Workspace {
     /// Records a message sent in `session` at `now`, so the session has seen
     /// work: it joins the list and the projects' order. The first message
     /// titles a session still called what it was created as, or blank, by its
-    /// first line that isn't blank. Does nothing for an unknown session.
+    /// first line that isn't blank. An archived session comes back to the
+    /// list. Does nothing for an unknown session.
     pub fn record_message(&mut self, session: SessionId, text: &str, now: Timestamp) {
         let Some(session) = self.sessions.iter_mut().find(|item| item.id == session) else {
             return;
@@ -174,6 +177,7 @@ impl Workspace {
             session.title = line.chars().take(TITLE_MAX_CHARS).collect();
         }
         session.last_activity_at = Some(now);
+        session.archived_at = None;
     }
 
     /// Records the agent's conversation `session` runs, which a later
