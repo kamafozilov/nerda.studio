@@ -1,4 +1,4 @@
-use backdrop::{Frame, Pattern, Rect};
+use backdrop::{Frame, Ink, Pattern, Rect};
 
 const PATTERNS: [Pattern; 5] = [
     Pattern::Horizon,
@@ -14,7 +14,9 @@ fn frame(pattern: Pattern) -> Frame {
         height: 500,
         scale: 2.,
         pattern,
-        ink: [255, 255, 255, 40],
+        ink: Ink::Solid([255, 255, 255, 40]),
+        source: None,
+        light: false,
         clear: Some(Rect {
             x: 200.,
             y: 180.,
@@ -54,7 +56,7 @@ fn every_pattern_marks_something_and_keeps_the_clear_area_bare() {
 #[test]
 fn marks_are_the_ink_in_bgra() {
     let mut frame = frame(Pattern::Clouds);
-    frame.ink = [10, 20, 30, 40];
+    frame.ink = Ink::Solid([10, 20, 30, 40]);
     let pixels = frame.render();
     let mark = each(&pixels).find(|pixel| pixel[3] > 0).unwrap();
     assert_eq!(*mark, [30, 20, 10, 40]);
@@ -67,7 +69,10 @@ fn a_still_frame_draws_the_same_twice_and_time_moves_it() {
     for pattern in PATTERNS {
         let still = frame(pattern);
         assert_eq!(still.render(), still.render());
-        let later = Frame { time: 3., ..still };
+        let later = Frame {
+            time: 3.,
+            ..still.clone()
+        };
         assert_ne!(still.render(), later.render(), "{pattern:?} did not move");
     }
 }

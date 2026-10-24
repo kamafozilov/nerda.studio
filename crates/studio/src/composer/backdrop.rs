@@ -1,23 +1,60 @@
-//! A draft's backdrop: the pattern behind its composer, and the button in
-//! the card's bottom-right corner whose menu picks the pattern, its color,
-//! and whether it moves.
+//! A draft's backdrop: the pattern behind its composer, and the button at
+//! the bottom of the card that opens the backdrop's panel (`backdrop_panel`).
+//!
+//! The panel stays open while the owner tries choices; a click outside it,
+//! Escape or the button closes it and gives focus back to the text.
 
 use gpui::{
-    Anchor, ClickEvent, Context, Focusable, IntoElement, ParentElement, Styled, Window, div,
-    prelude::*,
+    App, ClickEvent, Context, FocusHandle, Focusable, IntoElement, KeyBinding, ParentElement,
+    PathPromptOptions, SharedString, Styled, Subscription, Window, actions, div, prelude::*, px,
+    svg,
 };
-use theme::{CONTROL_RADIUS, SPACE_2, Theme};
-use workspace::{Backdrop, BackdropStyle, BackdropTint, Workspace};
+use theme::{
+    CONTROL_SIZE, HAIRLINE, ICON_SIZE_SMALL, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
+};
+use workspace::{Backdrop, BackdropStyle};
 
 use super::Composer;
 use crate::{
-    backdrop,
-    menu::{Entry, Item, Placement},
-    sidebar::icon_button,
+    assets::Icon,
+    backdrop::{self, ImageState, Look},
 };
 
+actions!(
+    backdrop_panel,
+    [
+        /// Closes the backdrop's panel.
+        ClosePanel,
+        /// Picks the pattern after the chosen one, wrapping.
+        NextPattern,
+        /// Picks the pattern before the chosen one, wrapping.
+        PreviousPattern,
+    ]
+);
+
+pub(super) const PANEL_CONTEXT: &str = "BackdropPanel";
+
+pub(super) fn bind_keys(cx: &mut App) {
+    cx.bind_keys([
+        KeyBinding::new("escape", ClosePanel, Some(PANEL_CONTEXT)),
+        KeyBinding::new("right", NextPattern, Some(PANEL_CONTEXT)),
+        KeyBinding::new("left", PreviousPattern, Some(PANEL_CONTEXT)),
+    ]);
+}
+
+/// The backdrop's panel while it is open.
+pub(super) struct OpenPanel {
+    /// Where focus goes when the panel closes.
+    give_back: Option<FocusHandle>,
+    /// An image is being read and copied in.
+    pub adding: bool,
+    /// Why the last image couldn't be added.
+    pub problem: Option<SharedString>,
+    _focus_out: Subscription,
+}
+
 impl Composer {
-    /// The chosen pattern behind a draft; none once the session has seen
+    /// The chosen backdrop behind a draft; none once the session has seen
     /// work, when the app lets go of its image.
     pub(super) fn render_backdrop(
         &self,
@@ -25,117 +62,215 @@ impl Composer {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<impl IntoElement + use<>> {
-        let chosen = self.store.read(cx).workspace().backdrop();
-        let column = self.column.clone();
-        let element = draft
-            .then(|| backdrop::backdrop(chosen.style, chosen.tint, chosen.moving, column, cx))
-            .flatten();
-        if element.is_none() {
+        let chosen = self.store.read(cx).workspace().backdrop().clone();
+        let image = self.backdrop_image(&chosen, cx);
+        let look = Look::new(chosen.style, &chosen, image.source(), window, cx).filter(|_| draft);
+        let Some(look) = look else {
             backdrop::Backdrop::global(cx).update(cx, |backdrop, _| backdrop.release(window));
-        }
-        element
+            return None;
+        };
+        Some(backdrop::backdrop(
+            look,
+            chosen.moving,
+            self.column.clone(),
+            cx,
+        ))
     }
 
-    /// The backdrop's button, `SPACE_2` in from the card's bottom-right
-    /// corner, on the composer's fill under a hairline; its menu opens above
-    /// it.
+    /// Where reading the chosen image stands.
+    pub(super) fn backdrop_image(&self, chosen: &Backdrop, cx: &mut Context<Self>) -> ImageState {
+        let data = self.store.read(cx).data_dir().map(|dir| dir.to_path_buf());
+        backdrop::Backdrop::global(cx).update(cx, |backdrop, cx| {
+            backdrop.image(data.as_deref(), chosen.image.as_deref(), cx)
+        })
+    }
+
+    /// The button that opens the panel: a quiet pill centered 16 pt above
+    /// the card's bottom edge, its small icon and label in `text_tertiary` on
+    /// the card's own fill under a faint `border` hairline, so it reads as a
+    /// clearing in the pattern rather than a call to act. Under the pointer,
+    /// or while the panel is open, it takes the composer's fill, its label
+    /// `text_primary`.
+    /// The panel opens above it.
     pub(super) fn render_backdrop_button(
         &self,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let colors = Theme::of(cx).colors;
-        let open = self.backdrop_menu.opened().is_some();
-        let menu = if open {
-            let entries = self.backdrop_entries(cx);
-            (self.backdrop_menu).render(
-                "composer-backdrop-menu",
-                entries,
-                Placement::Hang(Anchor::BottomRight),
-                window,
-                cx,
-            )
+        let open = self.backdrop_panel.is_some();
+        let panel = open.then(|| self.render_backdrop_panel(window, cx));
+        let ink = if open {
+            colors.text_primary
         } else {
-            None
+            colors.text_tertiary
         };
-        // On the composer's fill, as the project's pill is, so the icon
-        // reads the same over any pattern.
+        let pill = div()
+            .id("composer-backdrop")
+            .group("composer-backdrop")
+            .h(CONTROL_SIZE)
+            .px(SPACE_3 - HAIRLINE)
+            .flex()
+            .items_center()
+            .gap(SPACE_2 - px(2.))
+            .rounded_full()
+            .border_1()
+            .text_size(TEXT_SMALL)
+            .text_color(ink)
+            .cursor_pointer()
+            .when(open, |pill| {
+                pill.bg(colors.composer_background)
+                    .border_color(colors.border)
+            })
+            .when(!open, |pill| {
+                pill.bg(colors.panel_background)
+                    .border_color(colors.border)
+                    .hover(|pill| {
+                        pill.bg(colors.composer_background)
+                            .border_color(colors.border)
+                            .text_color(colors.text_primary)
+                    })
+            })
+            .on_click(cx.listener(|composer, _: &ClickEvent, window, cx| {
+                composer.toggle_backdrop_panel(window, cx)
+            }))
+            .child(
+                svg()
+                    .path(Icon::Backdrop.path())
+                    .flex_none()
+                    .size(ICON_SIZE_SMALL)
+                    .text_color(ink)
+                    .group_hover("composer-backdrop", |icon| {
+                        icon.text_color(colors.text_primary)
+                    }),
+            )
+            .child("Background");
         div()
             .absolute()
-            .right(SPACE_2)
-            .bottom(SPACE_2)
-            .rounded(CONTROL_RADIUS)
-            .border_1()
-            .border_color(colors.border)
-            .bg(colors.composer_background)
-            .child(icon_button(
-                "composer-backdrop",
-                crate::assets::Icon::Backdrop,
-                "Background",
-                true,
-                colors,
-                |button| {
-                    button
-                        .when(open, |button| button.bg(colors.hover))
-                        .on_click(cx.listener(|composer, _: &ClickEvent, window, cx| {
-                            let text = composer.input.focus_handle(cx);
-                            composer.backdrop_menu.open_from((), Some(text), window, cx);
-                        }))
-                },
-            ))
-            .children(menu.map(|menu| div().absolute().top_0().right_0().child(menu)))
+            .left_0()
+            .right_0()
+            .bottom(SPACE_3 + SPACE_1)
+            .flex()
+            .justify_center()
+            .child(div().relative().child(pill).children(panel))
     }
 
-    /// The patterns, then the colors, then whether it moves; each choice
-    /// checked while it applies.
-    fn backdrop_entries(&self, cx: &Context<Self>) -> Vec<Entry<Self>> {
-        let chosen = self.store.read(cx).workspace().backdrop();
-        let mut entries = vec![Entry::Section("Pattern".into())];
-        entries.extend(BackdropStyle::ALL.into_iter().map(|style| {
-            choice(
-                ("backdrop-style", style as u64),
-                style.title(),
-                chosen.style == style,
-                move |backdrop| backdrop.style = style,
-            )
-        }));
-        entries.push(Entry::Section("Color".into()));
-        entries.extend(BackdropTint::ALL.into_iter().map(|tint| {
-            choice(
-                ("backdrop-tint", tint as u64),
-                tint.title(),
-                chosen.tint == tint,
-                move |backdrop| backdrop.tint = tint,
-            )
-        }));
-        entries.push(Entry::Separator);
-        entries.push(choice(
-            "backdrop-moving",
-            "Move slowly",
-            chosen.moving,
-            |backdrop| backdrop.moving = !backdrop.moving,
-        ));
-        entries
+    fn toggle_backdrop_panel(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.backdrop_panel.is_some() {
+            self.close_backdrop_panel(window, cx);
+            return;
+        }
+        let give_back = Some(self.input.focus_handle(cx));
+        // Focus taken elsewhere, as by a shortcut or a hidden tab, closes the
+        // panel and stays where it went.
+        let focus_out = cx.on_focus_out(&self.panel_focus, window, |composer, _, _, cx| {
+            if composer.backdrop_panel.take().is_some() {
+                cx.notify();
+            }
+        });
+        self.backdrop_panel = Some(OpenPanel {
+            give_back,
+            adding: false,
+            problem: None,
+            _focus_out: focus_out,
+        });
+        window.focus(&self.panel_focus, cx);
+        cx.notify();
     }
-}
 
-/// An item that changes the backdrop, checked while `checked`.
-fn choice(
-    id: impl Into<gpui::ElementId>,
-    label: &'static str,
-    checked: bool,
-    change: impl Fn(&mut Backdrop) + 'static,
-) -> Entry<Composer> {
-    Entry::Item(
-        Item::new(id, label, move |composer: &mut Composer, _, cx| {
-            composer.store.update(cx, |store, cx| {
-                store.update(cx, |workspace: &mut Workspace| {
-                    let mut backdrop = workspace.backdrop();
-                    change(&mut backdrop);
-                    workspace.set_backdrop(backdrop);
-                })
+    pub(super) fn close_backdrop_panel(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(open) = self.backdrop_panel.take() {
+            if let Some(focus) = open.give_back {
+                window.focus(&focus, cx);
+            }
+            cx.notify();
+        }
+    }
+
+    /// Changes the backdrop as `change` does, and saves it.
+    pub(super) fn change_backdrop(&self, cx: &mut App, change: impl FnOnce(&mut Backdrop)) {
+        self.store.update(cx, |store, cx| {
+            store.update(cx, |workspace| {
+                let mut backdrop = workspace.backdrop().clone();
+                change(&mut backdrop);
+                workspace.set_backdrop(backdrop);
             })
         })
-        .checked(checked),
-    )
+    }
+
+    /// Picks the pattern `step` places after the chosen one, wrapping.
+    pub(super) fn step_pattern(&mut self, step: isize, cx: &mut Context<Self>) {
+        let styles = BackdropStyle::ALL;
+        let chosen = self.store.read(cx).workspace().backdrop().style;
+        let at = styles
+            .iter()
+            .position(|style| *style == chosen)
+            .unwrap_or(0);
+        let next = styles[(at as isize + step).rem_euclid(styles.len() as isize) as usize];
+        self.change_backdrop(cx, |backdrop| backdrop.style = next);
+    }
+
+    /// Opens the system's picker for one image; the picked one is copied in
+    /// and replaces the image before it, whose copy is deleted.
+    pub(super) fn pick_backdrop_image(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(data) = self.store.read(cx).data_dir().map(|dir| dir.to_path_buf()) else {
+            return;
+        };
+        if self.backdrop_panel.as_ref().is_none_or(|open| open.adding) {
+            return;
+        }
+        let picked = cx.prompt_for_paths(PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: false,
+            prompt: Some("Choose".into()),
+        });
+        self.set_adding(true, None, cx);
+        cx.spawn_in(window, async move |composer, cx| {
+            let path = match picked.await {
+                Ok(Ok(Some(mut paths))) if !paths.is_empty() => paths.swap_remove(0),
+                _ => {
+                    (composer.update(cx, |composer, cx| composer.set_adding(false, None, cx))).ok();
+                    return;
+                }
+            };
+            let Ok(added) = cx.update(|_, cx| backdrop::add_image(path, data.clone(), cx)) else {
+                return;
+            };
+            let added = added.await;
+            composer
+                .update_in(cx, |composer, window, cx| match added {
+                    Ok(name) => {
+                        composer.replace_backdrop_image(Some(name), cx);
+                        // The system's picker took focus; it comes back to the panel.
+                        if composer.backdrop_panel.is_some() {
+                            window.focus(&composer.panel_focus, cx);
+                        }
+                    }
+                    Err(problem) => composer.set_adding(false, Some(problem), cx),
+                })
+                .ok();
+        })
+        .detach();
+    }
+
+    /// Puts `image` behind the pattern, or none, and deletes the copy of the
+    /// image before it.
+    pub(super) fn replace_backdrop_image(&mut self, image: Option<String>, cx: &mut Context<Self>) {
+        let data = self.store.read(cx).data_dir().map(|dir| dir.to_path_buf());
+        let before = self.store.read(cx).workspace().backdrop().image.clone();
+        self.change_backdrop(cx, |backdrop| backdrop.image = image);
+        if let (Some(data), Some(before)) = (data, before) {
+            backdrop::forget_image(&data, &before, cx);
+        }
+        self.set_adding(false, None, cx);
+    }
+
+    fn set_adding(&mut self, adding: bool, problem: Option<SharedString>, cx: &mut Context<Self>) {
+        if let Some(open) = self.backdrop_panel.as_mut() {
+            open.adding = adding;
+            open.problem = problem;
+        }
+        cx.notify();
+    }
 }

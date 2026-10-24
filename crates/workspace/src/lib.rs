@@ -21,7 +21,7 @@ pub use agents::{
     AGENTS, Access, AccessMode, Agent, AgentChoice, AgentId, Effort, EffortLevel, Model, ModelId,
     agent,
 };
-pub use backdrop::{Backdrop, BackdropStyle, BackdropTint};
+pub use backdrop::{Backdrop, BackdropStrength, BackdropStyle, BackdropTint};
 pub use error::{AddProjectError, LoadError};
 pub use git::{Head, head};
 pub use history::Visits;
@@ -139,8 +139,8 @@ impl Workspace {
     }
 
     /// The choice last made in any session, which new sessions start from.
-    pub fn backdrop(&self) -> Backdrop {
-        self.backdrop
+    pub fn backdrop(&self) -> &Backdrop {
+        &self.backdrop
     }
 
     pub fn set_backdrop(&mut self, backdrop: Backdrop) {

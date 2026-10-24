@@ -1,5 +1,5 @@
-//! What stands behind a new session's composer: a pattern, its color, and
-//! whether it moves.
+//! What stands behind a new session's composer: a pattern, its color, how
+//! strong it is, an image it may draw, and whether it moves.
 
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -21,19 +21,61 @@ pub enum BackdropTint {
     #[default]
     Gray,
     Warm,
+    /// The image's own colors; gray while there is no image.
+    Image,
 }
 
-/// The backdrop as chosen: a horizon in gray that holds still, until the
-/// owner picks otherwise.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// How strongly the pattern shows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum BackdropStrength {
+    Subtle,
+    #[default]
+    Medium,
+    Bold,
+}
+
+/// The backdrop as chosen: a horizon in gray at medium strength that holds
+/// still, with no image, until the owner picks otherwise.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Backdrop {
     #[serde(default, deserialize_with = "named")]
     pub style: BackdropStyle,
     #[serde(default, deserialize_with = "named")]
     pub tint: BackdropTint,
+    #[serde(default, deserialize_with = "named")]
+    pub strength: BackdropStrength,
     /// The pattern drifts slowly; it holds still while the system reduces motion.
     #[serde(default)]
     pub moving: bool,
+    /// The image the pattern draws: a file's name in the app's backdrop
+    /// folder. A name that would reach outside that folder reads as none.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "file_name"
+    )]
+    pub image: Option<String>,
+}
+
+impl Backdrop {
+    /// Whether `name` can name an image in the backdrop folder: a file right
+    /// in it, not hidden, with no separator, so it never reaches elsewhere.
+    pub fn is_image_name(name: &str) -> bool {
+        !name.is_empty() && !name.starts_with('.') && !name.contains(['/', '\\', ':'])
+    }
+
+    /// The ink in use: the image's colors only while there is an image.
+    pub fn tint_in_use(&self) -> BackdropTint {
+        match (self.tint, &self.image) {
+            (BackdropTint::Image, None) => BackdropTint::Gray,
+            (tint, _) => tint,
+        }
+    }
+}
+
+fn file_name<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<String>, D::Error> {
+    let name = Option::<String>::deserialize(deserializer)?;
+    Ok(name.filter(|name| Backdrop::is_image_name(name)))
 }
 
 impl BackdropStyle {
@@ -59,12 +101,30 @@ impl BackdropStyle {
 }
 
 impl BackdropTint {
-    pub const ALL: [BackdropTint; 2] = [BackdropTint::Gray, BackdropTint::Warm];
+    pub const ALL: [BackdropTint; 3] =
+        [BackdropTint::Gray, BackdropTint::Warm, BackdropTint::Image];
 
     pub fn title(self) -> &'static str {
         match self {
             BackdropTint::Gray => "Gray",
             BackdropTint::Warm => "Warm",
+            BackdropTint::Image => "Image",
+        }
+    }
+}
+
+impl BackdropStrength {
+    pub const ALL: [BackdropStrength; 3] = [
+        BackdropStrength::Subtle,
+        BackdropStrength::Medium,
+        BackdropStrength::Bold,
+    ];
+
+    pub fn title(self) -> &'static str {
+        match self {
+            BackdropStrength::Subtle => "Subtle",
+            BackdropStrength::Medium => "Medium",
+            BackdropStrength::Bold => "Bold",
         }
     }
 }
@@ -97,6 +157,18 @@ impl Named for BackdropTint {
         match self {
             BackdropTint::Gray => "gray",
             BackdropTint::Warm => "warm",
+            BackdropTint::Image => "image",
+        }
+    }
+}
+
+impl Named for BackdropStrength {
+    const ALL: &'static [Self] = &BackdropStrength::ALL;
+    fn key(self) -> &'static str {
+        match self {
+            BackdropStrength::Subtle => "subtle",
+            BackdropStrength::Medium => "medium",
+            BackdropStrength::Bold => "bold",
         }
     }
 }
@@ -109,6 +181,12 @@ fn named<'de, D: Deserializer<'de>, T: Named>(deserializer: D) -> Result<T, D::E
 }
 
 impl Serialize for BackdropStyle {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.key())
+    }
+}
+
+impl Serialize for BackdropStrength {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(self.key())
     }

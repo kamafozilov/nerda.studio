@@ -3,6 +3,7 @@
 //! Each pattern reads a field, a lightness in `0..1` over the frame, and
 //! marks it in its own way: a dot per cell where the field beats the ordered
 //! dither's threshold, a dot sized by the field, or a character as dense.
+//! Given an image, the image's lightness is the field, shaped by the pattern.
 
 use crate::{Canvas, Frame, noise};
 
@@ -19,8 +20,13 @@ pub enum Pattern {
     Halftone,
     /// Characters, denser where the clouds are brighter.
     Characters,
+    /// The image itself, every pixel; nothing without one.
+    Image,
 }
 
+/// The horizon's brightest: never every dot, so its brightest band keeps
+/// its texture.
+const HORIZON_PEAK: f32 = 0.8;
 /// A dithered dot's side, in points.
 const DOT: f32 = 2.;
 /// A halftone cell's side, in points.
@@ -71,20 +77,45 @@ struct Place {
     /// Width over height, so round shapes stay round.
     aspect: f32,
     time: f32,
+    /// The image's call for marks here, when there is an image.
+    density: Option<f32>,
 }
 
 impl Pattern {
-    /// The field the pattern marks, in `0..1` (it may run over 1).
+    /// The field the pattern marks, in `0..1` (it may run over 1): its own,
+    /// or the image's shaped by it.
     fn field(self, at: &Place) -> f32 {
+        let Some(density) = at.density else {
+            return self.own_field(at);
+        };
+        match self {
+            // Rising from the bottom edge as the horizon does.
+            Pattern::Horizon => density * self.own_field(at) / HORIZON_PEAK,
+            // Thinned where the clouds part.
+            Pattern::Clouds => density * (0.4 + 0.6 * self.own_field(at)),
+            // The image's own contour lines.
+            Pattern::Contours => {
+                let line = (density * 24. - at.time * 0.4).sin().abs();
+                (1. - noise::smoothstep(0., 0.3, line)) * 0.85
+            }
+            Pattern::Halftone => {
+                density * (0.9 + 0.1 * (at.u * 9. + at.v * 5. - at.time * 0.8).sin())
+            }
+            Pattern::Characters | Pattern::Image => density,
+        }
+    }
+
+    /// The pattern's own field, without an image.
+    fn own_field(self, at: &Place) -> f32 {
         let Place { x, y, u, v, .. } = *at;
         let time = at.time;
         match self {
+            Pattern::Image => 0.,
             Pattern::Horizon => {
                 let wobble = noise::fractal(x / 240. + time * 0.05, y / 240.) - 0.5;
                 let breath = 1. + 0.03 * (time * 0.6).sin();
                 let distance = ((u - 0.5) * 0.8).hypot(v - 1.3) * breath + wobble * 0.12;
-                // Never every dot: even the brightest band keeps its texture.
-                ((1.05 - distance).max(0.) * 1.6).min(0.8)
+                ((1.05 - distance).max(0.) * 1.6).min(HORIZON_PEAK)
             }
             Pattern::Clouds | Pattern::Characters => {
                 let n = noise::fractal(
@@ -116,6 +147,7 @@ pub(crate) fn draw(frame: &Frame, canvas: &mut Canvas) {
         Pattern::Horizon | Pattern::Clouds | Pattern::Contours => dither(frame, canvas),
         Pattern::Halftone => halftone(frame, canvas),
         Pattern::Characters => characters(frame, canvas),
+        Pattern::Image => image(frame, canvas),
     }
 }
 
@@ -129,6 +161,7 @@ fn place(frame: &Frame, x: f32, y: f32) -> Place {
         v: y / height,
         aspect: width / height,
         time: frame.time,
+        density: (frame.source.as_deref()).map(|source| frame.density(source, x, y)),
     }
 }
 
@@ -150,8 +183,10 @@ fn dither(frame: &Frame, canvas: &mut Canvas) {
             let center = dot as f32 / 2.;
             let field = shown(frame, x as f32 + center, y as f32 + center);
             let threshold = (BAYER[row % 8][column % 8] as f32 + 0.5) / 64.;
-            if field > threshold {
-                canvas.block(x, y, dot, dot);
+            if field > threshold
+                && let Some(mark) = frame.mark(x as f32 + center, y as f32 + center)
+            {
+                canvas.block(x, y, dot, dot, mark);
             }
         }
     }
@@ -172,6 +207,9 @@ fn halftone(frame: &Frame, canvas: &mut Canvas) {
             if radius < 0.35 * frame.scale {
                 continue;
             }
+            let Some(mark) = frame.mark(center_x, center_y) else {
+                continue;
+            };
             let left = (center_x - radius - 1.).max(0.) as u32;
             let top = (center_y - radius - 1.).max(0.) as u32;
             let right = (center_x + radius + 1.).ceil() as u32;
@@ -181,7 +219,7 @@ fn halftone(frame: &Frame, canvas: &mut Canvas) {
                     let distance = (x as f32 + 0.5 - center_x).hypot(y as f32 + 0.5 - center_y);
                     let coverage = radius + 0.5 - distance;
                     if coverage > 0. {
-                        canvas.blend(x, y, coverage);
+                        canvas.blend(x, y, coverage, mark);
                     }
                 }
             }
@@ -196,21 +234,59 @@ fn characters(frame: &Frame, canvas: &mut Canvas) {
     let (cell_width, cell_height) = (CHARACTER_CELL.0 * pixel, CHARACTER_CELL.1 * pixel);
     for top in (0..frame.height).step_by(cell_height as usize) {
         for left in (0..frame.width).step_by(cell_width as usize) {
-            let field = shown(
-                frame,
+            let (center_x, center_y) = (
                 left as f32 + cell_width as f32 / 2.,
                 top as f32 + cell_height as f32 / 2.,
             );
+            let field = shown(frame, center_x, center_y);
+            let Some(mark) = frame.mark(center_x, center_y) else {
+                continue;
+            };
             let density = ((field * GLYPHS.len() as f32) as usize).min(GLYPHS.len() - 1);
             for (row, bits) in GLYPHS[density].iter().enumerate() {
                 for column in 0..GLYPH_WIDTH {
                     if bits & (1 << (GLYPH_WIDTH - 1 - column)) != 0 {
                         let x = left + column * pixel;
                         let y = top + row as u32 * pixel;
-                        canvas.block(x, y, pixel, pixel);
+                        canvas.block(x, y, pixel, pixel, mark);
                     }
                 }
             }
+        }
+    }
+}
+
+/// The image itself, each pixel its own color, or the ink at the image's
+/// density, faded by the clear area. Each column and row of the image is
+/// looked up once, not once a pixel.
+fn image(frame: &Frame, canvas: &mut Canvas) {
+    let Some(source) = frame.source.as_deref() else {
+        return;
+    };
+    let cover = source.cover(frame.width as f32, frame.height as f32);
+    let columns: Vec<usize> = (0..frame.width)
+        .map(|x| source.column(cover, x as f32 + 0.5))
+        .collect();
+    for y in 0..frame.height {
+        let row = source.row(cover, y as f32 + 0.5);
+        for (x, column) in (0..frame.width).zip(&columns) {
+            let open = frame.openness(x as f32 + 0.5, y as f32 + 0.5);
+            if open <= 0. {
+                continue;
+            }
+            let (lightness, [r, g, b]) = source.at(row + column);
+            let (mark, coverage) = match frame.ink {
+                crate::Ink::Solid([r, g, b, a]) => {
+                    let density = if frame.light {
+                        1. - lightness
+                    } else {
+                        lightness
+                    };
+                    ([b, g, r, a], density * open)
+                }
+                crate::Ink::Source { alpha } => ([b, g, r, alpha], open),
+            };
+            canvas.blend(x, y, coverage, mark);
         }
     }
 }

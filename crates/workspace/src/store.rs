@@ -64,7 +64,7 @@ struct FileRef<'a> {
     tabs: Vec<SessionId>,
     pages: Vec<PageTabRef>,
     last_choice: &'a AgentChoice,
-    backdrop: Backdrop,
+    backdrop: &'a Backdrop,
 }
 
 /// A page's tab and its index among all tabs.
@@ -164,7 +164,7 @@ impl Workspace {
                 })
                 .collect(),
             last_choice: &self.last_choice,
-            backdrop: self.backdrop,
+            backdrop: &self.backdrop,
         };
         serde_json::to_vec_pretty(&file).map_err(io::Error::other)
     }

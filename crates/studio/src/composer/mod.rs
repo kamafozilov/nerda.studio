@@ -7,6 +7,9 @@
 
 mod attachments;
 mod backdrop;
+mod backdrop_cards;
+mod backdrop_controls;
+mod backdrop_panel;
 mod chips;
 mod intake;
 mod pasted;
@@ -62,6 +65,7 @@ const DRAFT_RISE: f32 = 0.45;
 /// Enter sends; Shift-Enter, bound by the text input, breaks the line.
 pub fn bind_keys(cx: &mut App) {
     cx.bind_keys([KeyBinding::new("enter", Send, Some(CONTEXT))]);
+    backdrop::bind_keys(cx);
 }
 
 pub struct Composer {
@@ -74,8 +78,10 @@ pub struct Composer {
     menu: Menu<Composer, pickers::Picker>,
     /// The project menu, open over or under the project's pill.
     projects: Menu<Composer, ()>,
-    /// The backdrop's menu, open over its button.
-    backdrop_menu: Menu<Composer, ()>,
+    /// The backdrop's panel, open over its button.
+    backdrop_panel: Option<backdrop::OpenPanel>,
+    /// Holds key focus while the backdrop's panel is open.
+    panel_focus: FocusHandle,
     /// Where the column stood when last laid out, which a draft's backdrop
     /// keeps clear.
     column: Rc<Cell<Option<Bounds<Pixels>>>>,
@@ -137,7 +143,8 @@ impl Composer {
                 project_search.clone(),
                 cx,
             ),
-            backdrop_menu: Menu::new(|composer| &mut composer.backdrop_menu, cx),
+            backdrop_panel: None,
+            panel_focus: cx.focus_handle(),
             column: Rc::default(),
             attachments: Attachments::default(),
             problem: None,
