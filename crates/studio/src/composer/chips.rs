@@ -81,6 +81,7 @@ impl Composer {
             .justify_center()
             .invisible()
             .group_hover(group.clone(), |button| button.visible())
+            .cursor_pointer()
             .on_click(cx.listener(move |composer, _: &ClickEvent, _, cx| {
                 cx.stop_propagation();
                 composer.detach(&path, cx);

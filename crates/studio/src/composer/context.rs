@@ -71,6 +71,7 @@ impl Side {
             .flex()
             .items_center()
             .gap(SPACE_1 + SPACE_1 / 2.)
+            .cursor_pointer()
             .child(
                 div()
                     .absolute()

@@ -175,6 +175,7 @@ impl Sidebar {
             .gap(SPACE_2)
             .rounded(CONTROL_RADIUS)
             .bg(fill)
+            .when(enabled, |row| row.cursor_pointer())
             .font_weight(FontWeight::MEDIUM)
             .text_color(color)
             .on_hover(cx.listener(move |sidebar, hovered: &bool, _, cx| {

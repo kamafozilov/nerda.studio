@@ -88,6 +88,7 @@ impl Sidebar {
             .items_center()
             .justify_center()
             .rounded(CONTROL_RADIUS)
+            .cursor_pointer()
             .when(shown, |button| button.bg(colors.row_selected))
             .when(!shown, |button| {
                 button.hover(|button| button.bg(colors.hover))

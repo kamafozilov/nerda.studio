@@ -171,6 +171,7 @@ impl Shell {
             .items_center()
             .justify_center()
             .rounded(CONTROL_RADIUS)
+            .cursor_pointer()
             .hover(|button| button.bg(colors.hover))
             .on_click(
                 cx.listener(|shell, _: &ClickEvent, window, cx| shell.toggle_sidebar(window, cx)),

@@ -50,6 +50,7 @@ pub fn no_projects(
                 .border_1()
                 .border_color(colors.border)
                 .text_color(colors.text_primary)
+                .cursor_pointer()
                 .hover(|button| button.bg(colors.hover))
                 .on_click(on_add)
                 .child("Add project"),

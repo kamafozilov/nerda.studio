@@ -63,7 +63,9 @@ fn icon_button_sized(
         .justify_center()
         .rounded(CONTROL_RADIUS)
         .when(enabled, |button| {
-            button.hover(|button| button.bg(colors.hover))
+            button
+                .cursor_pointer()
+                .hover(|button| button.bg(colors.hover))
         })
         .when(!enabled, |button| button.opacity(DISABLED_OPACITY))
         .child(

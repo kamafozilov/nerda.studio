@@ -66,6 +66,7 @@ impl Composer {
             .child(div().flex_1())
             .child(if stop {
                 stop_button(colors)
+                    .cursor_pointer()
                     .on_click(cx.listener(|composer, _: &ClickEvent, _, cx| composer.stop(cx)))
                     .with_tooltip("Stop")
             } else {
@@ -140,6 +141,7 @@ impl Composer {
             .items_center()
             .gap(SPACE_1)
             .rounded(CONTROL_RADIUS)
+            .cursor_pointer()
             .hover(|pill| pill.bg(colors.hover))
             .when(open, |pill| pill.bg(colors.hover))
             .text_color(colors.text_secondary)
@@ -215,7 +217,9 @@ fn send_button(has_message: bool, colors: Colors) -> WithTooltip {
     round_button("composer-send", colors)
         .when(!has_message, |button| button.opacity(DISABLED_OPACITY))
         .when(has_message, |button| {
-            button.on_click(|_, window, cx| window.dispatch_action(Box::new(Send), cx))
+            button
+                .cursor_pointer()
+                .on_click(|_, window, cx| window.dispatch_action(Box::new(Send), cx))
         })
         .child(
             svg()

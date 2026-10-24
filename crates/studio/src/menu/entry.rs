@@ -202,14 +202,16 @@ impl<T: 'static, K: 'static> Menu<T, K> {
                 access(owner).point_at(level, at, enabled, has_submenu, cx)
             }))
             .when(enabled, |row| {
-                row.on_click(cx.listener(move |owner, _: &ClickEvent, window, cx| {
-                    if has_submenu {
-                        access(owner).open_submenu(at, cx);
-                    } else {
-                        pick(owner, window, cx);
-                        access(owner).close(window, cx);
-                    }
-                }))
+                row.cursor_pointer().on_click(cx.listener(
+                    move |owner, _: &ClickEvent, window, cx| {
+                        if has_submenu {
+                            access(owner).open_submenu(at, cx);
+                        } else {
+                            pick(owner, window, cx);
+                            access(owner).close(window, cx);
+                        }
+                    },
+                ))
             })
             .when(!enabled, |row| row.opacity(DISABLED_OPACITY))
             .when_some(

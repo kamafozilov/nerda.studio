@@ -320,6 +320,7 @@ impl Sidebar {
                     .flex_col()
                     .rounded(SESSION_ROW_RADIUS)
                     .bg(fill)
+                    .cursor_pointer()
                     .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
                         sidebar.open_session(id, cx)
                     }))

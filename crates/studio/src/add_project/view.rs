@@ -102,6 +102,7 @@ impl AddProjectPalette {
                     .cursor_default()
                     .when(enabled, |button| {
                         button
+                            .cursor_pointer()
                             .hover(|button| button.bg(colors.hover))
                             .on_click(cx.listener(|palette, _: &ClickEvent, _, cx| {
                                 cx.stop_propagation();
@@ -224,6 +225,7 @@ impl AddProjectPalette {
             .gap(SPACE_2)
             .rounded(CONTROL_RADIUS)
             .when(self.highlighted == Some(row), |item| item.bg(colors.hover))
+            .cursor_pointer()
             .hover(|item| item.bg(colors.hover))
             .on_click(cx.listener(move |palette, _: &ClickEvent, _, cx| palette.open_row(row, cx)))
             .child(
@@ -281,6 +283,7 @@ impl AddProjectPalette {
                     .items_center()
                     .rounded(CONTROL_RADIUS)
                     .text_color(colors.text_primary)
+                    .cursor_pointer()
                     .hover(|button| button.bg(colors.hover))
                     .on_click(cx.listener(|palette, _: &ClickEvent, window, cx| {
                         palette.choose_in_picker(window, cx)

@@ -123,6 +123,7 @@ impl TabStrip {
         let lifted = self.lifted(id);
         tab_face(id, label, selected, lifted, colors)
             .occlude()
+            .cursor_pointer()
             .when(!selected && !lifted, |tab| {
                 tab.hover(|tab| tab.bg(colors.hover))
             })
@@ -234,6 +235,7 @@ fn close_button(
         .flex()
         .items_center()
         .justify_center()
+        .cursor_pointer()
         .opacity(0.)
         .group_hover(label.group.clone(), |button| button.opacity(1.))
         // The press closes, never starts a drag.
