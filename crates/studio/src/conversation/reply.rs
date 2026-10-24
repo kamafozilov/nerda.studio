@@ -238,7 +238,7 @@ impl Conversation {
     }
 
     /// How turn `turn` ended, led by Copy when the agent wrote something
-    /// in it.
+    /// in it; a finished turn's is Copy alone.
     pub(super) fn end_row(
         &self,
         turn: usize,
@@ -248,7 +248,7 @@ impl Conversation {
     ) -> AnyElement {
         let end = items::end(ending, colors);
         let Some(text) = self.turn_text(turn, cx) else {
-            return end;
+            return end.unwrap_or_else(|| div().into_any_element());
         };
         // The turn's own id among the code blocks' and the replies'.
         let id = u64::MAX - turn as u64;
@@ -267,7 +267,7 @@ impl Conversation {
             .items_center()
             .gap(SPACE_1)
             .child(button)
-            .child(div().flex_1().min_w_0().child(end))
+            .children(end.map(|end| div().flex_1().min_w_0().child(end)))
             .into_any_element()
     }
 }

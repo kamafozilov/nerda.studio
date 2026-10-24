@@ -1,9 +1,12 @@
-//! Each kind of row but a tool call's: the person's message, thinking, a
-//! prompt, and how a turn ended. Prompts are one line each for now.
+//! Each kind of row but a tool call's: the person's message, the line over
+//! a turn's work, thinking, a prompt, and how a turn ended. Prompts are one
+//! line each for now.
 
 use std::time::{Duration, Instant};
 
-use agent::{Ask, Attachment, Ending, ImageFormat, Message, Permission, PermissionState, Text};
+use agent::{
+    Ask, Attachment, Ending, ImageFormat, Message, Permission, PermissionState, Text, TurnState,
+};
 use gpui::{
     AnyElement, ClickEvent, ElementId, IntoElement, ParentElement, SharedString, Styled, Window,
     div, prelude::*, relative,
@@ -88,6 +91,71 @@ pub fn message(
         .when(queued, |row| {
             row.child(supporting(colors).mt(SPACE_1).child("Queued"))
         })
+        .into_any_element()
+}
+
+/// How long a turn in `state` has worked: "Working for 12s", glowing, from
+/// `since` while it runs; "Worked for 3m 29s" once it ended, by the agent's
+/// count when it finished, else `took`, as the app saw it run. `None` for a
+/// turn that waits, or one seen only in its journal that didn't finish.
+pub fn worked(
+    state: &TurnState,
+    since: Option<Instant>,
+    took: Option<Duration>,
+    still: bool,
+    colors: Colors,
+) -> Option<AnyElement> {
+    Some(match state {
+        TurnState::Queued => return None,
+        TurnState::Running => {
+            let words = match since {
+                Some(since) => format!("Working for {}", elapsed(since.elapsed())),
+                None => "Working".to_owned(),
+            };
+            let glow = animation::shimmer(words, colors.text_secondary, colors.text_primary, still);
+            glow.into_any_element()
+        }
+        TurnState::Ended(ending) => {
+            let took = match ending {
+                Ending::Finished(finished) => Duration::from_millis(finished.duration_ms),
+                _ => took?,
+            };
+            format!("Worked for {}", elapsed(took)).into_any_element()
+        }
+    })
+}
+
+/// The line over a turn's work, `label` over a hairline: "Working for 12s"
+/// while it runs, "Worked for 3m 29s" once it ended. When the turn's work
+/// folds under it, a chevron follows, turned down while `open`, and a
+/// click on the line opens or closes it.
+pub fn header(
+    label: AnyElement,
+    open: Option<bool>,
+    id: ElementId,
+    on_click: impl Fn(&ClickEvent, &mut Window, &mut gpui::App) + 'static,
+    colors: Colors,
+) -> AnyElement {
+    let line = div()
+        .id(id)
+        .flex()
+        .items_center()
+        .gap(SPACE_1)
+        .text_color(colors.text_secondary)
+        .child(label)
+        .when_some(open, |line, open| {
+            line.cursor_pointer()
+                .hover(|line| line.text_color(colors.text_primary))
+                .on_click(on_click)
+                .child(tool_row::chevron(open, colors.text_tertiary))
+        });
+    div()
+        .w_full()
+        .flex()
+        .pb(SPACE_2)
+        .border_b(HAIRLINE)
+        .border_color(colors.border)
+        .child(line)
         .into_any_element()
 }
 
@@ -202,20 +270,12 @@ pub fn permission(permission: &Permission, colors: Colors) -> AnyElement {
     supporting(colors).child(line).into_any_element()
 }
 
-/// How the turn ended: how long it worked, that it was stopped, or what went
-/// wrong and what to do, as the composer's problem line says it.
-pub fn end(ending: &Ending, colors: Colors) -> AnyElement {
-    match ending {
-        Ending::Finished(finished) => supporting(colors)
-            .flex()
-            .items_center()
-            .gap(SPACE_2)
-            .child(format!(
-                "Worked for {}",
-                elapsed(Duration::from_millis(finished.duration_ms))
-            ))
-            .child(div().flex_1().h(HAIRLINE).bg(colors.border))
-            .into_any_element(),
+/// How the turn ended, when its header doesn't say it all: that it was
+/// stopped, or what went wrong and what to do, as the composer's problem
+/// line says it.
+pub fn end(ending: &Ending, colors: Colors) -> Option<AnyElement> {
+    Some(match ending {
+        Ending::Finished(_) => return None,
         Ending::Interrupted => supporting(colors).child("Stopped").into_any_element(),
         Ending::Failed(failure) => div()
             .flex()
@@ -225,7 +285,7 @@ pub fn end(ending: &Ending, colors: Colors) -> AnyElement {
             .child(render::line(&failure.message()))
             .children(failure.suggestion().map(render::line))
             .into_any_element(),
-    }
+    })
 }
 
 /// A supporting line: `TEXT_SMALL` in `text_secondary`.

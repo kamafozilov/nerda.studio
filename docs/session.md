@@ -70,8 +70,8 @@ file was set aside, hands out session ids again.
 composer, in the composer's column: at most `COMPOSER_MAX_WIDTH`, centered, `SPACE_3`
 clear of the card's sides. A draft shows its composer alone, as before.
 
-- **Rows.** Each turn is its message, then what came back, item by item, then how it
-  ended. A row whose look changed is measured again where it is; from where rows came or
+- **Rows.** Each turn is its message, its header, then what came back, item by item,
+  then how it ended. A row whose look changed is measured again where it is; from where rows came or
   went, the list lays out anew, so streaming text grows only its own row.
 - **Sticking to the bottom.** Newest is at the bottom, and the list keeps to it while
   output streams. Scrolled up, it stays where it is, however much streams below, until
@@ -149,7 +149,7 @@ clear of the card's sides. A draft shows its composer alone, as before.
   selection lets it go.
 - **The person's message** selects and copies the same way, its text as they wrote it,
   lines kept; its menu ends with Copy Message instead of Copy Reply.
-- **Under a turn that ended**, a Copy button leads its "Worked for" or "Stopped" line
+- **Under a turn that ended**, a Copy button, leading its "Stopped" or failure line,
   when the agent wrote something in it: it copies all the turn's text as Markdown, a
   blank line apart, and shows a check, its tooltip "Copied", for 1.2 s.
 - **Text as it streams** fades in where it ends: each part that arrives goes from clear
@@ -183,18 +183,29 @@ clear of the card's sides. A draft shows its composer alone, as before.
   critically damped spring of 0.3 s response. The conversation redraws 30 times a
   second while anything moves, once a second for the clocks under Reduce motion, and not
   at all while idle. Reduce motion holds every glow, wave and fade still.
-- **How a turn ended**, in `TEXT_SMALL` under it: "Worked for 1m 12s" (whole seconds,
-  at least one; minutes and hours past them) in `text_secondary`, a `border` hairline
-  running on to the column's edge; "Stopped"; or a failure as the problem line says it,
-  `text_primary`: what went wrong, then what to do, such as "The agent isn't signed
-  in." over "Run `claude auth login` in a terminal, then try again."
+- **The turn's header**, `SPACE_3` under the message once the agent takes it up, over
+  a `border` hairline `SPACE_2` under it: "Working for 54s", glowing, while it runs,
+  then in place "Worked for 3m 29s" (whole seconds, at least one; minutes and hours
+  past them), in `text_secondary`. The time is the agent's own count for a finished
+  turn, else as the app saw it run; a stopped or failed turn seen only in its journal,
+  or one that ended before it did anything, has no header.
+- **A finished turn folds** its work under the header: every tool call, thinking block,
+  prompt and text but its last reply, which stays in view. A chevron after the words,
+  in `text_tertiary`, shows it opens; a click on them, `text_primary` under the
+  pointer, opens or closes it for good, its groups as they were, and the rows in view
+  stay where they were, the header under the pointer. A turn whose only item is its
+  reply doesn't fold. A stopped or failed turn keeps its work in view, where what went
+  wrong is.
+- **How a turn ended**, in `TEXT_SMALL` under it, when it didn't finish: "Stopped", or
+  a failure as the problem line says it, `text_primary`: what went wrong, then what to
+  do, such as "The agent isn't signed in." over "Run `claude auth login` in a terminal,
+  then try again."
 - **Working.** While a turn runs or a message waits, the conversation's last row,
   `SPACE_3` under the newest, so it stays where the eye is, shows a square of nine dots
   in the rows' icon slot, three rows in `activity`'s blue, amber and
-  pink, a wave rising through them every 1.2 s; what the agent is doing, glowing
+  pink, a wave rising through them every 1.2 s, and what the agent is doing, glowing
   ("Thinking", "Writing", "Reading motion.rs", "Running cargo test", "Waiting for your
-  answer", "Starting", "Stopping"); and for how long it has worked, in `TEXT_SMALL`
-  `text_tertiary`. The row goes once the turn ends.
+  answer", "Starting", "Stopping"). The row goes once the turn ends.
 
 The conversation's own colors are in `crates/theme/src/palette.rs`, computed in OKLCH:
 `danger` (h 27; 6.99:1 dark, 5.68:1 light on the card over the worst desktop),

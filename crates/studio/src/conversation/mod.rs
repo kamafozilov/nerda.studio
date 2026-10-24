@@ -2,11 +2,13 @@
 //! person's messages, what came back, and how each turn ended, newest at the
 //! bottom, in the composer's column. Tool calls in a row, with the thinking
 //! between them, gather under one line that stays open while the agent adds
-//! to it and closes once it moves on. While output streams the list keeps
+//! to it and closes once it moves on. A turn's work hangs under a line of
+//! how long it has worked; once the turn finished, its work folds under
+//! that line and its last reply stays in view. While output streams the list keeps
 //! to its bottom, unless the person scrolled up: there it stays until they
 //! scroll back down, or press the button over the composer that takes them
-//! there. A line under the newest row shows what the agent is doing, and
-//! for how long, so it stays where the eye is.
+//! there. A line under the newest row shows what the agent is doing, so it
+//! stays where the eye is.
 
 mod animation;
 mod diff;
@@ -200,11 +202,27 @@ impl Conversation {
         .detach();
     }
 
+    /// Takes in what the person opened or closed, keeping the rows in view
+    /// where they were, so what they clicked stays under the pointer, even
+    /// at the bottom, where the list would keep to its end.
+    fn reopen(&mut self, cx: &mut Context<Self>) {
+        let top = self.list.logical_scroll_top();
+        self.sync(cx);
+        self.list.scroll_to(top);
+    }
+
     fn toggle_item(&mut self, turn: usize, item: usize, cx: &mut Context<Self>) {
         if !self.disclosure.items.remove(&(turn, item)) {
             self.disclosure.items.insert((turn, item));
         }
-        self.sync(cx);
+        self.reopen(cx);
+    }
+
+    fn toggle_turn(&mut self, turn: usize, cx: &mut Context<Self>) {
+        if !self.disclosure.turns.remove(&turn) {
+            self.disclosure.turns.insert(turn);
+        }
+        self.reopen(cx);
     }
 
     fn toggle_group(&mut self, turn: usize, first: usize, cx: &mut Context<Self>) {
@@ -220,7 +238,7 @@ impl Conversation {
         };
         let open = rows::open(&self.disclosure, turn, each, &range);
         self.disclosure.groups.insert((turn, first), !open);
-        self.sync(cx);
+        self.reopen(cx);
     }
 
     fn render_row(&mut self, at: usize, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
@@ -251,6 +269,21 @@ impl Conversation {
                     (!text.is_empty()).then(|| self.message_text(turn, text, colors, window, cx));
                 let space = if at == 0 { px(0.) } else { SPACE_3 * 2. };
                 (items::message(&message, text, queued, colors), space)
+            }
+            Row::Header { turn } => {
+                let Some(each) = turns.get(turn) else {
+                    return nothing();
+                };
+                let since = agent.turn_since(turn).or(agent.busy_since());
+                let took = agent.turn_took(turn);
+                let Some(label) = items::worked(&each.state, since, took, still, colors) else {
+                    return nothing();
+                };
+                let open = rows::fold(each).map(|_| self.disclosure.turns.contains(&turn));
+                let id = ElementId::NamedInteger("turn".into(), turn as u64);
+                let toggle =
+                    cx.listener(move |conversation, _, _, cx| conversation.toggle_turn(turn, cx));
+                (items::header(label, open, id, toggle, colors), SPACE_3)
             }
             Row::Group { turn, first, last } => {
                 let Some(each) = turns.get(turn) else {
@@ -332,13 +365,12 @@ impl Conversation {
                 }
             }
             Row::Working => {
-                let Some(since) = agent.busy_since() else {
+                if !agent.is_busy() {
                     return nothing();
-                };
+                }
                 let doing = working::doing(agent.transcript(), folder);
-                let elapsed = items::elapsed(since.elapsed());
                 (
-                    working::indicator(doing, elapsed, still, colors).into_any_element(),
+                    working::indicator(doing, still, colors).into_any_element(),
                     SPACE_3,
                 )
             }

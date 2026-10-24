@@ -1,12 +1,12 @@
 //! The line under the conversation while the agent works: a square of dots
-//! rising in a wave, what the agent is doing in words, glowing, and for how
-//! long it has worked.
+//! rising in a wave and what the agent is doing in words, glowing. How long
+//! it has worked is on the turn's header.
 
 use std::path::Path;
 
 use agent::{Item, Status, ToolStatus, Transcript, TurnState};
 use gpui::{Div, ParentElement, Styled, div, px};
-use theme::{Colors, ICON_SIZE_ROW, SPACE_2, TEXT_SMALL};
+use theme::{Colors, ICON_SIZE_ROW, SPACE_2};
 
 use super::{
     animation,
@@ -50,8 +50,8 @@ pub fn doing(transcript: &Transcript, folder: Option<&Path>) -> String {
     }
 }
 
-/// The indicator: the dots, `doing`, and `elapsed`.
-pub fn indicator(doing: String, elapsed: String, still: bool, colors: Colors) -> Div {
+/// The indicator: the dots and `doing`.
+pub fn indicator(doing: String, still: bool, colors: Colors) -> Div {
     let gap = px(DOT / 2.);
     let square = div()
         .flex_none()
@@ -89,11 +89,4 @@ pub fn indicator(doing: String, elapsed: String, still: bool, colors: Colors) ->
             colors.text_primary,
             still,
         )))
-        .child(
-            div()
-                .flex_none()
-                .text_size(TEXT_SMALL)
-                .text_color(colors.text_tertiary)
-                .child(elapsed),
-        )
 }

@@ -44,6 +44,10 @@ pub struct SessionAgent {
     thinking_since: HashMap<(usize, usize), Instant>,
     /// How long each thinking block seen streaming took, by turn and item.
     thought_for: HashMap<(usize, usize), Duration>,
+    /// When each turn still running began, by turn.
+    turn_since: HashMap<usize, Instant>,
+    /// How long each turn seen running took, by turn.
+    turn_took: HashMap<usize, Duration>,
 }
 
 enum State {
@@ -104,6 +108,8 @@ impl SessionAgent {
             busy_since: None,
             thinking_since: HashMap::new(),
             thought_for: HashMap::new(),
+            turn_since: HashMap::new(),
+            turn_took: HashMap::new(),
         }
     }
 
@@ -124,6 +130,17 @@ impl SessionAgent {
     /// only for thinking seen streaming since the app opened.
     pub fn thought_for(&self, turn: usize, item: usize) -> Option<Duration> {
         self.thought_for.get(&(turn, item)).copied()
+    }
+
+    /// When turn `turn` began, while it runs.
+    pub fn turn_since(&self, turn: usize) -> Option<Instant> {
+        self.turn_since.get(&turn).copied()
+    }
+
+    /// How long turn `turn` took, once it ended; known only for turns seen
+    /// running since the app opened.
+    pub fn turn_took(&self, turn: usize) -> Option<Duration> {
+        self.turn_took.get(&turn).copied()
     }
 
     /// The folder of the session's project, which the agent works in.
@@ -353,14 +370,28 @@ impl SessionAgent {
     }
 
     /// Starts or ends the clocks the screen shows: how long the agent has
-    /// been working, and how long each thinking block has streamed.
+    /// been working, each turn, and how long each thinking block has
+    /// streamed.
     fn note_times(&mut self) {
         let now = Instant::now();
         let turns = self.transcript.turns();
         let busy = (turns.iter()).any(|turn| !matches!(turn.state, TurnState::Ended(_)));
         self.busy_since = busy.then(|| self.busy_since.unwrap_or(now));
+        let mut running = HashMap::new();
         let mut thinking = HashMap::new();
         for (at, turn) in turns.iter().enumerate() {
+            let since = self.turn_since.get(&at).copied();
+            match &turn.state {
+                TurnState::Running => {
+                    running.insert(at, since.unwrap_or(now));
+                }
+                TurnState::Ended(_) => {
+                    if let Some(since) = since {
+                        self.turn_took.insert(at, now - since);
+                    }
+                }
+                TurnState::Queued => {}
+            }
             for (item, part) in turn.items.iter().enumerate() {
                 if let Item::Thinking(text) = part
                     && text.streaming
@@ -375,6 +406,7 @@ impl SessionAgent {
             }
         }
         self.thinking_since = thinking;
+        self.turn_since = running;
     }
 
     /// A refused switch of access: the session's choice goes back to what
