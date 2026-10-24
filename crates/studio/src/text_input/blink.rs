@@ -34,14 +34,14 @@ impl Default for Blink {
 impl TextInput {
     /// Whether the cursor shows this frame: blinking on, in the active window.
     pub(super) fn cursor_visible(&self, window: &Window) -> bool {
-        self.blink.visible && window.is_window_active()
+        self.blink.visible && crate::background::active(window)
     }
 
     /// Run on each render: shows the cursor and restarts the blink when the
     /// selection, the text or the focus changed; stops it without focus or
     /// while the window is in the background, where the cursor hides.
     pub(super) fn keep_blinking(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let focused = self.focus_handle.is_focused(window) && window.is_window_active();
+        let focused = self.focus_handle.is_focused(window) && crate::background::active(window);
         let seen = Some((self.selected_range.clone(), self.content.clone(), focused));
         if self.blink.seen == seen {
             return;
@@ -53,7 +53,9 @@ impl TextInput {
                 loop {
                     cx.background_executor().timer(BLINK).await;
                     let going = input.update_in(cx, |input, window, cx| {
-                        if !input.focus_handle.is_focused(window) || !window.is_window_active() {
+                        if !input.focus_handle.is_focused(window)
+                            || !crate::background::active(window)
+                        {
                             input.blink.visible = true;
                             return false;
                         }

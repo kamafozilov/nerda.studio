@@ -412,7 +412,7 @@ impl Render for Shell {
             .size_full()
             .flex()
             .flex_col()
-            .bg(colors.window_background)
+            .bg(crate::background::over_desktop(colors.window_background))
             .text_color(colors.text_primary)
             .text_size(TEXT_BODY)
             .child(self.top_row(window, cx))

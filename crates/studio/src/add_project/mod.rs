@@ -351,7 +351,7 @@ impl AddProjectPalette {
     }
 
     fn choose_in_picker(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.picking_folder {
+        if self.picking_folder || !crate::background::allows_system_ui("the folder picker") {
             return;
         }
         self.picking_folder = true;

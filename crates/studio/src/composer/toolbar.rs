@@ -76,7 +76,7 @@ impl Composer {
     /// Opens the system's picker for files and folders, several at once;
     /// cancelling it changes nothing.
     fn pick_attachments(&mut self, _: &ClickEvent, window: &mut Window, cx: &mut Context<Self>) {
-        if self.picking {
+        if self.picking || !crate::background::allows_system_ui("the file picker") {
             return;
         }
         self.picking = true;

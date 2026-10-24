@@ -251,7 +251,9 @@ impl Composer {
         let Some(data) = self.store.read(cx).data_dir().map(|dir| dir.to_path_buf()) else {
             return;
         };
-        if self.backdrop_panel.as_ref().is_none_or(|open| open.adding) {
+        if self.backdrop_panel.as_ref().is_none_or(|open| open.adding)
+            || !crate::background::allows_system_ui("the image picker")
+        {
             return;
         }
         let picked = cx.prompt_for_paths(PathPromptOptions {

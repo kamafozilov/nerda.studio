@@ -41,6 +41,9 @@ use store::Store;
 use theme::Theme;
 
 fn main() {
+    if !background::may_launch() {
+        std::process::exit(2);
+    }
     #[cfg(target_os = "macos")]
     bundle::run_from_bundle();
     // Before anything reads the workspace: only one instance saves it.

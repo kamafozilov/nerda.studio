@@ -121,7 +121,11 @@ impl Sidebar {
                 Item::new(
                     "row-reveal",
                     "Show in Finder",
-                    move |_: &mut Sidebar, _, cx| cx.reveal_path(&folder),
+                    move |_: &mut Sidebar, _, cx| {
+                        if crate::background::allows_system_ui("the Finder") {
+                            cx.reveal_path(&folder)
+                        }
+                    },
                 )
                 .icon(Icon::FolderOpen, muted),
             ));
