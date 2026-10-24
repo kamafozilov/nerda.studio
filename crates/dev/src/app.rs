@@ -2,9 +2,15 @@
 
 use std::{
     ffi::OsStr,
-    path::Path,
+    path::{Path, PathBuf},
     process::{Child, ChildStdin, Command, ExitStatus, Stdio},
 };
+
+/// The app's debug build, as `cargo build -p studio` leaves it.
+pub fn binary(root: &Path) -> PathBuf {
+    root.join("target/debug/studio")
+        .with_extension(std::env::consts::EXE_EXTENSION)
+}
 
 pub struct App {
     child: Child,
@@ -17,9 +23,7 @@ impl App {
     /// running, the runner's or not, unless `env` gives it a data folder of
     /// its own. `args` go to the app.
     pub fn launch(root: &Path, env: &[(&str, &OsStr)], args: &[String]) -> Option<App> {
-        let binary = root
-            .join("target/debug/studio")
-            .with_extension(std::env::consts::EXE_EXTENSION);
+        let binary = binary(root);
         let mut command = Command::new(&binary);
         command
             .args(args)

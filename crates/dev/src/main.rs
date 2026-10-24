@@ -2,7 +2,8 @@
 //!
 //! Builds and starts the app, then watches the sources. After a change settles
 //! it builds again; only a build that succeeds is started, so a mistake mid-edit
-//! leaves the last good one on screen. Each new build takes the window over from
+//! leaves the last good one on screen, and only one that changed the app, so a
+//! change to tests alone, such as a scene, leaves it running as it is. Each new build takes the window over from
 //! the one running (the app's `instance` module): it opens where the old window
 //! is, and the old one quits only once the new one has drawn, so the window
 //! never goes away and saves made in the old one reach the disk before the new
@@ -89,8 +90,15 @@ fn live_reload(root: &Path) -> ExitCode {
         }
         seen = settled(root, now);
         println!("dev: sources changed, building");
+        let before = built(root);
         if !build(root) {
             println!("dev: the build failed; the running app stays");
+            continue;
+        }
+        // A change only tests see, such as a scene, leaves the app as it was:
+        // it keeps running rather than restart for nothing.
+        if running.current.is_some() && built(root) == before {
+            println!("dev: the app's build didn't change; it keeps running");
             continue;
         }
         running.launch(root);
@@ -209,6 +217,14 @@ fn collect(folder: &Path, skip: &Path, files: &mut Vec<PathBuf>) {
             Err(_) => {}
         }
     }
+}
+
+/// When the app's build was last written: cargo leaves it alone when nothing
+/// it is made of changed.
+fn built(root: &Path) -> Option<std::time::SystemTime> {
+    fs::metadata(app::binary(root))
+        .and_then(|meta| meta.modified())
+        .ok()
 }
 
 fn build(root: &Path) -> bool {
