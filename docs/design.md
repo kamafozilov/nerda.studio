@@ -56,7 +56,6 @@ the sidebar and the tabs read the same over any desktop. Light keeps its glass.
 | `text_tertiary` | `797979` (L 0.57), 4.55 on the base | `505358` | Section titles, a row's age |
 | `scrim` | `151619` at 64% | `fbfdff` at 60% | Dims the window under a dialog; nothing is read on it |
 | `key_background` | text primary at 10% | text primary at 10% | Key cap fill; `text_secondary` on it keeps 4.92 / 5.51 even under `hover` |
-| `danger` | `d12921` | `d12921` | Fill of a button that can't be taken back, such as Quit; `text_on_danger` (white) on it keeps 5.18 |
 | `badges` | fill L 0.38 C 0.075, initials L 0.87 C 0.10 | fill L 0.91 C 0.045, initials L 0.43 C 0.12 | Project badges, eight hues (25, 60, 95, 145, 185, 235, 285, 330), chroma cut to stay in sRGB; the initials keep at least 6.73:1 (dark) and 5.98:1 (light) on their fill, 5.27 and 5.39 under a row's surface |
 
 ### Contrast on glass
@@ -179,16 +178,13 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   `Cmd-K`, Back, Forward, Toggle Full Screen `Ctrl-Cmd-F`) and Window (Minimize `Cmd-M`,
   Zoom, the next and previous tab). A new command goes into its menu as it gets a
   shortcut.
-- **Quit.** `Cmd-Q` (`Ctrl-Q` elsewhere) in the window asks first, so a slip of the
-  finger doesn't close the app (`crates/studio/src/shell/quit.rs`): a dialog centered over
-  a window-wide `scrim`, 424 wide with 24 padding and 20 corners, `popover_background`
-  with a hairline and a large shadow. It shows the app icon (32), "Quit Nerda Studio?"
-  (18 pt bold), what comes back next time (`text_secondary`), then Cancel (`esc` outline
-  cap, `key_background`) and Quit (Return outline cap, `danger`), 34 tall with 10 corners in 14 pt medium.
-  Return, Quit or a second `Cmd-Q` quits, so holding the key quits too; Escape, Cancel
-  or a click on the scrim stays and gives focus back. The dialog sits outside the shell's
-  key context: the window's shortcuts rest while it is up. The menu's Quit, and `Cmd-Q`
-  with no window open, quit at once.
+- **Quit.** `Cmd-Q` (`Ctrl-Q` elsewhere) in the window quits on a second press within 2 s
+  (`crates/studio/src/shell/quit.rs`): the first shows "Press ⌘Q again to quit" (its
+  `Kbd` cap) at the top center of the window, `SPACE_2` under the top row, in
+  `TEXT_BODY` medium. Its surface is a menu's (`popover_background`, `popover_border`,
+  `popover_shadow`) with `DIALOG_RADIUS`, 36 tall with its hairline and `SPACE_3` sides.
+  It takes no clicks or focus and doesn't animate. Held down, the key's repeat is the
+  second press. The menu's Quit, and `Cmd-Q` with no window open, quit at once.
 - **Closing the window** leaves the app running, as Mac apps do; a click on its Dock icon
   opens the window again on the same projects. Elsewhere closing it quits.
 - **Menus** are `popover_background` (opaque) under a `popover_border` hairline,

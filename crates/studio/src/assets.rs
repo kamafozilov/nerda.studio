@@ -96,14 +96,7 @@ impl Icon {
     }
 }
 
-/// The app's icon, as the Dock shows it.
-pub const APP_ICON: &str = "app-icon.svg";
-
 const FILES: &[(&str, &[u8])] = &[
-    (
-        APP_ICON,
-        include_bytes!("../../app_bundle/assets/AppIcon.svg"),
-    ),
     (
         "icons/add-01.svg",
         include_bytes!("../assets/icons/add-01.svg"),

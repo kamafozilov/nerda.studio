@@ -61,7 +61,6 @@ fn main() {
         composer::bind_keys(cx);
         sidebar::bind_keys(cx);
         add_project::bind_keys(cx);
-        shell::bind_quit_keys(cx);
         menu::bind_keys(cx);
         app_menu::init(cx);
         let theme = system_theme::current(cx.window_appearance());

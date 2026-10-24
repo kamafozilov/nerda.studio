@@ -6,8 +6,6 @@
 mod commands;
 mod composers;
 mod quit;
-
-pub use quit::bind_keys as bind_quit_keys;
 mod top_row;
 
 use std::{
@@ -61,7 +59,7 @@ actions!(
         GoForward,
         /// Shows the Settings page's tab, as the sidebar's button does.
         OpenSettings,
-        /// Cmd-Q in the window: asks before quitting.
+        /// Cmd-Q in the window: the first press asks for a second, which quits.
         RequestQuit,
     ]
 );
@@ -82,8 +80,8 @@ pub struct Shell {
     /// The left button went down on the titlebar; the next move drags the window.
     titlebar_pressed: bool,
     add_project: Option<OpenPalette>,
-    /// The question Cmd-Q puts up, while it is up; see `quit`.
-    quit_dialog: Option<quit::QuitDialog>,
+    /// The timer of the hint Cmd-Q put up, while it is up; see `quit`.
+    quit_hint: Option<Task<()>>,
     /// Where the sidebar's spring stood at the last toggle, to know when it
     /// settles: GPUI keeps the spring itself out of reach.
     sidebar_motion: SidebarMotion,
@@ -191,7 +189,7 @@ impl Shell {
             sidebar_open,
             titlebar_pressed: false,
             add_project: None,
-            quit_dialog: None,
+            quit_hint: None,
             sidebar_motion: SidebarMotion::at_rest(sidebar_open),
             tabs_held: None,
         };
@@ -377,42 +375,39 @@ impl Shell {
 impl Render for Shell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
-        let root = div()
-            .key_context(CONTEXT)
-            .track_focus(&self.focus_handle)
-            .on_action(
-                cx.listener(|shell, _: &ToggleSidebar, window, cx| {
+        let root =
+            div()
+                .key_context(CONTEXT)
+                .track_focus(&self.focus_handle)
+                .on_action(cx.listener(|shell, _: &ToggleSidebar, window, cx| {
                     shell.toggle_sidebar(window, cx)
-                }),
-            )
-            .on_action(cx.listener(|shell, _: &SearchSessions, window, cx| {
-                // The palette keeps focus while it is open over the window.
-                if shell.add_project.is_some() {
-                    return;
-                }
-                if !shell.sidebar_open {
-                    shell.toggle_sidebar(window, cx);
-                }
-                shell
-                    .tabs
-                    .update(cx, |tabs, cx| tabs.dismiss_menu(window, cx));
-                shell
-                    .sidebar
-                    .update(cx, |sidebar, cx| sidebar.focus_search(window, cx))
-            }))
-            .on_action(cx.listener(|shell, _: &NewSession, _, cx| {
-                shell
-                    .sidebar
-                    .update(cx, |sidebar, cx| sidebar.new_session(cx))
-            }))
-            .on_action(
-                cx.listener(|shell, _: &AddProject, window, cx| shell.open_add_project(window, cx)),
-            )
-            .on_action(
-                cx.listener(|shell, _: &RequestQuit, window, cx| shell.request_quit(window, cx)),
-            );
-        let shell = self
-            .on_tab_actions(root, cx)
+                }))
+                .on_action(cx.listener(|shell, _: &SearchSessions, window, cx| {
+                    // The palette keeps focus while it is open over the window.
+                    if shell.add_project.is_some() {
+                        return;
+                    }
+                    if !shell.sidebar_open {
+                        shell.toggle_sidebar(window, cx);
+                    }
+                    shell
+                        .tabs
+                        .update(cx, |tabs, cx| tabs.dismiss_menu(window, cx));
+                    shell
+                        .sidebar
+                        .update(cx, |sidebar, cx| sidebar.focus_search(window, cx))
+                }))
+                .on_action(cx.listener(|shell, _: &NewSession, _, cx| {
+                    shell
+                        .sidebar
+                        .update(cx, |sidebar, cx| sidebar.new_session(cx))
+                }))
+                .on_action(cx.listener(|shell, _: &AddProject, window, cx| {
+                    shell.open_add_project(window, cx)
+                }))
+                .on_action(cx.listener(|shell, _: &RequestQuit, _, cx| shell.request_quit(cx)));
+        let root = app_menu::on_window_actions(root);
+        self.on_tab_actions(root, cx)
             .relative()
             .size_full()
             .flex()
@@ -430,14 +425,8 @@ impl Render for Shell {
                     .child(self.main_area(cx)),
             )
             // Over everything, the top row included, while it is open.
-            .children(self.add_project.as_ref().map(|open| open.palette.clone()));
-        // The quit dialog sits beside the shell, not in it: out of the shell's key
-        // context, so its shortcuts rest while the question is up.
-        app_menu::on_window_actions(div())
-            .relative()
-            .size_full()
-            .child(shell)
-            .children(self.quit_dialog(cx))
+            .children(self.add_project.as_ref().map(|open| open.palette.clone()))
+            .children(self.quit_hint(cx))
     }
 }
 

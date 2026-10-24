@@ -106,11 +106,6 @@ pub struct Colors {
     /// `text_secondary`. Dark keeps 4.55:1 on the base; light has no lighter
     /// gray that keeps 4.5:1 on glass, so it is `text_secondary` there.
     pub text_tertiary: Hsla,
-    /// Fill of the button that does something that can't be taken back, such
-    /// as Quit; its text uses `text_on_danger`.
-    pub danger: Hsla,
-    /// Text and icons on `danger`: 5.18:1.
-    pub text_on_danger: Hsla,
     /// The badges that tell projects apart by color; a project keeps its hue.
     pub badges: [BadgeColors; 8],
 }
@@ -187,8 +182,6 @@ impl Theme {
                 text_secondary: rgba(palette.text_secondary).into(),
                 text_secondary_on_surface: rgba(palette.text_secondary_on_surface).into(),
                 text_tertiary: rgba(palette.text_tertiary).into(),
-                danger: rgba(palette.danger).into(),
-                text_on_danger: rgba(palette.text_on_danger).into(),
                 badges: palette.badges.map(|(fill, text)| BadgeColors {
                     fill: rgba(fill).into(),
                     text: rgba(text).into(),

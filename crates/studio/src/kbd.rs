@@ -3,7 +3,7 @@
 
 use gpui::{
     AnyElement, App, Hsla, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window,
-    div, prelude::*, px, svg,
+    div, px, svg,
 };
 use theme::{
     ICON_SIZE, ICON_SIZE_SMALL, KEY_CAP_SIZE, KEY_CAP_SIZE_SMALL, SPACE_1, TEXT_BODY, TEXT_SMALL,
@@ -86,7 +86,6 @@ impl Shortcut {
 pub struct Kbd {
     shortcut: Shortcut,
     small: bool,
-    outline: bool,
     color: Option<Hsla>,
 }
 
@@ -97,7 +96,6 @@ impl Kbd {
         Self {
             shortcut,
             small: false,
-            outline: false,
             color: None,
         }
     }
@@ -108,13 +106,7 @@ impl Kbd {
         self
     }
 
-    /// A hairline in place of the fill, for a cap on a filled button.
-    pub fn outline(mut self) -> Self {
-        self.outline = true;
-        self
-    }
-
-    /// The key's color, `text_secondary` unless set; an outline takes it too.
+    /// The key's color, `text_secondary` unless set.
     pub fn color(mut self, color: Hsla) -> Self {
         self.color = Some(color);
         self
@@ -171,13 +163,7 @@ impl RenderOnce for Kbd {
             .text_size(text_size)
             .line_height(height)
             .text_color(color)
-            .map(|cap| {
-                if self.outline {
-                    cap.border_1().border_color(color.opacity(0.6))
-                } else {
-                    cap.bg(colors.key_background)
-                }
-            })
+            .bg(colors.key_background)
             .children(parts.into_iter().flatten())
     }
 }
