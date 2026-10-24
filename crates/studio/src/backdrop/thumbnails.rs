@@ -33,6 +33,16 @@ impl Backdrop {
 /// `image` filling its bounds with `radius` corners, as the panel shows a
 /// pattern or the owner's image.
 pub fn picture(image: Arc<RenderImage>, radius: Pixels) -> impl IntoElement {
+    picture_in_gray(image, radius, false)
+}
+
+/// `picture`, in gray when `grayscale`, as the panel shows an image set
+/// aside.
+pub fn picture_in_gray(
+    image: Arc<RenderImage>,
+    radius: Pixels,
+    grayscale: bool,
+) -> impl IntoElement {
     canvas(
         |_, _, _| (),
         move |bounds, (), window, cx| {
@@ -41,7 +51,7 @@ pub fn picture(image: Arc<RenderImage>, radius: Pixels) -> impl IntoElement {
                 window.drop_image(old).ok();
             }
             window
-                .paint_image(bounds, bounds, Corners::all(radius), image, 0, false)
+                .paint_image(bounds, bounds, Corners::all(radius), image, 0, grayscale)
                 .ok();
         },
     )

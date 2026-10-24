@@ -54,6 +54,10 @@ pub enum Icon {
     Settings,
     Sort,
     Usage,
+    /// Shows something set aside, such as the backdrop's hidden image.
+    View,
+    /// Sets something aside without letting go of it.
+    ViewOff,
 }
 
 impl Icon {
@@ -98,6 +102,8 @@ impl Icon {
             Self::Settings => "icons/gear.svg",
             Self::Sort => "icons/list-filter.svg",
             Self::Usage => "icons/gauge.svg",
+            Self::View => "icons/view.svg",
+            Self::ViewOff => "icons/view-off-slash.svg",
         }
     }
 }
@@ -203,6 +209,11 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/search.svg",
         include_bytes!("../assets/icons/search.svg"),
+    ),
+    ("icons/view.svg", include_bytes!("../assets/icons/view.svg")),
+    (
+        "icons/view-off-slash.svg",
+        include_bytes!("../assets/icons/view-off-slash.svg"),
     ),
     (
         "icons/tick-02.svg",

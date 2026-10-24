@@ -2,6 +2,8 @@
 //! as cards that show each one as the card would, the owner's image, the
 //! ink, the strength, and whether the pattern moves.
 
+use std::sync::Arc;
+
 use gpui::{
     Anchor, AnyElement, ClickEvent, Context, FontWeight, IntoElement, MouseButton, ParentElement,
     Pixels, SharedString, Styled, Window, anchored, deferred, div, point, prelude::*, px, relative,
@@ -9,7 +11,7 @@ use gpui::{
 };
 use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, DIALOG_RADIUS, DISABLED_OPACITY, HAIRLINE, HEADER_HEIGHT,
-    ICON_SIZE, MAIN_INSET, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
+    ICON_SIZE, ICON_SIZE_SMALL, MAIN_INSET, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
 };
 use workspace::{Backdrop, BackdropStrength, BackdropStyle, BackdropTint};
 
@@ -17,7 +19,7 @@ use super::{
     Composer,
     backdrop::{ClosePanel, NextPattern, PANEL_CONTEXT, PreviousPattern},
     backdrop_cards::{card_face, image_picture, pattern_card},
-    backdrop_controls::{choice_chip, section, section_with, switch, text_button, two_lines},
+    backdrop_controls::{choice_chip, section, switch, text_button, two_lines},
 };
 use crate::{
     assets::Icon,
@@ -25,6 +27,8 @@ use crate::{
     tooltip::TooltipExt,
 };
 
+/// How much of the owner's image shows while it is set aside.
+const HIDDEN_IMAGE_OPACITY: f32 = 0.5;
 /// The panel's width: three pattern cards and their gaps.
 const PANEL_WIDTH: Pixels = px(392.);
 /// A pattern card's ring, outside its picture.
@@ -86,9 +90,8 @@ impl Composer {
                 self.render_patterns(&chosen, &image, window, cx),
                 cx,
             ))
-            .child(section_with(
+            .child(section(
                 "Image",
-                self.render_image_toggle(&chosen, cx),
                 self.render_image_row(&chosen, &image, window, cx),
                 cx,
             ))
@@ -258,27 +261,12 @@ impl Composer {
                 _ if chosen.image_hidden => "Hidden for now",
                 _ => "The pattern draws it",
             };
+            let hidden = chosen.image_hidden;
             div()
                 .flex()
                 .items_center()
                 .gap(SPACE_3)
-                .child(
-                    div()
-                        .flex_none()
-                        .w(IMAGE_SIZE.0)
-                        .h(IMAGE_SIZE.1)
-                        .rounded(CONTROL_RADIUS)
-                        .border_1()
-                        .border_color(colors.border)
-                        .bg(colors.panel_background)
-                        .overflow_hidden()
-                        .when(chosen.image_hidden, |picture| {
-                            picture.opacity(DISABLED_OPACITY)
-                        })
-                        .children(
-                            picture.map(|picture| backdrop::picture(picture, CONTROL_RADIUS)),
-                        ),
-                )
+                .child(self.render_image_switch(picture, hidden, cx))
                 .child(
                     div()
                         .flex_1()
@@ -312,27 +300,75 @@ impl Composer {
             }))
     }
 
-    /// Whether the image shows, beside its section's title: its state in a
-    /// word and a switch, which hides the image without letting go of it.
-    /// None while there is no image.
-    fn render_image_toggle(&self, chosen: &Backdrop, cx: &mut Context<Self>) -> Option<AnyElement> {
-        chosen.image.as_ref()?;
-        let shown = !chosen.image_hidden;
-        Some(
-            div()
-                .id("backdrop-image-shown")
-                .flex()
-                .items_center()
-                .gap(SPACE_2)
-                .cursor_pointer()
-                .font_weight(FontWeight::NORMAL)
-                .on_click(cx.listener(move |composer, _: &ClickEvent, _, cx| {
-                    composer.change_backdrop(cx, |backdrop| backdrop.image_hidden = shown)
-                }))
-                .child(if shown { "Shown" } else { "Hidden" })
-                .child(switch(shown, cx))
-                .into_any_element(),
-        )
+    /// The image, small, as the switch that sets it aside. Shown, it
+    /// takes a struck-through eye under the pointer, and a click hides it;
+    /// hidden, it stays in gray and dimmed with an open eye on it, and a
+    /// click shows it again.
+    fn render_image_switch(
+        &self,
+        picture: Option<Arc<gpui::RenderImage>>,
+        hidden: bool,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
+        let colors = Theme::of(cx).colors;
+        let group = "backdrop-image-switch";
+        let badge = div()
+            .size(px(24.))
+            .flex()
+            .items_center()
+            .justify_center()
+            .rounded_full()
+            .border_1()
+            .border_color(colors.popover_border)
+            .bg(colors.popover_background)
+            .shadow(colors.popover_shadows())
+            .when(!hidden, |badge| {
+                badge
+                    .opacity(0.)
+                    .group_hover(group, |badge| badge.opacity(1.))
+            })
+            .child(
+                svg()
+                    .path(if hidden { Icon::View } else { Icon::ViewOff }.path())
+                    .size(ICON_SIZE_SMALL)
+                    .text_color(colors.text_primary),
+            );
+        div()
+            .id(group)
+            .group(group)
+            .relative()
+            .flex_none()
+            .w(IMAGE_SIZE.0)
+            .h(IMAGE_SIZE.1)
+            .rounded(CONTROL_RADIUS)
+            .border_1()
+            .border_color(colors.border)
+            .bg(colors.panel_background)
+            .overflow_hidden()
+            .cursor_pointer()
+            .on_click(cx.listener(move |composer, _: &ClickEvent, _, cx| {
+                composer.change_backdrop(cx, |backdrop| backdrop.image_hidden = !hidden)
+            }))
+            .child(
+                div()
+                    .size_full()
+                    .when(hidden, |picture| picture.opacity(HIDDEN_IMAGE_OPACITY))
+                    .children(
+                        picture.map(|picture| {
+                            backdrop::picture_in_gray(picture, CONTROL_RADIUS, hidden)
+                        }),
+                    ),
+            )
+            .child(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(badge),
+            )
+            .with_tooltip(if hidden { "Show image" } else { "Hide image" })
     }
 
     /// The inks as chips, each with a dot of its color; the image's colors
