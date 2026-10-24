@@ -16,6 +16,7 @@ mod pasted;
 mod pickers;
 mod projects;
 mod toolbar;
+mod tray;
 
 use std::{
     cell::Cell,
@@ -82,6 +83,10 @@ pub struct Composer {
     backdrop_panel: Option<backdrop::OpenPanel>,
     /// Holds key focus while the backdrop's panel is open.
     panel_focus: FocusHandle,
+    /// A draft's tray shows its options.
+    tray_open: bool,
+    /// While the tray's options go, until their spring settles.
+    tray_closing: Option<gpui::Task<()>>,
     /// Where the column stood when last laid out, which a draft's backdrop
     /// keeps clear.
     column: Rc<Cell<Option<Bounds<Pixels>>>>,
@@ -145,6 +150,8 @@ impl Composer {
             ),
             backdrop_panel: None,
             panel_focus: cx.focus_handle(),
+            tray_open: false,
+            tray_closing: None,
             column: Rc::default(),
             attachments: Attachments::default(),
             problem: None,
@@ -373,7 +380,7 @@ impl Render for Composer {
             .child(column)
             .when(draft, |placement| placement.child(space(1. - DRAFT_RISE)))
             .when(draft, |placement| {
-                placement.child(self.render_backdrop_button(window, cx))
+                placement.child(self.render_tray(window, cx))
             })
     }
 }

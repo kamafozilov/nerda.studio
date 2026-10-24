@@ -9,9 +9,7 @@ use gpui::{
     PathPromptOptions, SharedString, Styled, Subscription, Window, actions, div, prelude::*, px,
     svg,
 };
-use theme::{
-    CONTROL_SIZE, HAIRLINE, ICON_SIZE_SMALL, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
-};
+use theme::{CONTROL_SIZE, HAIRLINE, ICON_SIZE_SMALL, SPACE_2, SPACE_3, TEXT_SMALL, Theme};
 use workspace::{Backdrop, BackdropStyle};
 
 use super::Composer;
@@ -85,20 +83,21 @@ impl Composer {
         })
     }
 
-    /// The button that opens the panel: a quiet pill centered 16 pt above
-    /// the card's bottom edge, its small icon and label in `text_tertiary` on
+    /// The button that opens the panel, in the card's tray: a quiet pill,
+    /// its small icon and label in `text_tertiary` on
     /// the card's own fill under a faint `border` hairline, so it reads as a
     /// clearing in the pattern rather than a call to act. Under the pointer,
     /// or while the panel is open, it takes the composer's fill, its label
-    /// `text_primary`.
-    /// The panel opens above it.
+    /// `text_primary`. The panel opens above it. While the tray closes the
+    /// pill takes no clicks.
     pub(super) fn render_backdrop_button(
         &self,
+        enabled: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let colors = Theme::of(cx).colors;
-        let open = self.backdrop_panel.is_some();
+        let open = enabled && self.backdrop_panel.is_some();
         let panel = open.then(|| self.render_backdrop_panel(window, cx));
         let ink = if open {
             colors.text_primary
@@ -131,9 +130,11 @@ impl Composer {
                             .text_color(colors.text_primary)
                     })
             })
-            .on_click(cx.listener(|composer, _: &ClickEvent, window, cx| {
-                composer.toggle_backdrop_panel(window, cx)
-            }))
+            .when(enabled, |pill| {
+                pill.on_click(cx.listener(|composer, _: &ClickEvent, window, cx| {
+                    composer.toggle_backdrop_panel(window, cx)
+                }))
+            })
             .child(
                 svg()
                     .path(Icon::Backdrop.path())
@@ -145,14 +146,7 @@ impl Composer {
                     }),
             )
             .child("Background");
-        div()
-            .absolute()
-            .left_0()
-            .right_0()
-            .bottom(SPACE_3 + SPACE_1)
-            .flex()
-            .justify_center()
-            .child(div().relative().child(pill).children(panel))
+        div().relative().child(pill).children(panel)
     }
 
     fn toggle_backdrop_panel(&mut self, window: &mut Window, cx: &mut Context<Self>) {

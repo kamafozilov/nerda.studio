@@ -46,8 +46,9 @@ impl Composer {
         let viewport = window.viewport_size();
         // Under the top row and over the button: a short window scrolls the
         // panel rather than cutting it off.
-        // The card's inset, the button's gap and height, and the panel's gap.
-        let button_room = MAIN_INSET + SPACE_3 + SPACE_1 + CONTROL_SIZE + SPACE_2;
+        // The card's inset and gap, the tray's chevron and button, each with
+        // the gap over it.
+        let button_room = MAIN_INSET + SPACE_3 + SPACE_1 + (CONTROL_SIZE + SPACE_2) * 2.;
         let room = viewport.height - HEADER_HEIGHT - button_room - SPACE_2;
         let panel = div()
             .id("backdrop-panel")

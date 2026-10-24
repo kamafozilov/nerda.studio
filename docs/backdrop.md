@@ -35,13 +35,19 @@ With an image, None becomes **Image only**: the image itself, every pixel.
 
 ## Choosing it
 
-A quiet pill centered 16 pt above the card's bottom edge: its small icon and
-"Background" in `text_tertiary` at `TEXT_SMALL` on the card's own fill under a faint
-`border` hairline, a clearing in the pattern rather than a call to act. Under the
-pointer, and while the panel is open, it takes `composer_background`, its label
-`text_primary`. It opens the panel above it, `SPACE_2` clear; the panel stays open while
-choices are tried, and a click outside it, Escape or the pill closes it and gives the
-cursor back to the text. Left and Right pick the pattern before or after.
+The draft card's tray, centered 16 pt above its bottom edge (`composer/tray.rs`), holds
+the way in. Closed, it is one quiet round chevron, `CONTROL_SIZE`, on the card's own fill
+under a faint `border` hairline, pointing up, its tooltip "More options". A click raises
+its options over it: they rise 8 pt and fade in on the panel spring while the chevron
+turns to point down, with no tooltip; a second click lowers them on the exit spring, and
+they take no clicks while they go. Under Reduce motion both are instant. Its one option
+for now is a quiet pill, its small icon and "Background" in `text_tertiary` at
+`TEXT_SMALL` on the card's own fill under a faint `border` hairline; under the pointer,
+and while the panel is open, it takes `composer_background`, its label `text_primary`.
+It opens the panel above it, `SPACE_2` clear; the panel stays open while choices are
+tried, and a click outside it (the chevron included), Escape or the pill closes it and
+gives the cursor back to the text. Lowering the tray closes it too. Left and Right pick
+the pattern before or after.
 
 The panel, 392 wide on `popover_background` with `DIALOG_RADIUS` corners, scrolls when the
 window is too short for it, staying under the top row:
