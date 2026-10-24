@@ -35,5 +35,11 @@ objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std"
 objc2 = "0.6.5"
 raw-window-handle = "0.6"
 
+# Scenes (`src/scene.rs`): the app drawn with Metal in a test, on no screen.
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+gpui_apple.workspace = true
+gpui_platform = { workspace = true, features = ["test-support"] }
+
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Registry", "Win32_UI_WindowsAndMessaging"] }

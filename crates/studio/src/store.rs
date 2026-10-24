@@ -60,8 +60,10 @@ impl Writer {
 }
 
 impl Store {
-    pub fn load(cx: &mut Context<Self>) -> Self {
-        let (workspace, path, notice) = Self::read();
+    /// Loads the workspace saved at `path`, the platform's data folder's unless
+    /// a scene names its own; `None` runs without saving.
+    pub fn load(path: Option<PathBuf>, cx: &mut Context<Self>) -> Self {
+        let (workspace, path, notice) = Self::read(path);
         // Quitting must not lose a save still on its way to the disk.
         let quit = path.is_some().then(|| {
             cx.on_app_quit(|store, _| {
@@ -84,8 +86,8 @@ impl Store {
         }
     }
 
-    fn read() -> (Workspace, Option<PathBuf>, Option<SharedString>) {
-        let Some(path) = workspace::default_state_path() else {
+    fn read(path: Option<PathBuf>) -> (Workspace, Option<PathBuf>, Option<SharedString>) {
+        let Some(path) = path else {
             return Self::unsaved(
                 "This system has no folder for app data, so changes won\u{2019}t be saved.",
             );

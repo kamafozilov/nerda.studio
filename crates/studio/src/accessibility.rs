@@ -2,7 +2,7 @@
 
 /// Whether the user asked the system to reduce motion. GPUI keeps this as an app
 /// flag (`App::reduce_motion`) that no platform sets, so the app reads it here.
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 pub fn reduce_motion() -> bool {
     objc2_app_kit::NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceMotion()
 }
@@ -31,7 +31,7 @@ pub fn reduce_motion() -> bool {
 
 /// Whether the user asked the system to reduce transparency; glass then turns
 /// solid.
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", not(test)))]
 pub fn reduce_transparency() -> bool {
     objc2_app_kit::NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceTransparency()
 }
@@ -69,4 +69,16 @@ pub fn reduce_transparency() -> bool {
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub fn reduce_transparency() -> bool {
     false
+}
+
+/// A scene sets Reduce motion itself, so it never depends on the Mac it runs on.
+#[cfg(all(target_os = "macos", test))]
+pub fn reduce_motion() -> bool {
+    crate::scene::settings().reduce_motion
+}
+
+/// A scene sets Reduce transparency itself.
+#[cfg(all(target_os = "macos", test))]
+pub fn reduce_transparency() -> bool {
+    crate::scene::settings().reduce_transparency
 }

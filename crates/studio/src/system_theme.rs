@@ -7,6 +7,12 @@ use crate::accessibility;
 
 /// The theme the system's settings call for now.
 pub fn current(appearance: WindowAppearance) -> Theme {
+    // A scene's appearance is its own, not the test window's.
+    #[cfg(all(target_os = "macos", test))]
+    let appearance = {
+        let _ = appearance;
+        crate::scene::appearance()
+    };
     Theme::new(appearance, accessibility::reduce_transparency())
 }
 

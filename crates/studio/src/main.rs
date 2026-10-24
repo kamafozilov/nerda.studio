@@ -14,6 +14,10 @@ mod instance;
 mod kbd;
 mod menu;
 mod native_window;
+#[cfg(all(target_os = "macos", test))]
+mod scene;
+#[cfg(all(target_os = "macos", test))]
+mod scenes;
 mod shell;
 mod sidebar;
 mod sidebar_glyph;
@@ -60,23 +64,7 @@ fn main() {
         if background::requested() {
             background::start(cx);
         }
-        bind_keys(cx);
-        text_input::bind_keys(cx);
-        composer::bind_keys(cx);
-        sidebar::bind_keys(cx);
-        add_project::bind_keys(cx);
-        menu::bind_keys(cx);
-        conversation::bind_keys(cx);
-        app_menu::init(cx);
-        let theme = system_theme::current(cx.window_appearance());
-        cx.set_global(theme);
-        backdrop::init(cx);
-        // The app keeps its projects while no window is open, so the window a
-        // click on the Dock icon brings back shows them as they were.
-        let store = cx.new(Store::load);
-        cx.set_global(Projects(store.clone()));
-        agents::init(store.clone(), cx);
-        conversation::prewarm_syntax();
+        let store = start(workspace::default_state_path(), cx);
         // Taking over from a running instance, the window opens where its was;
         // otherwise where it was when the app last quit.
         let left = claim.screen();
@@ -107,6 +95,29 @@ fn main() {
             cx.activate(true);
         }
     });
+}
+
+/// What the app sets up before its first window, scenes as well: the
+/// shortcuts, the menus, the theme, and the projects saved at `state` with their agents.
+fn start(state: Option<std::path::PathBuf>, cx: &mut App) -> Entity<Store> {
+    bind_keys(cx);
+    text_input::bind_keys(cx);
+    composer::bind_keys(cx);
+    sidebar::bind_keys(cx);
+    add_project::bind_keys(cx);
+    menu::bind_keys(cx);
+    conversation::bind_keys(cx);
+    app_menu::init(cx);
+    let theme = system_theme::current(cx.window_appearance());
+    cx.set_global(theme);
+    backdrop::init(cx);
+    // The app keeps its projects while no window is open, so the window a
+    // click on the Dock icon brings back shows them as they were.
+    let store = cx.new(|cx| Store::load(state, cx));
+    cx.set_global(Projects(store.clone()));
+    agents::init(store.clone(), cx);
+    conversation::prewarm_syntax();
+    store
 }
 
 /// How the window comes on screen.

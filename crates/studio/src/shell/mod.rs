@@ -256,6 +256,11 @@ impl Shell {
     /// sidebar, the narrower of their two, so their titles truncate once
     /// instead of on every frame and none passes the window's edge; they follow
     /// the strip again the moment the sidebar settles.
+    #[cfg(all(target_os = "macos", test))]
+    pub fn sidebar_open(&self) -> bool {
+        self.sidebar_open
+    }
+
     fn toggle_sidebar(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         cx.set_reduce_motion(accessibility::reduce_motion());
         self.sidebar_open = !self.sidebar_open;
