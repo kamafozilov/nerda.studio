@@ -1,7 +1,6 @@
 //! Back and Forward through the tabs shown, like a browser's history. A closed
 //! tab drops out rather than being reopened by Back, and a new visit discards
 //! Forward. Kept in memory only.
-//!
 
 use crate::Tab;
 

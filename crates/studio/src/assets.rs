@@ -1,8 +1,8 @@
 //! Files compiled into the binary and served to GPUI by path.
 //!
-//! Icons are outline SVGs on a 24 grid at a 1.5 stroke; their licenses are in
-//! The search icon's ring spans 15 of the 24 units, so at `ICON_SIZE`
-//! it doesn't look oversized beside 13 pt text in the search field.
+//! Icons are outline SVGs on a 24 grid at a 1.5 stroke. The search icon's ring
+//! spans 15 of the 24 units, so at `ICON_SIZE` it doesn't look oversized beside
+//! 13 pt text in the search field.
 
 use std::borrow::Cow;
 

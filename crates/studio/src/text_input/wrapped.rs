@@ -1,6 +1,5 @@
 //! Text wrapped at the field's width: where each visual line, a row, starts
 //! and ends, and the element that paints the rows and grows with them.
-//!
 
 use std::ops::{Range, RangeInclusive};
 

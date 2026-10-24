@@ -6,7 +6,6 @@
 //! screen opens the project's draft, so a project on screen always shows
 //! something. That draft alone on screen can't close: closing it would only
 //! open it again.
-//!
 
 use std::collections::HashSet;
 

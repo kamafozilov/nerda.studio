@@ -81,5 +81,3 @@ GPUI is pinned to one commit of its repository in the root `Cargo.toml`: crates.
 only an older `gpui` without `gpui_platform`. `vendor/block` is the `block` crate, which
 GPUI's macOS backend pulls in, patched so that a future Rust still compiles it; the root
 `Cargo.toml` puts it in place of the crates.io copy.
-
-program lookup, login-shell PATH, process teardown, sign-in wait, failure wording and

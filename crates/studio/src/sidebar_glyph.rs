@@ -1,9 +1,8 @@
 //! The sidebar toggle's glyph: a rounded frame holding a panel that narrows as
 //! the sidebar closes.
 //!
-//! GPUI's SVGs are
-//! static, so it is drawn from quads in the source's 24-unit space, scaled to the
-//! icon size.
+//! GPUI's SVGs are static, so it is drawn from quads in a 24-unit space,
+//! scaled to the icon size.
 
 use gpui::{Div, Hsla, Styled, div, prelude::*, px};
 use theme::ICON_SIZE;

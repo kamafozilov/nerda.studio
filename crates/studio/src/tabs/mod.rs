@@ -6,7 +6,6 @@
 //! project's unused draft alone in the row has no close button: closing it
 //! would only open it again.
 //!
-//!
 //! The strip redraws on every frame of a drag or a tab's motion, so a frame only
 //! reads what it keeps: the workspace is read again only after it changes, and
 //! each tab's title and element names are made once, not per frame.

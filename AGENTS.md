@@ -5,7 +5,8 @@ screen, read [docs/design.md](docs/design.md): materials, colors, motion and win
 follow its rules.
 
 Code, comments and docs never name another product or project as a source or model
-("after X's", "like X", "ported from X"): describe the behavior itself. License texts
+("after X's", "like X", "ported from X"): describe the behavior itself. Dependency
+names and URLs are the only exception.
 
 ## Done means proven
 

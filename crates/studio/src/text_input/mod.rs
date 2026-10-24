@@ -1,6 +1,5 @@
 //! A text field of one line, or of wrapped lines that grow: keyboard and mouse
 //! editing, selection, clipboard and IME.
-//!
 
 mod blink;
 mod editing;
