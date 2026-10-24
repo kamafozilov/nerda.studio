@@ -2,8 +2,8 @@
 //! of text, a choice chip, a text button and a switch.
 
 use gpui::{
-    App, Div, FontWeight, IntoElement, ParentElement, Pixels, SharedString, Stateful, Styled, div,
-    prelude::*, px,
+    AnyElement, App, Div, FontWeight, IntoElement, ParentElement, Pixels, SharedString, Stateful,
+    Styled, div, prelude::*, px,
 };
 use theme::{CONTROL_RADIUS, DISABLED_OPACITY, HAIRLINE, SPACE_2, SPACE_3, TEXT_SMALL, Theme};
 
@@ -17,16 +17,30 @@ pub(super) fn section(
     content: impl IntoElement,
     cx: &App,
 ) -> impl IntoElement {
+    section_with(title, None, content, cx)
+}
+
+/// A titled part of the panel, with a control at the title's trailing end.
+pub(super) fn section_with(
+    title: &'static str,
+    trailing: Option<AnyElement>,
+    content: impl IntoElement,
+    cx: &App,
+) -> impl IntoElement {
     div()
         .flex()
         .flex_col()
         .gap(SPACE_2)
         .child(
             div()
+                .flex()
+                .items_center()
+                .justify_between()
                 .text_size(TEXT_SMALL)
                 .font_weight(FontWeight::MEDIUM)
                 .text_color(Theme::of(cx).colors.text_tertiary)
-                .child(title),
+                .child(title)
+                .children(trailing),
         )
         .child(content)
 }

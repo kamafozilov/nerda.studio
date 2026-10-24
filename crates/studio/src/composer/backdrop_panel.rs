@@ -17,7 +17,7 @@ use super::{
     Composer,
     backdrop::{ClosePanel, NextPattern, PANEL_CONTEXT, PreviousPattern},
     backdrop_cards::{card_face, image_picture, pattern_card},
-    backdrop_controls::{choice_chip, section, switch, text_button, two_lines},
+    backdrop_controls::{choice_chip, section, section_with, switch, text_button, two_lines},
 };
 use crate::{
     assets::Icon,
@@ -86,8 +86,9 @@ impl Composer {
                 self.render_patterns(&chosen, &image, window, cx),
                 cx,
             ))
-            .child(section(
+            .child(section_with(
                 "Image",
+                self.render_image_toggle(&chosen, cx),
                 self.render_image_row(&chosen, &image, window, cx),
                 cx,
             ))
@@ -138,11 +139,12 @@ impl Composer {
         // What a grid cell holds, for drawing the card's pattern; the grid
         // itself splits the row, so the cards fill it exactly.
         let width = ((PANEL_WIDTH - SPACE_3 * 2. - HAIRLINE * 2. - SPACE_2 * 2.) / 3.).floor();
+        let in_use = image.source().filter(|_| !chosen.image_hidden);
         let cards = BackdropStyle::ALL.map(|style| {
             let selected = chosen.style == style;
-            let look = Look::new(style, chosen, image.source(), window, cx);
+            let look = Look::new(style, chosen, in_use.clone(), window, cx);
             let picture = look.and_then(|look| pattern_card(look, width - RING * 4., window, cx));
-            let label = match (style, image.source()) {
+            let label = match (style, &in_use) {
                 (BackdropStyle::None, Some(_)) => "Image only",
                 _ => style.title(),
             };
@@ -253,6 +255,7 @@ impl Composer {
                 ImageState::Failed => "It no longer reads",
                 ImageState::Loading => "Reading it…",
                 _ if adding => "Adding the new image…",
+                _ if chosen.image_hidden => "Hidden for now",
                 _ => "The pattern draws it",
             };
             div()
@@ -269,6 +272,9 @@ impl Composer {
                         .border_color(colors.border)
                         .bg(colors.panel_background)
                         .overflow_hidden()
+                        .when(chosen.image_hidden, |picture| {
+                            picture.opacity(DISABLED_OPACITY)
+                        })
                         .children(
                             picture.map(|picture| backdrop::picture(picture, CONTROL_RADIUS)),
                         ),
@@ -306,6 +312,29 @@ impl Composer {
             }))
     }
 
+    /// Whether the image shows, beside its section's title: its state in a
+    /// word and a switch, which hides the image without letting go of it.
+    /// None while there is no image.
+    fn render_image_toggle(&self, chosen: &Backdrop, cx: &mut Context<Self>) -> Option<AnyElement> {
+        chosen.image.as_ref()?;
+        let shown = !chosen.image_hidden;
+        Some(
+            div()
+                .id("backdrop-image-shown")
+                .flex()
+                .items_center()
+                .gap(SPACE_2)
+                .cursor_pointer()
+                .font_weight(FontWeight::NORMAL)
+                .on_click(cx.listener(move |composer, _: &ClickEvent, _, cx| {
+                    composer.change_backdrop(cx, |backdrop| backdrop.image_hidden = shown)
+                }))
+                .child(if shown { "Shown" } else { "Hidden" })
+                .child(switch(shown, cx))
+                .into_any_element(),
+        )
+    }
+
     /// The inks as chips, each with a dot of its color; the image's colors
     /// wait for an image.
     fn render_tints(
@@ -316,7 +345,7 @@ impl Composer {
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let colors = Theme::of(cx).colors;
-        let source = image.source();
+        let source = image.source().filter(|_| !chosen.image_hidden);
         // The image's colors show only once the image reads.
         let in_use = match chosen.tint_in_use() {
             BackdropTint::Image if source.is_none() => BackdropTint::Gray,

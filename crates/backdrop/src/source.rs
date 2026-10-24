@@ -69,9 +69,26 @@ impl Source {
         (top + y / scale).clamp(0., self.height as f32 - 1.) as usize * self.width as usize
     }
 
-    /// Lightness in `0..1` and color at a pixel `index` of the image.
-    pub(crate) fn at(&self, index: usize) -> (f32, [u8; 3]) {
-        (self.lightness[index] as f32 / 255., self.colors[index])
+    /// The two columns around a frame's `x`, and how far `x` lies from the
+    /// first to the second, for reading between pixels.
+    pub(crate) fn columns_around(&self, (scale, left, _): (f32, f32, f32), x: f32) -> Between {
+        between(left + x / scale - 0.5, self.width, 1)
+    }
+
+    /// The two rows around a frame's `y`, as the starts of their pixels.
+    pub(crate) fn rows_around(&self, (scale, _, top): (f32, f32, f32), y: f32) -> Between {
+        between(top + y / scale - 0.5, self.height, self.width as usize)
+    }
+
+    /// The color between four pixels, as `columns` and `rows` place it.
+    pub(crate) fn color_between(&self, columns: Between, rows: Between) -> [f32; 3] {
+        let at = |row: usize, column: usize| self.colors[row + column].map(f32::from);
+        let mix = |a: [f32; 3], b: [f32; 3], t: f32| [0, 1, 2].map(|i| a[i] + (b[i] - a[i]) * t);
+        mix(
+            mix(at(rows.0, columns.0), at(rows.0, columns.1), columns.2),
+            mix(at(rows.1, columns.0), at(rows.1, columns.1), columns.2),
+            rows.2,
+        )
     }
 
     /// Lightness in `0..1` under a point of the frame.
@@ -95,4 +112,20 @@ impl std::fmt::Debug for Source {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Source({}, {}x{})", self.id, self.width, self.height)
     }
+}
+
+/// Two neighboring pixels on one axis, each times `stride`, and how far
+/// between them a point lies.
+pub(crate) type Between = (usize, usize, f32);
+
+fn between(position: f32, length: u32, stride: usize) -> Between {
+    let last = length.saturating_sub(1) as f32;
+    let position = position.clamp(0., last);
+    let first = position.floor();
+    let second = (first + 1.).min(last);
+    (
+        first as usize * stride,
+        second as usize * stride,
+        position - first,
+    )
 }

@@ -30,8 +30,8 @@ use gpui::{
     div, prelude::*, px, relative, svg,
 };
 use theme::{
-    COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS, CONTROL_SIZE,
-    HAIRLINE, ICON_SIZE, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
+    COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS, CONTROL_RADIUS,
+    CONTROL_SIZE, HAIRLINE, ICON_SIZE, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
 };
 use workspace::{Head, ProjectKind, SessionId};
 
@@ -230,7 +230,7 @@ impl Composer {
             } else {
                 colors.border
             })
-            .bg(colors.composer_background)
+            .bg(self.surfaces(cx).raised)
             .cursor_text()
             .on_click(
                 cx.listener(move |_, _: &ClickEvent, window, cx| window.focus(&input_focus, cx)),
@@ -255,7 +255,9 @@ impl Composer {
 
     /// Where the session runs, over the box: the project's pill on the box's
     /// leading edge, and the branch its checkout is on, or the commit, at
-    /// the trailing edge. Their content stands in the box's padding.
+    /// the trailing edge. Their content stands in the box's padding. Over
+    /// the owner's image the branch stands on glass as the pill does, so it
+    /// reads over any picture.
     fn render_context(
         &self,
         draft: bool,
@@ -263,6 +265,7 @@ impl Composer {
         cx: &mut Context<Self>,
     ) -> Option<impl IntoElement + use<>> {
         let colors = Theme::of(cx).colors;
+        let glass = self.on_image(cx).then(|| self.surfaces(cx).raised);
         let store = self.store.read(cx);
         let workspace = store.workspace();
         let project_id = workspace.session(self.session)?.project;
@@ -294,6 +297,14 @@ impl Composer {
                             .min_w_0()
                             .max_w(relative(0.4))
                             .pr(SPACE_3)
+                            .when_some(glass, |chip, glass| {
+                                chip.h(CONTROL_SIZE)
+                                    .px(SPACE_3 - HAIRLINE)
+                                    .rounded(CONTROL_RADIUS)
+                                    .border_1()
+                                    .border_color(colors.border)
+                                    .bg(glass)
+                            })
                             .flex()
                             .items_center()
                             .gap(SPACE_2)

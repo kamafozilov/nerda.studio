@@ -151,7 +151,10 @@ impl Look {
             ink: self.ink,
             source: self.source.clone(),
             light: self.light,
-            clear,
+            // An image covers the card whole, the composer's glass setting
+            // it apart: a pattern cleared around the composer would cut a
+            // dark box out of the picture.
+            clear: if self.source.is_some() { None } else { clear },
             // The image alone holds still, so it is never drawn again for time.
             time: if self.pattern == Pattern::Image {
                 0.

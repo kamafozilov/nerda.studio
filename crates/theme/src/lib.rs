@@ -84,6 +84,11 @@ pub struct Colors {
     /// Fill of the composer's box and the project pill over it: opaque, the
     /// selected tab's gray, so the place to type stands out of the card.
     pub composer_background: Hsla,
+    /// The composer's box, its project pill, its branch and the tray's
+    /// controls while a draft's card draws the owner's image:
+    /// `composer_background` at 88%, so the picture shows faintly through.
+    /// Its text keeps 4.5:1 over the brightest image.
+    pub composer_glass: Hsla,
     /// Edge of the composer's box while its text has focus: quieter than
     /// `focus_ring`, since the box is large and the cursor already shows
     /// where typing goes.
@@ -179,6 +184,7 @@ impl Theme {
                 key_background: rgba(palette.key).into(),
                 chip_background: rgba(palette.chip).into(),
                 composer_background: rgba(palette.composer).into(),
+                composer_glass: rgba(palette.composer_glass).into(),
                 composer_focus: rgba(palette.composer_focus).into(),
                 tab_background: rgba(palette.tab).into(),
                 tab_selected: rgba(palette.tab_selected).into(),

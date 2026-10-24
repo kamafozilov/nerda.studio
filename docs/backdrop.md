@@ -17,7 +17,17 @@ Five patterns, each a field of lightness over the card marked in one ink (`crate
 | Halftone | Round dots on a 6 pt grid, larger toward the top-left corner | Dots sized by the image | A ripple runs across |
 | Characters | `.` `:` `-` `=` `+` `*` `#` in 5 by 7 pixel glyphs on a 6 by 9 pt grid, denser where the clouds are brighter | Denser where the image is | Drifts with the clouds |
 
-With an image, None becomes **Image only**: the image itself, every pixel.
+With an image, None becomes **Image only**: the image itself, every pixel, read between
+pixels so a small image scaled up stays smooth.
+
+**An image covers the card whole**, whatever the pattern: cleared around the composer, a
+picture would show a dark box cut out of it. The composer's surfaces set it apart
+instead: its box, its project pill, its branch and the tray's controls turn
+`composer_glass`, `composer_background` at 88%, so the picture shows faintly through
+them. Over the worst image (white behind dark, black behind light, at Bold) the
+placeholder and the branch keep 4.76:1 (dark) and 6.22:1 (light). Without an image, or
+with it hidden, the pattern clears around the composer and the surfaces are opaque, as
+before.
 
 - The dither marks 2 pt dots against an 8 by 8 Bayer threshold, fixed to the card, so a
   moving pattern changes only where its field does. Sizes are in points, scaled to the
@@ -56,15 +66,19 @@ window is too short for it, staying under the top row:
   fifth the size with its ink 2.5 times stronger, around a small composer; the chosen one
   has a `focus_ring` ring and its name in `text_primary`.
 - **Image**: a dashed box, "Add an image", that opens the system's picker for one file; or
-  the image, small, with Replace and Remove. Why an image couldn't be added shows under it.
+  the image, small, with Replace and Remove, and at the title's end its state ("Shown",
+  "Hidden") and a switch that sets the image aside without letting go of it: hidden,
+  the patterns draw alone and the image's colors wait, and showing it again brings both
+  back. Why an image couldn't be added shows under it.
 - **Color**: Gray, Warm and Image as chips with a dot of each; Image's dot is the image.
 - **Strength**: Subtle, Medium, Bold in one segmented control.
 - **Move slowly**, with a switch.
 
 A pick applies at once and is saved in `workspace.json` as `backdrop` (`{"style":
 "horizon", "tint": "gray", "strength": "medium", "moving": false}`, the default, and
-`"image"` once there is one). A file from before it has none and gets the default; a name
-this build doesn't know reads as the default, and the rest of the file loads.
+`"image"` once there is one, `"image_hidden": true` while it is set aside). A file from
+before it has none and gets the default; a name this build doesn't know reads as the
+default, and the rest of the file loads.
 
 ## The image
 
@@ -82,10 +96,11 @@ this build doesn't know reads as the default, and the rest of the file loads.
 ## Drawing and motion
 
 - The pattern is drawn off the UI thread into an image of the card's device pixels, 2 to
-  12 ms for a full Retina card (Image only, every pixel, about 40 ms), the crate built
-  optimized even in dev builds. It is drawn again when the card's size, the composer's
-  place, the theme or the choice changes; the last image stays, stretched, until the next
-  is ready, and a replaced one is freed from the window's atlas.
+  12 ms for a full Retina card (Image only, every pixel read between four, 80 to 100 ms,
+  drawn once), the crate built optimized even in dev builds. It is drawn again when the
+  card's size, the composer's place, the theme or the choice changes; the last image
+  stays, stretched, until the next is ready, and a replaced one is freed from the
+  window's atlas.
 - **Move slowly** draws a new frame 12 times a second, about 12% of one core, and only
   while the card is painted: a draft off screen, a session's conversation, a window the
   system doesn't draw ask for no frames. Image only holds still and is not drawn again.

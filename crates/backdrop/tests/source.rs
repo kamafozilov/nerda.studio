@@ -86,3 +86,29 @@ fn without_a_source_the_image_and_its_colors_draw_nothing() {
     colored.source = None;
     assert_eq!(marked_halves(&colored), (0, 0));
 }
+
+#[test]
+fn the_image_alone_covers_the_clear_area_as_it_is() {
+    let white = Arc::new(Source::new(4, 4, &[255; 64]).unwrap());
+    let frame = Frame {
+        width: 400,
+        height: 200,
+        scale: 1.,
+        pattern: Pattern::Image,
+        ink: Ink::Source { alpha: 200 },
+        source: Some(white),
+        light: false,
+        clear: Some(backdrop::Rect {
+            x: 150.,
+            y: 75.,
+            width: 100.,
+            height: 50.,
+        }),
+        time: 0.,
+    };
+    let pixels = frame.render();
+    for (x, y) in [(5, 5), (200, 100), (160, 80)] {
+        let at = (y * frame.width + x) as usize * 4;
+        assert_eq!(pixels[at..at + 4], [255, 255, 255, 200], "at {x}, {y}");
+    }
+}

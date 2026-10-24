@@ -40,6 +40,14 @@ pub(super) fn bind_keys(cx: &mut App) {
     ]);
 }
 
+/// The fills of the composer's surfaces; see `Composer::surfaces`.
+pub(super) struct Surfaces {
+    /// The box and the project pill, and a tray control while in use.
+    pub raised: gpui::Hsla,
+    /// The tray's controls at rest.
+    pub quiet: gpui::Hsla,
+}
+
 /// The backdrop's panel while it is open.
 pub(super) struct OpenPanel {
     /// Where focus goes when the panel closes.
@@ -62,7 +70,8 @@ impl Composer {
     ) -> Option<impl IntoElement + use<>> {
         let chosen = self.store.read(cx).workspace().backdrop().clone();
         let image = self.backdrop_image(&chosen, cx);
-        let look = Look::new(chosen.style, &chosen, image.source(), window, cx).filter(|_| draft);
+        let source = image.source().filter(|_| !chosen.image_hidden);
+        let look = Look::new(chosen.style, &chosen, source, window, cx).filter(|_| draft);
         let Some(look) = look else {
             backdrop::Backdrop::global(cx).update(cx, |backdrop, _| backdrop.release(window));
             return None;
@@ -73,6 +82,44 @@ impl Composer {
             self.column.clone(),
             cx,
         ))
+    }
+
+    /// Whether a draft's card draws the owner's image, as it is or through
+    /// a pattern.
+    pub(super) fn on_image(&self, cx: &mut Context<Self>) -> bool {
+        let workspace = self.store.read(cx).workspace();
+        let draft = (workspace.session(self.session)).is_none_or(|session| session.is_empty());
+        let chosen = workspace.backdrop().clone();
+        draft && self.image_in_use(&chosen, cx).is_some()
+    }
+
+    /// The owner's image, once it reads, unless it is hidden.
+    pub(super) fn image_in_use(
+        &self,
+        chosen: &Backdrop,
+        cx: &mut Context<Self>,
+    ) -> Option<std::sync::Arc<::backdrop::Source>> {
+        let source = self.backdrop_image(chosen, cx).source();
+        source.filter(|_| !chosen.image_hidden)
+    }
+
+    /// The fills of the composer's surfaces. Over the owner's image both are
+    /// `composer_glass`, so the picture shows through them; else the
+    /// box and the pill are `composer_background`, the tray's quiet controls
+    /// the card's own fill.
+    pub(super) fn surfaces(&self, cx: &mut Context<Self>) -> Surfaces {
+        let colors = Theme::of(cx).colors;
+        if self.on_image(cx) {
+            Surfaces {
+                raised: colors.composer_glass,
+                quiet: colors.composer_glass,
+            }
+        } else {
+            Surfaces {
+                raised: colors.composer_background,
+                quiet: colors.panel_background,
+            }
+        }
     }
 
     /// Where reading the chosen image stands.
@@ -97,6 +144,7 @@ impl Composer {
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let colors = Theme::of(cx).colors;
+        let surfaces = self.surfaces(cx);
         let open = enabled && self.backdrop_panel.is_some();
         let panel = open.then(|| self.render_backdrop_panel(window, cx));
         let ink = if open {
@@ -118,11 +166,10 @@ impl Composer {
             .text_color(ink)
             .cursor_pointer()
             .when(open, |pill| {
-                pill.bg(colors.composer_background)
-                    .border_color(colors.border)
+                pill.bg(surfaces.raised).border_color(colors.border)
             })
             .when(!open, |pill| {
-                pill.bg(colors.panel_background)
+                pill.bg(surfaces.quiet)
                     .border_color(colors.border)
                     .hover(|pill| {
                         pill.bg(colors.composer_background)

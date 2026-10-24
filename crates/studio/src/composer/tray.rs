@@ -25,6 +25,7 @@ impl Composer {
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
         let colors = Theme::of(cx).colors;
+        let surfaces = self.surfaces(cx);
         let open = self.tray_open;
         // 1 open, 0 closed; the options and the chevron move on one spring.
         let spring = |open: bool| {
@@ -60,10 +61,10 @@ impl Composer {
                 .border_1()
                 .border_color(colors.border)
                 .cursor_pointer()
-                .when(open, |toggle| toggle.bg(colors.composer_background))
+                .when(open, |toggle| toggle.bg(surfaces.raised))
                 .when(!open, |toggle| {
                     toggle
-                        .bg(colors.panel_background)
+                        .bg(surfaces.quiet)
                         .hover(|toggle| toggle.bg(colors.composer_background))
                 })
                 .on_click(cx.listener(|composer, _: &ClickEvent, window, cx| {

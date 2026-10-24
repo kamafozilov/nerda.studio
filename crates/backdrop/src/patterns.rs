@@ -257,34 +257,35 @@ fn characters(frame: &Frame, canvas: &mut Canvas) {
 }
 
 /// The image itself, each pixel its own color, or the ink at the image's
-/// density, faded by the clear area. Each column and row of the image is
-/// looked up once, not once a pixel.
+/// density. It covers the card whole, clear area included: the composer's
+/// glass sets it apart. Each pixel is read between four of the image's, so a
+/// small image scaled up stays smooth, and each column and row is placed
+/// once, not once a pixel.
 fn image(frame: &Frame, canvas: &mut Canvas) {
     let Some(source) = frame.source.as_deref() else {
         return;
     };
     let cover = source.cover(frame.width as f32, frame.height as f32);
-    let columns: Vec<usize> = (0..frame.width)
-        .map(|x| source.column(cover, x as f32 + 0.5))
+    let columns: Vec<_> = (0..frame.width)
+        .map(|x| source.columns_around(cover, x as f32 + 0.5))
         .collect();
     for y in 0..frame.height {
-        let row = source.row(cover, y as f32 + 0.5);
-        for (x, column) in (0..frame.width).zip(&columns) {
-            let open = frame.openness(x as f32 + 0.5, y as f32 + 0.5);
-            if open <= 0. {
-                continue;
-            }
-            let (lightness, [r, g, b]) = source.at(row + column);
+        let rows = source.rows_around(cover, y as f32 + 0.5);
+        for (x, &columns) in (0..frame.width).zip(&columns) {
+            let [r, g, b] = source
+                .color_between(columns, rows)
+                .map(|channel| channel.round() as u8);
             let (mark, coverage) = match frame.ink {
-                crate::Ink::Solid([r, g, b, a]) => {
+                crate::Ink::Solid([ir, ig, ib, a]) => {
+                    let lightness = (r as f32 * 54. + g as f32 * 183. + b as f32 * 19.) / 65280.;
                     let density = if frame.light {
                         1. - lightness
                     } else {
                         lightness
                     };
-                    ([b, g, r, a], density * open)
+                    ([ib, ig, ir, a], density)
                 }
-                crate::Ink::Source { alpha } => ([b, g, r, alpha], open),
+                crate::Ink::Source { alpha } => ([b, g, r, alpha], 1.),
             };
             canvas.blend(x, y, coverage, mark);
         }

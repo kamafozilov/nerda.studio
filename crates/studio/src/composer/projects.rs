@@ -137,7 +137,7 @@ impl Composer {
             .rounded(CONTROL_RADIUS)
             .border_1()
             .border_color(colors.border)
-            .bg(colors.composer_background)
+            .bg(self.surfaces(cx).raised)
             // The wash goes over the fill, so the pill lightens as a
             // control does under the pointer.
             .child(
