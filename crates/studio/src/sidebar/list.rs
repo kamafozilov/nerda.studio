@@ -97,9 +97,12 @@ impl Sidebar {
             let Some(project) = workspace.project(session.project) else {
                 continue;
             };
-            let face = faces
-                .entry(project.id)
-                .or_insert_with(|| ProjectFace::new(project));
+            let face = faces.entry(project.id).or_insert_with(|| {
+                ProjectFace::new(
+                    project,
+                    workspace.display_name(project.id).unwrap_or_default(),
+                )
+            });
             self.rows.push(face.row(session, now));
         }
         if self.highlighted >= self.rows.len() {

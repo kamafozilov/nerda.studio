@@ -9,6 +9,7 @@ use workspace::{AGENTS, Agent, AgentChoice, AgentId, ModelId};
 
 use super::Composer;
 use crate::{
+    agents::logo,
     assets::Icon,
     menu::{Entry, Item},
 };
@@ -62,14 +63,6 @@ impl Picker {
             Picker::Model => logo(&choice.agent, colors),
             Picker::Effort => Some((Icon::Usage, colors.text_secondary)),
         }
-    }
-}
-
-/// The agent's logo in its brand's color; an agent with none shows no mark.
-fn logo(agent: &AgentId, colors: Colors) -> Option<(Icon, Hsla)> {
-    match agent.0.as_str() {
-        "claude" => Some((Icon::Claude, colors.claude)),
-        _ => None,
     }
 }
 

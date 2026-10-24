@@ -1,6 +1,8 @@
-//! A session row: one line of its project's badge, its title and how long ago
-//! it was active. The badge's hue and initials tell projects apart at a
-//! glance; the computer's badge is its icon.
+//! A session row, two lines. Over, in small type, its project's badge and
+//! name, and how long ago it was active; under, its title from the row's
+//! leading edge, and the logo of the agent it runs at its end. The badge's
+//! hue and initials tell projects apart at a glance; the computer's badge is
+//! its icon.
 
 use std::{
     collections::HashMap,
@@ -13,15 +15,15 @@ use gpui::{
     Styled, Task, div, prelude::*, svg,
 };
 use theme::{
-    BADGE_SIZE, BADGE_TEXT, CONTROL_RADIUS, Colors, ICON_SIZE_SMALL, ROW_GAP, ROW_HEIGHT, SPACE_1,
-    SPACE_2, TEXT_CAPTION, Theme,
+    BADGE_ICON, BADGE_RADIUS, BADGE_SIZE, BADGE_TEXT, CONTROL_RADIUS, Colors, ICON_SIZE_SMALL,
+    ROW_GAP, SESSION_ROW_HEIGHT, SPACE_1, SPACE_2, TEXT_CAPTION, Theme,
 };
 use workspace::{
-    Head, Project, ProjectId, ProjectKind, Session, SessionId, Timestamp, compact_age,
+    AgentId, Head, Project, ProjectId, ProjectKind, Session, SessionId, Timestamp, compact_age,
 };
 
 use super::{Sidebar, fade::Key};
-use crate::assets::Icon;
+use crate::{agents::logo, assets::Icon};
 
 /// What a session row shows, read from the workspace when it changes rather
 /// than on every frame.
@@ -32,41 +34,48 @@ pub(super) struct Row {
     /// "5m", "3h".
     pub activity: Timestamp,
     pub age: SharedString,
+    pub agent: AgentId,
     pub project: ProjectFace,
 }
 
 /// A project as its sessions' rows show it, worked out once per refresh and
-/// shared by its rows: its badge.
+/// shared by its rows: its name as the sidebar shows it, and its badge.
 #[derive(Clone)]
 pub(super) enum ProjectFace {
     /// A folder's initials, in its hue.
-    Folder { initials: SharedString, hue: usize },
+    Folder {
+        name: SharedString,
+        initials: SharedString,
+        hue: usize,
+    },
     /// The computer's icon on a neutral fill: no folder to name or color it by.
-    Computer,
+    Computer { name: SharedString },
 }
 
 impl ProjectFace {
-    pub fn new(project: &Project) -> Self {
+    pub fn new(project: &Project, name: String) -> Self {
+        let name = name.into();
         match project.kind {
             ProjectKind::Folder => Self::Folder {
+                name,
                 initials: initials(&project.title).into(),
                 hue: hue(&project.path),
             },
-            ProjectKind::Computer => Self::Computer,
+            ProjectKind::Computer => Self::Computer { name },
         }
     }
 
-    /// The badge, `BADGE_SIZE` with `SPACE_1` corners.
+    /// The badge, `BADGE_SIZE` with `BADGE_RADIUS` corners.
     fn badge(&self, colors: &Colors) -> AnyElement {
         let badge = div()
             .size(BADGE_SIZE)
             .flex_none()
-            .rounded(SPACE_1)
+            .rounded(BADGE_RADIUS)
             .flex()
             .items_center()
             .justify_center();
         match self {
-            Self::Folder { initials, hue } => {
+            Self::Folder { initials, hue, .. } => {
                 let face = colors.badges[hue % colors.badges.len()];
                 badge
                     .bg(face.fill)
@@ -77,15 +86,21 @@ impl ProjectFace {
                     .child(initials.clone())
                     .into_any_element()
             }
-            Self::Computer => badge
+            Self::Computer { .. } => badge
                 .bg(colors.key_background)
                 .child(
                     svg()
                         .path(Icon::Computer.path())
-                        .size(ICON_SIZE_SMALL)
+                        .size(BADGE_ICON)
                         .text_color(colors.text_secondary),
                 )
                 .into_any_element(),
+        }
+    }
+
+    fn name(&self) -> SharedString {
+        match self {
+            Self::Folder { name, .. } | Self::Computer { name } => name.clone(),
         }
     }
 
@@ -95,6 +110,7 @@ impl ProjectFace {
             title: session.display_title().into(),
             activity: session.activity(),
             age: compact_age(session.activity(), now).into(),
+            agent: session.choice.agent.clone(),
             project: self.clone(),
         }
     }
@@ -222,9 +238,9 @@ impl Sidebar {
     }
 
     /// The row at `index`, `ROW_GAP` over the next. The selected row and the
-    /// one under the pointer or the search highlight take their wash and
-    /// `text_primary`, and their age `text_secondary`, which keeps its
-    /// contrast there.
+    /// one under the pointer or the search highlight take their wash and a
+    /// title in `text_primary`, and their project and age `text_secondary`,
+    /// which keeps its contrast there.
     pub(super) fn render_session_row(
         &mut self,
         index: usize,
@@ -233,7 +249,7 @@ impl Sidebar {
         let colors = Theme::of(cx).colors;
         let slot = div()
             .w_full()
-            .h(ROW_HEIGHT + ROW_GAP)
+            .h(SESSION_ROW_HEIGHT + ROW_GAP)
             .pb(ROW_GAP)
             .px(SPACE_2);
         let Some(row) = self.rows.get(index) else {
@@ -249,10 +265,44 @@ impl Sidebar {
         } else {
             Hsla::transparent_black()
         };
-        let badge = row.project.badge(&colors);
-        let (title, age) = (row.title.clone(), row.age.clone());
         let fill = self.fills.at(Key::Session(id), target, Instant::now());
         let on_surface = selected || hovered;
+        let (primary, secondary) = if on_surface {
+            (colors.text_primary, colors.text_secondary)
+        } else {
+            (colors.text_secondary, colors.text_tertiary)
+        };
+        let truncated = |text: SharedString| {
+            div()
+                .flex_1()
+                .min_w_0()
+                .overflow_hidden()
+                .whitespace_nowrap()
+                .text_ellipsis()
+                .child(text)
+        };
+        let project = div()
+            .flex()
+            .items_center()
+            .gap(SPACE_2)
+            .text_size(TEXT_CAPTION)
+            .text_color(secondary)
+            .child(row.project.badge(&colors))
+            .child(truncated(row.project.name()))
+            .child(div().flex_none().child(row.age.clone()));
+        let title = div()
+            .flex()
+            .items_center()
+            .gap(SPACE_2)
+            .text_color(primary)
+            .child(truncated(row.title.clone()))
+            .children(logo(&row.agent, colors).map(|(icon, color)| {
+                svg()
+                    .path(icon.path())
+                    .flex_none()
+                    .size(ICON_SIZE_SMALL)
+                    .text_color(color)
+            }));
         slot.id(("session-slot", id.0))
             .on_hover(cx.listener(move |sidebar, hovered: &bool, _, cx| {
                 sidebar.hover_row(index, *hovered, cx)
@@ -260,42 +310,19 @@ impl Sidebar {
             .child(
                 div()
                     .id(("session", id.0))
-                    .h(ROW_HEIGHT)
+                    .h(SESSION_ROW_HEIGHT)
                     .px(SPACE_2)
                     .flex()
-                    .items_center()
-                    .gap(SPACE_2)
+                    .flex_col()
+                    .justify_center()
+                    .gap(SPACE_1 / 2.)
                     .rounded(CONTROL_RADIUS)
                     .bg(fill)
                     .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
                         sidebar.open_session(id, cx)
                     }))
-                    .child(badge)
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .overflow_hidden()
-                            .whitespace_nowrap()
-                            .text_ellipsis()
-                            .text_color(if on_surface {
-                                colors.text_primary
-                            } else {
-                                colors.text_secondary
-                            })
-                            .child(title),
-                    )
-                    .child(
-                        div()
-                            .flex_none()
-                            .text_size(TEXT_CAPTION)
-                            .text_color(if on_surface {
-                                colors.text_secondary
-                            } else {
-                                colors.text_tertiary
-                            })
-                            .child(age),
-                    ),
+                    .child(project)
+                    .child(title),
             )
             .into_any_element()
     }

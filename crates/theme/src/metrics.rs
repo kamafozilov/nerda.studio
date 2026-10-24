@@ -42,10 +42,18 @@ pub const ICON_SIZE_SMALL: Pixels = px(12.);
 pub const FIELD_TARGET_SIZE: Pixels = px(24.);
 /// Height of one row in a list or menu; rows use `CONTROL_RADIUS` corners.
 pub const ROW_HEIGHT: Pixels = px(28.);
-/// Side of a project badge, the colored square with the project's initials.
-pub const BADGE_SIZE: Pixels = px(16.);
-/// The initials on a project badge: two capitals fit its 16 px with room.
-pub const BADGE_TEXT: Pixels = px(9.);
+/// Height of a session's row in the sidebar: two lines, its project in small
+/// type over its title.
+pub const SESSION_ROW_HEIGHT: Pixels = px(44.);
+/// Side of a project badge, the colored square with the project's initials,
+/// before the project's name in a session's row.
+pub const BADGE_SIZE: Pixels = px(14.);
+/// Corners of a project badge.
+pub const BADGE_RADIUS: Pixels = px(3.);
+/// The computer's icon on No project's badge.
+pub const BADGE_ICON: Pixels = px(10.);
+/// The initials on a project badge: two capitals fit its 14 px.
+pub const BADGE_TEXT: Pixels = px(8.);
 /// Space between neighboring rows in the sidebar, where a selected row and a
 /// hovered one can sit side by side and must stay two shapes.
 pub const ROW_GAP: Pixels = px(1.);

@@ -29,15 +29,20 @@ are in [design.md](design.md).
   result the hover marks. Closing the sidebar gives focus back too: typing never goes
   to a field out of sight.
 - **Sessions** are one list, newest first under the sort. Projects are not a level of the
-  list: the filter narrows it to one. Each session is a row: the project's badge, the
-  title, and how long ago the session was active ("now", "5m", "3h", "2d", "4w", "1y") in
-  `TEXT_CAPTION` `text_tertiary`. The title is `text_secondary`, and `text_primary` on
-  the wash of the selected row or the one under the pointer or the search highlight,
-  where the age turns `text_secondary`. The badge is `BADGE_SIZE` (16) with `SPACE_1`
-  corners, the project's initials (the first letters of its first two words:
-  arcada.next is AN, oʻquv is OQ) in semibold `BADGE_TEXT` (9), in the project's hue,
-  which comes from its folder and so stays across launches. No project's badge is a
-  computer at `ICON_SIZE_SMALL` in `text_secondary` on `key_background`.
+  list: the filter narrows it to one. Each session is a row `SESSION_ROW_HEIGHT` (44)
+  tall, two lines `SPACE_1` / 2 apart. Over, in `TEXT_CAPTION`: the project's badge,
+  its name as the sidebar shows it, and how long ago the session was active ("now",
+  "5m", "3h", "2d", "4w", "1y") at the trailing edge. Under, the title from the row's
+  leading edge, and at its end the logo of the agent the session runs, at
+  `ICON_SIZE_SMALL` in the agent's color; an agent with no logo in this build shows
+  none. The title is `text_secondary` and the project line `text_tertiary`; on the
+  wash of the selected row or the one under the pointer or the search highlight they
+  turn `text_primary` and `text_secondary`. The badge is `BADGE_SIZE` (14) with
+  `BADGE_RADIUS` (3) corners, the project's initials (the first letters of its first
+  two words: arcada.next is AN, oʻquv is OQ) in semibold `BADGE_TEXT` (8), in the
+  project's hue, which comes from its folder and so stays across launches. No
+  project's badge is a computer at `BADGE_ICON` (10) in `text_secondary` on
+  `key_background`.
 - **Branches and ages** are read off the UI thread: branches, which the composer shows,
   from folder projects' checkouts when projects come and go, when the window comes to front
   and with the ages; at launch the window waits up to 50 ms for them, so its first frame

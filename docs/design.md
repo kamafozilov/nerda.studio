@@ -101,7 +101,7 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
 - Text is the platform's UI font (GPUI's `.SystemUIFont`; SF Pro on macOS) at `TEXT_BODY`
   (13), the size of macOS controls. Emphasis is weight, not size. Two sizes are smaller:
   `TEXT_SMALL` (12), for a session card's supporting lines, in `text_secondary`, whose
-  contrast does not depend on size; and `BADGE_TEXT` (9), for a project badge's two
+  contrast does not depend on size; and `BADGE_TEXT` (8), for a project badge's two
   initials, which keep at least 5.27:1.
 - A field or a message with a hairline pads its content `HAIRLINE` (1) less, so the
   content stands in the same columns as the unbordered rows around it. A menu does too,

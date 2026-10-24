@@ -9,13 +9,22 @@ mod session_agent;
 
 use std::{collections::HashMap, path::PathBuf, time::Duration};
 
-use gpui::{App, AppContext, Context, Entity, Global, Subscription};
-use workspace::SessionId;
+use gpui::{App, AppContext, Context, Entity, Global, Hsla, Subscription};
+use theme::Colors;
+use workspace::{AgentId, SessionId};
 
 use journal::Journals;
 pub use session_agent::{Problem, SessionAgent};
 
-use crate::store::Store;
+use crate::{assets::Icon, store::Store};
+
+/// The agent's logo in its brand's color; an agent with none shows no mark.
+pub fn logo(agent: &AgentId, colors: Colors) -> Option<(Icon, Hsla)> {
+    match agent.0.as_str() {
+        "claude" => Some((Icon::Claude, colors.claude)),
+        _ => None,
+    }
+}
 
 /// Names a program to run in place of each agent's own command, such as the
 /// agent crate's `fake-agent`, so a build tried out plays a script instead
