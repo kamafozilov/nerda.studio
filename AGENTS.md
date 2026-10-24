@@ -11,14 +11,16 @@ names and URLs are the only exception.
 ## Done means proven
 
 The owner wants every change to work, edge cases included. A change is done when each of
-its edge cases has an observed result on the running app (`cargo run -p dev -- try`,
-below), or a named reason it could not be run.
+its edge cases has an observed result, in a scene (below) or on the running app
+(`cargo run -p dev -- try`), or a named reason it could not be run.
 
 1. Before writing code, list the change's edge cases: its own, plus every row below that
    applies.
-2. Exercise each one on the running app. Measure where a number decides it (pixels,
-   timings, contrast); a screenshot proves layout, a trace proves motion.
-3. Remove every probe (`SMOKE-PROBE`, then grep for it), then run
+2. Exercise each one in a scene wherever it can be; on the running app only for what
+   only the window server shows (the table under Scenes). Measure where a number
+   decides it (pixels, timings, contrast); a shot proves layout, a trace proves motion.
+3. Keep the scenes: they are the change's tests. Remove every probe from a `try` run
+   (`SMOKE-PROBE`, then grep for it), then run
    `cargo clippy --workspace --all-targets -- -D warnings` and `cargo fmt --all --check`.
 4. Report each case with its result. Name what stayed unverified and why, and give the
    owner exact steps for anything only a real click can show.
@@ -54,7 +56,39 @@ it, and never makes a worktree or a branch to move itself elsewhere:
   the owner's window over.
 
 Several `try` builds can run at once, from one session or many: each has its own data
-folder and window.
+folder and window. A change only tests see, such as a scene, builds no new app, so live
+reload leaves the owner's window running as it is.
+
+## Scenes
+
+A scene opens the app's real window in a test, on no screen: GPUI's test platform with
+the Mac's own text system and Metal. Nothing shows, nothing takes the keyboard or the
+mouse, no permission is asked, scenes run in parallel, and all of them take a few
+seconds. It is the first way to prove a change; `try` is for what a scene can't show.
+
+```sh
+cargo test -p studio scenes            # all of them
+cargo test -p studio scenes::sidebar   # some
+```
+
+`crates/studio/src/scenes.rs` holds them, `crates/studio/src/scene.rs` the harness:
+
+- `Scene::open(name)`, or `Scene::open_with(name, Settings { dark, reduce_motion,
+  reduce_transparency }, |data| …)` to fill its data folder first (a corrupt, newer or
+  unwritable `workspace.json`). Each scene's data is its own; the owner's is never read.
+- `keys("cmd-b")`, `click(x, y)`, `hover(x, y)`, `resize(w, h)`, `switch(settings)`
+  (appearance or Reduce motion changed mid-scene), `wait(ms)`, `read(|shell, cx| …)`.
+- `shot(label)` writes `target/scenes/<name>/<label>.png` and returns it; `.at(x, y)`
+  reads a pixel. Positions are in points from the window's top left: the PNG is at 2x,
+  so a point is two of its pixels. Read positions off the PNG itself, not off a scaled
+  preview of it.
+- Motion reads the wall clock, so `wait(ms)` lets that much real time pass; a shorter
+  wait shows a spring's middle.
+
+What a scene can't show, and `try` does: the glass's blur of the real desktop
+(`--desktop`), the traffic lights, dragging and zooming the window from the top row,
+full screen, the menu bar, an inactive window's look, CPU and frame pacing, and a
+system picker or the Finder (neither opens from either).
 
 ### Launching the app
 
@@ -91,9 +125,10 @@ picker, the Finder): check a menu command by dispatching its action from a probe
 leave a picker's look to the owner, with exact steps. Never use computer use or
 synthetic OS events: they drive the owner's own mouse and keyboard.
 
-## Proving without a real click
+## Proving on the running app
 
-The agent's terminal has no Accessibility permission, so macOS drops synthetic OS events.
+What a scene can't show is proven on a `try` build. The agent's terminal has no
+Accessibility permission, so macOS drops synthetic OS events.
 
 - Clicks and keys: a temporary probe calls `window.dispatch_event(PlatformInput::…)` or
   `window.dispatch_action(…)` from `cx.spawn_in`, outside any entity update; dispatching
