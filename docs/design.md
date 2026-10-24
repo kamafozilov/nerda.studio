@@ -190,8 +190,9 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
 - **Menus** are `popover_background` (opaque) under a `popover_border` hairline,
   brighter than `border` to keep its edge over the composer, three tight shadows
   (`popover_shadow`), `MENU_RADIUS` (8), at least `MENU_WIDTH` (220) wide, growing to
-  fit their widest line up to 320, and to 360 tall before they scroll
-  (`crates/studio/src/menu/`). Item icons are `ICON_SIZE_ROW` in `text_tertiary`;
+  fit their widest line up to 320, and to 360 tall, a search field included, before
+  their list scrolls; a menu that opens near the window's edge is no taller than the
+  room there, `SPACE_2` clear of the edge (`crates/studio/src/menu/`). Item icons are `ICON_SIZE_ROW` in `text_tertiary`;
   separators span the menu. Arrows move the highlight, as the pointer does; Enter or a
   click picks. An item with a submenu names its current choice and a chevron; the
   pointer resting on it, a click, Enter or the right arrow opens the submenu beside it,

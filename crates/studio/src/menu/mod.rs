@@ -16,14 +16,14 @@ mod submenu;
 
 pub(crate) use entry::{Entry, Item};
 
-use std::rc::Rc;
+use std::{cell::Cell, rc::Rc};
 
 use gpui::{
     Anchor, AnyElement, App, Context, Div, Entity, FocusHandle, Focusable, IntoElement,
     MouseButton, MouseDownEvent, ParentElement, Pixels, Point, ScrollHandle, Styled, Subscription,
-    Window, actions, anchored, deferred, div, point, prelude::*, px,
+    Window, actions, anchored, canvas, deferred, div, point, prelude::*, px,
 };
-use theme::{HAIRLINE, MENU_RADIUS, MENU_WIDTH, SPACE_1, SPACE_2, Theme};
+use theme::{HAIRLINE, MENU_RADIUS, MENU_WIDTH, ROW_HEIGHT, SPACE_1, SPACE_2, Theme};
 
 use self::{entry::Pick, submenu::Moves};
 use crate::text_input::TextInput;
@@ -48,7 +48,8 @@ actions!(
 
 const CONTEXT: &str = "Menu";
 
-/// Tallest a menu grows before it scrolls.
+/// Tallest a menu grows before its list scrolls, a searching menu's field
+/// included, so every menu stands at most this tall.
 const MENU_MAX_HEIGHT: Pixels = px(360.);
 
 /// Widest a menu grows to fit its lines before they truncate.
@@ -90,6 +91,9 @@ pub(crate) struct Menu<T, K> {
     /// while there is one, the arrows and Enter act in the submenu.
     sub_highlighted: Option<usize>,
     scroll: ScrollHandle,
+    /// Where the owner drew the menu's hang point, as last laid out: a
+    /// hanging menu is no taller than the window has room for from there.
+    hang_point: Rc<Cell<Option<Point<Pixels>>>>,
     _focus_out: Option<Subscription>,
 }
 
@@ -122,6 +126,7 @@ impl<T: 'static, K: 'static> Menu<T, K> {
             sub: None,
             sub_highlighted: None,
             scroll: ScrollHandle::new(),
+            hang_point: Rc::default(),
             _focus_out: None,
         }
     }
@@ -207,6 +212,21 @@ impl<T: 'static, K: 'static> Menu<T, K> {
             }
             cx.notify();
         }
+    }
+
+    /// Notes where the owner drew the menu; a first opening, or one after the
+    /// window or the control moved, draws again to fit the room there.
+    fn read_hang_point(&self) -> impl IntoElement + use<T, K> {
+        let hang_point = self.hang_point.clone();
+        canvas(
+            move |bounds, window, _| {
+                if hang_point.replace(Some(bounds.origin)) != Some(bounds.origin) {
+                    window.refresh();
+                }
+            },
+            |_, (), _, _| {},
+        )
+        .size_0()
     }
 
     /// The menu's panel: opaque, with a hairline and a large shadow.
@@ -308,9 +328,26 @@ impl<T: 'static, K: 'static> Menu<T, K> {
             } else {
                 MENU_WIDTH
             });
+        // The room from where the menu opens to the window's edge, less the
+        // gap to its control and the margin it keeps from the edge.
+        let viewport = window.viewport_size();
+        let room = match placement {
+            Placement::Hang(anchor) => self.hang_point.get().map(|point| match anchor {
+                Anchor::TopLeft | Anchor::TopRight => viewport.height - point.y,
+                _ => point.y,
+            }),
+            Placement::At(position) => Some(viewport.height - position.y),
+        }
+        .map_or(MENU_MAX_HEIGHT, |room| room - SPACE_1 - SPACE_2);
+        let field = if self.search.is_some() {
+            SEARCH_HEIGHT + HAIRLINE
+        } else {
+            px(0.)
+        };
+        let list_max = (MENU_MAX_HEIGHT.min(room) - field - HAIRLINE * 2.).max(ROW_HEIGHT * 2.);
         let list = div()
             .id((id, 2u64))
-            .max_h(MENU_MAX_HEIGHT)
+            .max_h(list_max)
             .overflow_y_scroll()
             .track_scroll(&self.scroll)
             .p(SPACE_1 - HAIRLINE)
@@ -356,7 +393,6 @@ impl<T: 'static, K: 'static> Menu<T, K> {
                 close(owner, window, cx)
             }
         };
-        let viewport = window.viewport_size();
         let backdrop = div()
             .id((id, 1u64))
             .w(viewport.width)
@@ -371,6 +407,7 @@ impl<T: 'static, K: 'static> Menu<T, K> {
                         .priority(1),
                 )
                 .child(deferred(hung.snap_to_window_with_margin(SPACE_2).child(panel)).priority(2))
+                .child(self.read_hang_point())
                 .into_any_element(),
         )
     }
