@@ -247,9 +247,8 @@ impl Composer {
 
     /// Where the session runs, over the box: the project's pill on the box's
     /// leading edge, and the branch its checkout is on, or the commit, at
-    /// the trailing edge. Their content stands in the box's padding. Over a
-    /// pattern or the owner's image the branch stands on the pill's surface,
-    /// so it reads over any of them.
+    /// the trailing edge, both chips on the box's surface with its hairline,
+    /// their edges on the box's.
     fn render_context(
         &self,
         draft: bool,
@@ -257,7 +256,7 @@ impl Composer {
         cx: &mut Context<Self>,
     ) -> Option<impl IntoElement + use<>> {
         let colors = Theme::of(cx).colors;
-        let glass = self.on_backdrop(cx).then(|| self.surfaces(cx).raised);
+        let surface = self.surfaces(cx).raised;
         let store = self.store.read(cx);
         let workspace = store.workspace();
         let project_id = workspace.session(self.session)?.project;
@@ -288,15 +287,12 @@ impl Composer {
                             .flex_shrink_0()
                             .min_w_0()
                             .max_w(relative(0.4))
-                            .pr(SPACE_3)
-                            .when_some(glass, |chip, glass| {
-                                chip.h(CONTROL_SIZE)
-                                    .px(SPACE_3 - HAIRLINE)
-                                    .rounded(CONTROL_RADIUS)
-                                    .border_1()
-                                    .border_color(colors.border)
-                                    .bg(glass)
-                            })
+                            .h(CONTROL_SIZE)
+                            .px(SPACE_3 - HAIRLINE)
+                            .rounded(CONTROL_RADIUS)
+                            .border_1()
+                            .border_color(colors.border)
+                            .bg(surface)
                             .flex()
                             .items_center()
                             .gap(SPACE_2)

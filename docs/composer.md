@@ -113,8 +113,9 @@ conversation over a docked composer are in [session.md](session.md).
     `composer_background` under a `border` hairline with `CONTROL_RADIUS`, padded as the
     box is, `hover` washed over it under the pointer and while its menu is open; no
     tooltip. A long name truncates before the branch does.
-  - At the trailing edge, the branch its checkout is on, or the commit, cut in the
-    middle, at most 40% of the row, the whole of it in the tooltip. Outside git, and in
+  - On the box's trailing edge, the branch its checkout is on, or the commit, on a chip
+    like the pill (the same fill, hairline, corners and padding, without the chevron),
+    cut in the middle, at most 40% of the row, the whole of it in the tooltip. Outside git, and in
     No project, there is no branch. It is read as [sidebar.md](sidebar.md) says.
 - **The project menu**, from the pill's leading edge, so the pill, the menu and the box
   stand on one edge, never two side by side: downward from a draft, upward from a docked
