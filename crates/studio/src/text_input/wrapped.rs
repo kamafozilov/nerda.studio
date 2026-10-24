@@ -326,7 +326,8 @@ impl Element for WrappedElement {
                 point(row.left(), top),
                 point(row.left() + CURSOR_WIDTH, bottom),
             );
-            (Vec::new(), Some(fill(cursor, colors.text_primary)))
+            let cursor = fill(cursor, colors.text_primary);
+            (Vec::new(), input.cursor_visible().then_some(cursor))
         } else {
             let rects = text.range_rects(selected);
             let quads = rects

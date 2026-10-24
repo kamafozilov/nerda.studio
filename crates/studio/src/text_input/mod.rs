@@ -2,6 +2,7 @@
 //! editing, selection, clipboard and IME.
 //!
 
+mod blink;
 mod editing;
 mod element;
 mod ime;
@@ -92,6 +93,7 @@ pub struct TextInput {
     is_selecting: bool,
     /// `set_text` changed the text outside a window; the platform IME learns on the next render.
     ime_content_stale: bool,
+    blink: blink::Blink,
 }
 
 impl EventEmitter<TextInputEvent> for TextInput {}
@@ -105,6 +107,7 @@ impl TextInput {
             placeholder: lines.normalize_shared(placeholder.into()),
             selected_range: 0..0,
             selection_reversed: false,
+            blink: blink::Blink::default(),
             marked_range: None,
             painted: None,
             last_bounds: None,
@@ -151,6 +154,7 @@ impl Render for TextInput {
         if std::mem::take(&mut self.ime_content_stale) {
             window.notify_text_input_changed(&self.focus_handle);
         }
+        self.keep_blinking(window, cx);
         let input = div()
             .key_context(match self.lines {
                 Lines::Single => "TextInput",
