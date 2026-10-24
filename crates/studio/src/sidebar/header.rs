@@ -1,19 +1,19 @@
 //! The header: New session and the pages, then the sessions' title with
-//! search and the list's menu, and the search field while it is open.
+//! search and the list's menu; while searching, the field takes the title's
+//! place.
 
 use gpui::{
     App, ClickEvent, Context, Div, Focusable, FontWeight, IntoElement, ParentElement, Pixels,
     SharedString, Stateful, Styled, Window, div, prelude::*, svg,
 };
 use theme::{
-    CONTROL_RADIUS, CONTROL_SIZE, Colors, DISABLED_OPACITY, FIELD_TARGET_SIZE, HAIRLINE, ICON_SIZE,
-    ICON_SIZE_ROW, ICON_SIZE_SMALL, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
+    CONTROL_RADIUS, CONTROL_SIZE, Colors, DISABLED_OPACITY, FIELD_TARGET_SIZE, ICON_SIZE,
+    ICON_SIZE_ROW, ICON_SIZE_SMALL, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
 };
 
 use super::Sidebar;
 use crate::{
     assets::Icon,
-    key_cap::{Key, key_cap},
     tooltip::{TooltipExt, WithTooltip},
 };
 
@@ -131,86 +131,80 @@ impl Sidebar {
         } else {
             "Search sessions (Ctrl+K)"
         };
-        let search_open = self.search_open;
+        // While searching, the field takes the title's place and Search turns
+        // into Close search.
+        let lead = if self.search_open {
+            self.render_search_field(cx).into_any_element()
+        } else {
+            div()
+                .flex_1()
+                .min_w_0()
+                .px(SPACE_2)
+                .text_size(TEXT_SMALL)
+                .font_weight(FontWeight::MEDIUM)
+                .text_color(colors.text_tertiary)
+                .child("Sessions")
+                .into_any_element()
+        };
+        let toggle = if self.search_open {
+            row_button(
+                "close-search",
+                Icon::Close,
+                "Close search",
+                colors,
+                |button| {
+                    button.on_click(cx.listener(|sidebar, _: &ClickEvent, window, cx| {
+                        sidebar.close_search(window, cx)
+                    }))
+                },
+            )
+        } else {
+            row_button("search", Icon::Search, search_label, colors, |button| {
+                button.on_click(cx.listener(|sidebar, _: &ClickEvent, window, cx| {
+                    sidebar.focus_search(window, cx)
+                }))
+            })
+        };
         let title = div()
             .mx(SPACE_2)
             .mt(SPACE_3)
             .h(CONTROL_SIZE)
             .flex()
             .items_center()
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .px(SPACE_2)
-                    .text_size(TEXT_SMALL)
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(colors.text_tertiary)
-                    .child("Sessions"),
-            )
-            .child(row_button(
-                "search",
-                Icon::Search,
-                search_label,
-                colors,
-                |button| {
-                    button
-                        .when(search_open, |button| button.bg(colors.hover))
-                        .on_click(cx.listener(|sidebar, _: &ClickEvent, window, cx| {
-                            if sidebar.search_open {
-                                sidebar.close_search(window, cx);
-                            } else {
-                                sidebar.focus_search(window, cx);
-                            }
-                        }))
-                },
-            ))
+            .child(lead)
+            .child(toggle)
             .child(self.render_menu_button(window, cx));
         div()
             .flex()
             .flex_col()
             .child(self.render_nav(window, cx))
             .child(title)
-            .when(search_open, |header| {
-                header.child(
-                    div()
-                        .mx(SPACE_2)
-                        .mt(SPACE_1)
-                        .child(self.render_search_field(window, cx)),
-                )
-            })
     }
 
-    fn render_search_field(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    /// The search field in the title's place: no box of its own, only the
+    /// magnifier and the text in the title's size and weight.
+    fn render_search_field(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
         let input_focus = self.search.focus_handle(cx);
-        let focused = input_focus.contains_focused(window, cx);
         div()
             .id("search-field")
-            .group("search-field")
             .key_context("SidebarSearch")
             .on_action(cx.listener(Self::select_next))
             .on_action(cx.listener(Self::select_previous))
             .on_action(cx.listener(Self::open_highlighted))
             .on_action(cx.listener(Self::dismiss))
-            .w_full()
+            .flex_1()
+            .min_w_0()
             .h(CONTROL_SIZE)
-            // The hairline comes out of the padding, so the magnifier and the
-            // text stand in the pages' icon and title columns.
-            .px(SPACE_2 - HAIRLINE)
+            .px(SPACE_2)
             .flex()
             .items_center()
             .gap(SPACE_2)
-            .rounded(CONTROL_RADIUS)
-            .border_1()
-            .border_color(if focused {
-                colors.focus_ring
-            } else {
-                colors.border
-            })
-            .bg(colors.field_background)
+            .text_size(TEXT_SMALL)
+            .font_weight(FontWeight::MEDIUM)
             .cursor_text()
-            // The icon and padding are part of the field: a click there focuses it.
+            // The magnifier and padding are part of the field: a click there
+            // focuses it.
             .on_click(
                 cx.listener(move |_, _: &ClickEvent, window, cx| window.focus(&input_focus, cx)),
             )
@@ -219,39 +213,8 @@ impl Sidebar {
                     .path(Icon::Search.path())
                     .size(ICON_SIZE_ROW)
                     .flex_none()
-                    .text_color(colors.text_secondary),
+                    .text_color(colors.text_tertiary),
             )
             .child(div().flex_1().min_w_0().child(self.search.clone()))
-            // The shortcut shows while the field is focused or under the pointer,
-            // so at rest the placeholder has the field to itself. The cap sits
-            // as far in from the field's edges as from its top and bottom.
-            .when(self.query.is_empty(), |field| {
-                let modifier = if cfg!(target_os = "macos") {
-                    "⌘"
-                } else {
-                    "Ctrl"
-                };
-                field.child(
-                    key_cap(&[Key::Text(modifier), Key::Text("K")], colors)
-                        .mr(-SPACE_1)
-                        .when(!focused, |cap| {
-                            cap.opacity(0.)
-                                .group_hover("search-field", |cap| cap.opacity(1.))
-                        }),
-                )
-            })
-            .when(!self.query.is_empty(), |field| {
-                // Clearing keeps the field focused, so typing goes on.
-                field.child(close_button(
-                    "clear-search",
-                    "Clear search",
-                    colors,
-                    cx.listener(|sidebar, _: &ClickEvent, window, cx| {
-                        cx.stop_propagation();
-                        sidebar.clear_search(cx);
-                        window.focus(&sidebar.search.focus_handle(cx), cx);
-                    }),
-                ))
-            })
     }
 }

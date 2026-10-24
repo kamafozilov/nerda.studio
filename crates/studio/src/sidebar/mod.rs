@@ -71,8 +71,8 @@ pub struct Sidebar {
     /// The sessions on screen, in order, as the list draws them; read once
     /// per change, not on every frame of a fade.
     rows: Vec<Row>,
-    /// Whether the search field shows under the sessions' title: from its
-    /// button or `Cmd-K` until it is dismissed, or loses focus empty.
+    /// Whether the search field shows in the sessions' title: from Search or
+    /// `Cmd-K` until Escape or Close search, focus leaving it or not.
     search_open: bool,
     /// The row of the search result Enter opens; meaningful only while searching.
     highlighted: usize,
@@ -123,7 +123,9 @@ impl Sidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let search = cx.new(|cx| TextInput::new("Search sessions", Lines::Single, cx));
+        let search = cx.new(|cx| {
+            TextInput::new("Search sessions", Lines::Single, cx).with_quiet_placeholder()
+        });
         let search_focus = search.focus_handle(cx);
         let subscriptions = vec![
             cx.subscribe(&search, |sidebar, search, TextInputEvent::Changed, cx| {
@@ -138,13 +140,6 @@ impl Sidebar {
             cx.on_focus(&search_focus, window, |sidebar, window, cx| {
                 if !sidebar.open {
                     sidebar.give_focus_back(window, cx);
-                }
-            }),
-            // Focus leaving an empty search puts the field away.
-            cx.on_blur(&search_focus, window, |sidebar, _, cx| {
-                if sidebar.query.is_empty() && sidebar.search_open {
-                    sidebar.search_open = false;
-                    cx.notify();
                 }
             }),
             cx.observe(&store, |sidebar, store, cx| {
@@ -359,13 +354,9 @@ impl Sidebar {
     }
 
     fn dismiss(&mut self, _: &Dismiss, window: &mut Window, cx: &mut Context<Self>) {
-        if self.query.is_empty() {
-            // An empty search goes away and gives focus back to where Cmd-K
-            // took it from.
-            self.close_search(window, cx);
-        } else {
-            self.clear_search(cx);
-        }
+        // Escape ends the search, typed or not, and gives focus back to
+        // where it was taken from.
+        self.close_search(window, cx);
     }
 }
 

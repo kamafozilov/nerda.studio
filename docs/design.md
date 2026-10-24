@@ -107,9 +107,8 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   contrast does not depend on size; and `BADGE_TEXT` (9), for a project badge's two
   initials, which keep at least 5.27:1.
 - A field or a message with a hairline pads its content `HAIRLINE` (1) less, so the
-  content stands in the same columns as the unbordered rows around it: the search field's
-  magnifier and text over the pages' icons and titles. A menu does too, so its items
-  stand `SPACE_1` in from its outer edge and their corners nest in its own.
+  content stands in the same columns as the unbordered rows around it. A menu does too,
+  so its items stand `SPACE_1` in from its outer edge.
 
 ## Icons
 

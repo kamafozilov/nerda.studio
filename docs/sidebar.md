@@ -17,14 +17,16 @@ are in [design.md](design.md).
   beside it with their choices (Last activity or Created; All projects or one), each
   naming its current one. The sort and the filter are saved. A filter to one project
   keeps the menu button on `hover`.
-- **Search**: the Search button or `Cmd-K` (`Ctrl-K` elsewhere) shows the search field
-  under the title and puts the cursor in it, its text selected, opening the sidebar first
-  if it is closed and closing any open menu; `Cmd-K` does nothing while a palette is open
-  over the window. The field shows the shortcut as a key cap at its trailing edge while
-  it is focused or under the pointer and empty. Enter opens the result the hover marks;
-  Enter, and Escape on an empty search, put the field away and give focus back to where
-  it was taken from, else to the window, and so does closing the sidebar: typing never
-  goes to a field out of sight. Focus leaving an empty field puts it away too.
+- **Search**: the Search button or `Cmd-K` (`Ctrl-K` elsewhere) turns the sessions'
+  title into the search field and puts the cursor in it, its text selected, opening the
+  sidebar first if it is closed and closing any open menu; `Cmd-K` does nothing while a
+  palette is open over the window. The field has no box: the magnifier in
+  `text_tertiary`, the text in the title's size and weight, the placeholder in
+  `text_tertiary`. Search becomes Close search beside it. The field stays while focus
+  goes elsewhere; Escape or Close search clears it, puts it away and gives focus back
+  to where it was taken from, else to the window, as Enter does after opening the
+  result the hover marks. Closing the sidebar gives focus back too: typing never goes
+  to a field out of sight.
 - **Sessions** are one list, newest first under the sort. Projects are not a level of the
   list: the filter narrows it to one. Each session is a row: the project's badge, the
   title, and how long ago the session was active ("now", "5m", "3h", "2d", "4w", "1y") in

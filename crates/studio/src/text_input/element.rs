@@ -22,7 +22,12 @@ pub(super) fn display_text(
 ) -> (SharedString, Vec<TextRun>) {
     let colors = Theme::of(cx).colors;
     let (display_text, color) = if input.content.is_empty() {
-        (input.placeholder.clone(), colors.text_secondary)
+        let color = if input.quiet_placeholder {
+            colors.text_tertiary
+        } else {
+            colors.text_secondary
+        };
+        (input.placeholder.clone(), color)
     } else {
         (input.content.clone(), colors.text_primary)
     };

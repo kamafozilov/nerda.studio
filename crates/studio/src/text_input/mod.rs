@@ -72,6 +72,9 @@ pub struct TextInput {
     lines: Lines,
     content: SharedString,
     placeholder: SharedString,
+    /// The placeholder in `text_tertiary` rather than `text_secondary`, for a
+    /// field without a box of its own.
+    quiet_placeholder: bool,
     /// Byte range of the selection; empty when it is only a cursor.
     selected_range: Range<usize>,
     /// The cursor sits at the selection's start rather than its end.
@@ -105,6 +108,7 @@ impl TextInput {
             lines,
             content: SharedString::default(),
             placeholder: lines.normalize_shared(placeholder.into()),
+            quiet_placeholder: false,
             selected_range: 0..0,
             selection_reversed: false,
             blink: blink::Blink::default(),
@@ -116,6 +120,12 @@ impl TextInput {
             is_selecting: false,
             ime_content_stale: false,
         }
+    }
+
+    /// Shows the placeholder in `text_tertiary`.
+    pub fn with_quiet_placeholder(mut self) -> Self {
+        self.quiet_placeholder = true;
+        self
     }
 
     pub fn text(&self) -> &str {
