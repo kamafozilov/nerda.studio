@@ -76,7 +76,13 @@ cargo test -p studio scenes::sidebar   # some
 - `Scene::open(name)`, or `Scene::open_with(name, Settings { dark, reduce_motion,
   reduce_transparency }, |data| …)` to fill its data folder first (a corrupt, newer or
   unwritable `workspace.json`). Each scene's data is its own; the owner's is never read.
-- `keys("cmd-b")`, `click(x, y)`, `hover(x, y)`, `resize(w, h)`, `switch(settings)`
+  `Scene::open_at(name, settings, (w, h), …)` opens the window at another size:
+  `resize(w, h)` changes the window's bounds, but GPUI's headless window doesn't lay
+  out again for it.
+- `Scene::conversation(name, settings, &[replies])` opens a session whose agent is the
+  fake agent, answering each `send(text)` with the next reply, as Markdown;
+  `wait_for_agent()` waits for the answer and the rows' entrance.
+- `keys("cmd-b")`, `click(x, y)`, `hover(x, y)`, `scroll(x, y, dy)`, `switch(settings)`
   (appearance or Reduce motion changed mid-scene), `wait(ms)`, `read(|shell, cx| …)`.
 - `shot(label)` writes `target/scenes/<name>/<label>.png` and returns it; `.at(x, y)`
   reads a pixel. Positions are in points from the window's top left: the PNG is at 2x,

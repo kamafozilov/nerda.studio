@@ -80,6 +80,12 @@ impl Shell {
         Some(self.composers.get(&session)?.composer.clone())
     }
 
+    /// The conversation on screen, for a scene to read.
+    #[cfg(all(target_os = "macos", test))]
+    pub fn conversation(&self, cx: &App) -> Option<Entity<Conversation>> {
+        self.shown_conversation(cx)
+    }
+
     /// The conversation of the session on screen, once it has seen work: a
     /// draft has only its composer.
     pub(super) fn shown_conversation(&self, cx: &App) -> Option<Entity<Conversation>> {

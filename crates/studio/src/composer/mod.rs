@@ -30,8 +30,8 @@ use gpui::{
     px,
 };
 use theme::{
-    COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS, HAIRLINE, SPACE_2,
-    SPACE_3, TEXT_SMALL, Theme,
+    COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS,
+    CONVERSATION_MAX_WIDTH, HAIRLINE, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
 };
 use workspace::SessionId;
 
@@ -276,7 +276,11 @@ impl Render for Composer {
             .is_none_or(|session| session.is_empty());
         let column = div()
             .w_full()
-            .max_w(COMPOSER_MAX_WIDTH)
+            .max_w(if draft {
+                COMPOSER_MAX_WIDTH
+            } else {
+                CONVERSATION_MAX_WIDTH
+            })
             .flex()
             .flex_col()
             .child(self.render_box(window, cx))
@@ -285,6 +289,11 @@ impl Render for Composer {
             .when(draft, |column| {
                 column.relative().child(self.placement.reader(true))
             });
+        let column = if draft {
+            column.into_any_element()
+        } else {
+            self.docked(column)
+        };
         let backdrop = self.render_backdrop(draft, window, cx);
         // A draft's column stands a little above the middle, where the eye
         // rests: the space above it is `DRAFT_RISE` of what is left.
@@ -293,7 +302,7 @@ impl Render for Composer {
             space.style().flex_grow = Some(share);
             space
         };
-        let placement = div()
+        div()
             .key_context(CONTEXT)
             .on_action(cx.listener(Self::send))
             .capture_action(cx.listener(Self::paste))
@@ -314,11 +323,6 @@ impl Render for Composer {
                 placement
                     .child(self.render_tray(window, cx))
                     .child(self.placement.reader(false))
-            });
-        if draft {
-            placement.into_any_element()
-        } else {
-            self.docked(placement)
-        }
+            })
     }
 }

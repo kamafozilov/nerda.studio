@@ -7,7 +7,7 @@ use gpui::{
     div, prelude::*,
 };
 use theme::{
-    Colors, MENU_RADIUS, MONOSPACE_FONT, SPACE_1, SPACE_2, SPACE_3, TEXT_CAPTION, TEXT_SMALL,
+    Colors, MENU_RADIUS, MONOSPACE_FONT, SPACE_1, SPACE_2, SPACE_3, TEXT_CAPTION, TEXT_CODE,
 };
 
 use std::rc::Rc;
@@ -80,7 +80,7 @@ pub fn block(code: &Code, id: u64, tail: &Tail, env: &mut Env) -> AnyElement {
                 .px(SPACE_3)
                 .pb(SPACE_2 + SPACE_1)
                 .font_family(MONOSPACE_FONT)
-                .text_size(TEXT_SMALL)
+                .text_size(TEXT_CODE)
                 .child(div().flex_none().whitespace_nowrap().child(text)),
         )
         .into_any_element()

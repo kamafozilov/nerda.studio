@@ -68,6 +68,8 @@ impl Agents {
         let program = std::env::var_os(PROGRAM)
             .filter(|program| !program.is_empty())
             .map(PathBuf::from);
+        #[cfg(test)]
+        let program = program.or_else(crate::scene::agent_program);
         let journals = store.read(cx).data_dir().map(Journals::start);
         Self {
             store,

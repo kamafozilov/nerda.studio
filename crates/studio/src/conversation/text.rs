@@ -7,8 +7,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use gpui::{AnyElement, ClipboardItem, Context, SharedString, Window};
-use theme::Colors;
+use gpui::{
+    AnyElement, ClipboardItem, Context, IntoElement, ParentElement, SharedString, Styled, Window,
+    div, relative,
+};
+use theme::{Colors, READING_LINE_HEIGHT, TEXT_READING};
 
 use super::{Conversation, animation, markdown, render};
 
@@ -31,7 +34,7 @@ impl Conversation {
         let key = super::key(turn, item);
         let folder = self.folder.clone();
         let mut env = self.env(key, colors, window, cx).text(folder, &blocks);
-        render::blocks(&blocks, key, &tail, &mut env)
+        reading(render::blocks(&blocks, key, &tail, &mut env))
     }
 
     /// The text of the person's message in turn `turn`, as they wrote it,
@@ -46,7 +49,7 @@ impl Conversation {
     ) -> AnyElement {
         let key = super::key(turn, super::MESSAGE);
         let mut env = self.env(key, colors, window, cx);
-        render::plain(text, key, &mut env)
+        reading(render::plain(text, key, &mut env))
     }
 
     /// What drawing the text whose key is `key` takes, its pieces in the
@@ -136,4 +139,13 @@ impl Conversation {
             })
             .collect()
     }
+}
+
+/// `content` at the size and line height the conversation is read in.
+fn reading(content: AnyElement) -> AnyElement {
+    div()
+        .text_size(TEXT_READING)
+        .line_height(relative(READING_LINE_HEIGHT))
+        .child(content)
+        .into_any_element()
 }

@@ -15,11 +15,11 @@ use std::{collections::HashSet, path::PathBuf, rc::Rc};
 
 use gpui::{
     AnyElement, App, ElementId, FocusHandle, FontWeight, IntoElement, ParentElement, Pixels,
-    SharedString, Styled, Window, div, prelude::*, px, svg,
+    SharedString, Styled, Window, div, prelude::*, px, relative, svg,
 };
 use theme::{
-    CONTROL_RADIUS, Colors, FIELD_TARGET_SIZE, HAIRLINE, ICON_SIZE_ROW, SPACE_1, SPACE_2, SPACE_3,
-    TEXT_BODY, TEXT_HEADING, TEXT_HEADING_2, TEXT_HEADING_3,
+    CONTROL_RADIUS, Colors, FIELD_TARGET_SIZE, HAIRLINE, HEADING_LINE_HEIGHT, ICON_SIZE_ROW,
+    READING_LINE_HEIGHT, SPACE_1, SPACE_2, SPACE_3, TEXT_READING, TEXT_READING_HEADINGS,
 };
 
 pub use inline::line;
@@ -35,9 +35,9 @@ use crate::{
     tooltip::{TooltipExt, WithTooltip},
 };
 
-/// The width a list's markers take, as wide as "10." at `TEXT_BODY`; a
+/// The width a list's markers take, as wide as "10." at `TEXT_READING`; a
 /// list numbered past 99 widens it a digit at a time.
-const MARKER_WIDTH: Pixels = px(20.);
+const MARKER_WIDTH: Pixels = px(22.);
 
 /// Parts of the end of a text still fading in: each as how far from the
 /// end it starts and stops, in bytes, and how far it has come in, 0 to 1.
@@ -133,7 +133,7 @@ impl<'a> Env<'a> {
     }
 }
 
-/// `blocks` one under another; `id` names their state, such as a code
+/// `blocks` one under another, `SPACE_3` apart, `SPACE_2` inside a list; `id` names their state, such as a code
 /// block's scroll; `tail` fades in the end of the last one.
 pub fn blocks(blocks: &[Block], id: u64, tail: &Tail, env: &mut Env) -> AnyElement {
     let last = blocks.len().saturating_sub(1);
@@ -148,11 +148,13 @@ pub fn blocks(blocks: &[Block], id: u64, tail: &Tail, env: &mut Env) -> AnyEleme
             }
         })
         .collect();
+    // Inside a list an item's blocks stay close, so its items read apart.
+    let gap = if env.depth > 0 { SPACE_2 } else { SPACE_3 };
     div()
         .w_full()
         .flex()
         .flex_col()
-        .gap(SPACE_2)
+        .gap(gap)
         .children(children)
         .into_any_element()
 }
@@ -183,12 +185,12 @@ fn block(block: &Block, id: u64, tail: &Tail, env: &mut Env) -> AnyElement {
     match block {
         Block::Paragraph(text) => inline::text(text, text_id(), tail, env),
         Block::Heading(level, text) => div()
-            .text_size(match level {
-                1 => TEXT_HEADING,
-                2 => TEXT_HEADING_2,
-                3 => TEXT_HEADING_3,
-                _ => TEXT_BODY,
-            })
+            .text_size(
+                (TEXT_READING_HEADINGS.get(usize::from(*level).wrapping_sub(1)))
+                    .copied()
+                    .unwrap_or(TEXT_READING),
+            )
+            .line_height(relative(HEADING_LINE_HEIGHT))
             .font_weight(FontWeight::SEMIBOLD)
             .child(inline::text(text, text_id(), tail, env))
             .into_any_element(),
@@ -196,13 +198,15 @@ fn block(block: &Block, id: u64, tail: &Tail, env: &mut Env) -> AnyElement {
         Block::Table(table) => table::block(table, id, tail, env),
         Block::List { start, items } => {
             let digits = start.map_or(1, |start| (start + items.len() as u64).to_string().len());
-            let marker_width = MARKER_WIDTH + px(7.) * digits.saturating_sub(2) as f32;
+            let marker_width = MARKER_WIDTH + px(8.) * digits.saturating_sub(2) as f32;
             env.depth += 1;
             let rows: Vec<AnyElement> = (items.iter().enumerate())
                 .map(|(at, item)| {
                     let tail = if at + 1 == items.len() { tail } else { &[] };
                     let marker = match (item.task, start) {
-                        (Some(done), _) => task_box(done, env.window.line_height(), colors),
+                        (Some(done), _) => {
+                            task_box(done, TEXT_READING * READING_LINE_HEIGHT, colors)
+                        }
                         (None, Some(start)) => div()
                             .text_color(colors.text_secondary)
                             .child(format!("{}.", start + at as u64))

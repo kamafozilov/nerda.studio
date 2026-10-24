@@ -9,19 +9,21 @@
 //! traffic lights, the menu bar, full screen, stays with `dev try`.
 
 use std::{
-    cell::Cell,
+    cell::{Cell, RefCell},
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Once},
     time::Duration,
 };
 
 use gpui::{
-    App, AppContext, HeadlessAppContext, Keystroke, Modifiers, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, PlatformInput, WindowAppearance, WindowHandle, point, px, size,
+    App, AppContext, Entity, HeadlessAppContext, Keystroke, Modifiers, MouseButton, MouseDownEvent,
+    MouseMoveEvent, MouseUpEvent, PlatformInput, ScrollDelta, ScrollEvent, WindowAppearance,
+    WindowHandle, point, px, size,
 };
 use image::RgbaImage;
+use workspace::{AddedProject, Timestamp, Workspace};
 
-use crate::{assets::Assets, shell::Shell, system_theme};
+use crate::{agents, assets::Assets, shell::Shell, store::Store, system_theme};
 
 /// The system settings a scene runs under, in place of the Mac's.
 #[derive(Clone, Copy, Debug, Default)]
@@ -34,6 +36,13 @@ pub struct Settings {
 thread_local! {
     /// Each scene runs on its own test thread, so each keeps its own.
     static SETTINGS: Cell<Settings> = Cell::new(Settings::default());
+    /// The program the scene's agents run in place of claude.
+    static AGENT: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
+}
+
+/// The program the agents of the scene on this thread run, if it set one.
+pub fn agent_program() -> Option<PathBuf> {
+    AGENT.with_borrow(Clone::clone)
 }
 
 /// The settings of the scene on this thread.
@@ -53,6 +62,7 @@ pub fn appearance() -> WindowAppearance {
 pub struct Scene {
     cx: HeadlessAppContext,
     window: WindowHandle<Shell>,
+    store: Entity<Store>,
     folder: PathBuf,
 }
 
@@ -66,6 +76,18 @@ impl Scene {
     /// Opens the app under `settings`, with the data folder `prepare` filled
     /// first: a saved, corrupt or newer `workspace.json`, say.
     pub fn open_with(name: &str, settings: Settings, prepare: impl FnOnce(&Path)) -> Self {
+        Self::open_at(name, settings, (1200., 800.), prepare)
+    }
+
+    /// Opens the app as `open_with` does, its window `size` points wide and
+    /// tall: the way to see a window at another size, since GPUI's headless
+    /// window takes a `resize` without laying out again.
+    pub fn open_at(
+        name: &str,
+        settings: Settings,
+        (width, height): (f32, f32),
+        prepare: impl FnOnce(&Path),
+    ) -> Self {
         SETTINGS.set(settings);
         let folder = scenes_folder().join(name);
         let data = folder.join("data");
@@ -78,11 +100,16 @@ impl Scene {
         });
         let store = cx.update(|cx| crate::start(Some(data.join("workspace.json")), cx));
         let window = cx
-            .open_window(size(px(1200.), px(800.)), |window, cx| {
-                cx.new(|cx| Shell::new(store, true, window, cx))
+            .open_window(size(px(width), px(height)), |window, cx| {
+                cx.new(|cx| Shell::new(store.clone(), true, window, cx))
             })
             .expect("the scene's window opens");
-        let mut scene = Self { cx, window, folder };
+        let mut scene = Self {
+            cx,
+            window,
+            store,
+            folder,
+        };
         // In front, as the window a person works in: hover and clicks follow.
         scene
             .cx
@@ -90,6 +117,83 @@ impl Scene {
             .ok();
         scene.settle();
         scene
+    }
+
+    /// Opens the app on a session in a project whose agent is the agent
+    /// crate's `fake-agent`, answering each message with the next of
+    /// `replies`, as Markdown.
+    pub fn conversation(name: &str, settings: Settings, replies: &[&str]) -> Self {
+        Self::conversation_at(name, settings, (1200., 800.), replies)
+    }
+
+    /// A conversation as `conversation` opens it, in a window `size` points
+    /// wide and tall.
+    pub fn conversation_at(
+        name: &str,
+        settings: Settings,
+        size: (f32, f32),
+        replies: &[&str],
+    ) -> Self {
+        AGENT.set(Some(fake_agent()));
+        Self::open_at(name, settings, size, |data| {
+            let project = data.with_file_name("project");
+            std::fs::create_dir_all(&project).expect("the project's folder is made");
+            std::fs::write(project.join("fake-agent.jsonl"), script(replies))
+                .expect("the agent's script is written");
+            let now = Timestamp::now();
+            let mut workspace = Workspace::default();
+            let (AddedProject::Added(id) | AddedProject::Existing(id)) = workspace
+                .add_project(&project, now)
+                .expect("the project is added");
+            let session = workspace.new_session(id, now).expect("a session opens");
+            workspace.open_session(session);
+            workspace
+                .save(&data.join("workspace.json"))
+                .expect("the workspace is saved");
+        })
+    }
+
+    /// Sends `text` from the session on screen, as its composer does, and
+    /// lets the agent answer.
+    pub fn send(&mut self, text: &str) {
+        let store = self.store.clone();
+        self.cx.update(|cx| {
+            let session =
+                (store.read(cx).workspace().selected_session()).expect("a session is on screen");
+            agents::of(session, cx)
+                .update(cx, |agent, cx| agent.send(text.to_owned(), &[], cx))
+                .expect("the agent starts");
+        });
+        self.settle();
+    }
+
+    /// Lets time pass until the agent of the session on screen has
+    /// answered everything sent, up to five seconds, and the rows that came
+    /// have made their entrance.
+    pub fn wait_for_agent(&mut self) {
+        let store = self.store.clone();
+        for _ in 0..100 {
+            self.wait(50);
+            let busy = self.cx.update(|cx| {
+                let session = store.read(cx).workspace().selected_session();
+                session.is_some_and(|session| agents::of(session, cx).read(cx).is_busy())
+            });
+            if !busy {
+                self.wait(400);
+                return;
+            }
+        }
+        panic!("the agent didn't answer in five seconds");
+    }
+
+    /// Scrolls by `dy` points at `x`, `y`, as a trackpad does: up is
+    /// positive.
+    pub fn scroll(&mut self, x: f32, y: f32, dy: f32) {
+        self.input(PlatformInput::Scroll(ScrollEvent {
+            position: point(px(x), px(y)),
+            delta: ScrollDelta::Pixels(point(px(0.), px(dy))),
+            ..ScrollEvent::default()
+        }));
     }
 
     /// Runs what is due and draws the frame.
@@ -227,6 +331,40 @@ impl Shot {
         let (x, y) = ((x * self.scale) as u32, (y * self.scale) as u32);
         self.image.get_pixel(x, y).0
     }
+}
+
+/// The agent crate's `fake-agent`, built once for the scenes, beside the
+/// test in its target folder.
+fn fake_agent() -> PathBuf {
+    static BUILD: Once = Once::new();
+    let profile = scenes_folder().with_file_name("debug");
+    BUILD.call_once(|| {
+        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+        let built = std::process::Command::new(cargo)
+            .args(["build", "--quiet", "-p", "agent", "--bin", "fake-agent"])
+            .env(
+                "CARGO_TARGET_DIR",
+                profile.parent().expect("a target folder"),
+            )
+            .status()
+            .is_ok_and(|status| status.success());
+        assert!(built, "cargo build -p agent --bin fake-agent");
+    });
+    profile.join("fake-agent")
+}
+
+/// The fake agent's script: it starts as claude does, then answers each
+/// message with the next reply.
+fn script(replies: &[&str]) -> String {
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("../agent/tests/fixtures");
+    let read = |name: &str| std::fs::read_to_string(fixtures.join(name)).expect("a fixture");
+    let turn = read("turn-ok.jsonl");
+    let mut script = read("initialize.jsonl");
+    for reply in replies {
+        let text = serde_json::to_string(reply).expect("a reply");
+        script.push_str(&turn.replace(r#""text":"ok""#, &format!(r#""text":{text}"#)));
+    }
+    script
 }
 
 /// `target/scenes`, in the target folder the test was built in.

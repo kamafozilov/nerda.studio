@@ -106,9 +106,12 @@ pub const KEY_CAP_SIZE_SMALL: Pixels = px(16.);
 /// the window, such as the one asking for a second Cmd-Q.
 pub const KEY_CAP_SIZE_LARGE: Pixels = px(26.);
 
-/// Widest the session composer grows; past it the composer stays centered in
+/// Widest a draft's composer grows; past it the composer stays centered in
 /// the card, `SPACE_3` clear of its sides below it.
 pub const COMPOSER_MAX_WIDTH: Pixels = px(720.);
+/// Widest a session's conversation grows, and the composer docked under
+/// it, so tables and code have room; centered as the draft's composer.
+pub const CONVERSATION_MAX_WIDTH: Pixels = px(880.);
 /// Corners of the composer's box: rounder than a field's, since it holds a
 /// toolbar as well as text.
 pub const COMPOSER_RADIUS: Pixels = px(12.);
@@ -128,12 +131,22 @@ pub const CHIPS_MAX_HEIGHT: Pixels = px(78.);
 /// takes, so it reads as theirs, apart from the agent's full-width replies.
 pub const MESSAGE_MAX_WIDTH: f32 = 0.8;
 
+/// What the conversation is read in: the agent's replies and the person's
+/// messages, a step over `TEXT_BODY`, which suits controls but tires over a
+/// long reply; on lines `READING_LINE_HEIGHT` times as tall.
+pub const TEXT_READING: Pixels = px(14.);
+pub const READING_LINE_HEIGHT: f32 = 1.6;
+/// The agent's headings over `TEXT_READING`, first to third level, on lines
+/// `HEADING_LINE_HEIGHT` times as tall.
+pub const TEXT_READING_HEADINGS: [Pixels; 3] = [px(20.), px(17.), px(15.)];
+pub const HEADING_LINE_HEIGHT: f32 = 1.35;
+/// A code block's code, under `TEXT_READING` as monospace reads larger.
+pub const TEXT_CODE: Pixels = px(13.);
+
 /// A heading over the main area's content, such as a draft session's question.
 pub const TEXT_HEADING: Pixels = px(18.);
-/// The agent's second and third levels of heading; its first is
-/// `TEXT_HEADING`, the rest `TEXT_BODY`, all in semibold.
+/// A second level of heading, as the quit hint's.
 pub const TEXT_HEADING_2: Pixels = px(16.);
-pub const TEXT_HEADING_3: Pixels = px(14.);
 /// Body text and titles; macOS's standard control size.
 pub const TEXT_BODY: Pixels = px(13.);
 /// Supporting lines under or over a title, such as a session's project and

@@ -5,16 +5,17 @@ session's tab is on screen (`crates/studio/src/composer/`). The materials, color
 controls it uses are in [design.md](design.md). What sending does, Stop, and the
 conversation over a docked composer are in [session.md](session.md).
 
-- **Placement.** One column, at most `COMPOSER_MAX_WIDTH` (720) wide, centered in the
+- **Placement.** One column, at most `COMPOSER_MAX_WIDTH` (720) wide for a draft and
+  `CONVERSATION_MAX_WIDTH` (880) docked, the conversation's column, centered in the
   card and `SPACE_3` clear of its sides when the card is narrower: the box and, under a
   draft's, the drawer. A draft session, one with no message yet, sets the column a
   little above the card's middle: the space above it is `DRAFT_RISE` (45%) of the height
   left. A session that has seen work docks the column to the card's bottom, `SPACE_2`
   above its edge, under its conversation. As a draft's first message goes the column
   glides there from where it stood on `COMPOSER_DOCK` (a 0.4 s response, critically
-  damped), its bottom edge leaving from where the draft's column ended (the drawer's,
-  or the problem line's when one shows), while the conversation, the backdrop and the
-  tray change at once; under Reduce motion it docks at once.
+  damped), widening to the conversation's column on the same spring, its bottom edge
+  leaving from where the draft's column ended (the drawer's, or the problem line's when
+  one shows), while the conversation, the backdrop and the tray change at once; under Reduce motion it docks at once.
   Pages and the welcome are as they were. A draft's card
   shows a pattern behind its column, chosen from the button at the card's bottom:
   [backdrop.md](backdrop.md).

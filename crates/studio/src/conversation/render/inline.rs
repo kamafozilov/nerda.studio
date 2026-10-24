@@ -62,6 +62,7 @@ pub fn text(inline: &Inline, id: ElementId, tail: &Tail, env: &mut Env) -> AnyEl
                 fill: colors.field_background,
                 border: colors.border,
                 icon: None,
+                hovered: None,
             },
             Kind::Mention { mention, .. } => Paint {
                 range: chip.range.clone(),
@@ -75,8 +76,13 @@ pub fn text(inline: &Inline, id: ElementId, tail: &Tail, env: &mut Env) -> AnyEl
                     };
                     (at, SharedString::new_static(icon.path()), colors.mention)
                 }),
+                hovered: Some(colors.mention),
             },
         })
+        .collect();
+    let links = (targets.iter())
+        .filter(|(_, target)| matches!(target, Target::Web(_)))
+        .map(|(range, _)| range.clone())
         .collect();
     let element = if targets.is_empty() {
         styled.into_any_element()
@@ -99,7 +105,7 @@ pub fn text(inline: &Inline, id: ElementId, tail: &Tail, env: &mut Env) -> AnyEl
             })
             .into_any_element()
     };
-    let chipped = Chipped::new(element, layout, paint);
+    let chipped = Chipped::new(element, layout, paint).links(links, colors.link);
     match select {
         Some(select) => chipped.selectable(select).into_any_element(),
         None => chipped.into_any_element(),

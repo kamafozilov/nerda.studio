@@ -4,16 +4,19 @@
 //! between them, gather under one line that stays open while the agent adds
 //! to it and closes once it moves on. A turn's work hangs under a line of
 //! how long it has worked; once the turn finished, its work folds under
-//! that line and its last reply stays in view. While output streams the list keeps
-//! to its bottom, unless the person scrolled up: there it stays until they
-//! scroll back down, or press the button over the composer that takes them
-//! there. A line under the newest row shows what the agent is doing, so it
+//! that line and its last reply stays in view. A message sent goes to the
+//! top of the view, as the first one stands, and its turn grows under it
+//! ([`pin`]); once the turn is longer than the view, the list keeps to its
+//! bottom while output streams, unless the person scrolled up: there it
+//! stays until they scroll back down, or press the button over the composer
+//! that takes them there. A line under the newest row shows what the agent is doing, so it
 //! stays where the eye is.
 
 mod animation;
 mod diff;
 mod items;
 mod markdown;
+mod pin;
 mod render;
 mod reply;
 mod rows;
@@ -39,7 +42,7 @@ use gpui::{
     ListAlignment, ListState, MouseButton, ParentElement, Pixels, Render, Styled, Subscription,
     Window, div, list, prelude::*, px,
 };
-use theme::{COMPOSER_MAX_WIDTH, SCROLL_EDGE_FADE, SPACE_1, SPACE_2, SPACE_3, Theme};
+use theme::{CONVERSATION_MAX_WIDTH, SPACE_1, SPACE_2, SPACE_3, Theme};
 
 pub use render::line as markdown_line;
 pub use reply::bind_keys;
@@ -81,6 +84,9 @@ pub struct Conversation {
     folder: Option<PathBuf>,
     /// The redraws for the clocks and the motion run.
     ticking: bool,
+    /// The room under the newest turn and whether its message holds at
+    /// the top.
+    pin: pin::Shared,
     _agent: Subscription,
 }
 
@@ -88,6 +94,11 @@ impl Conversation {
     pub fn new(agent: Entity<SessionAgent>, cx: &mut Context<Self>) -> Self {
         let list = ListState::new(0, ListAlignment::Top, OVERDRAW);
         list.set_follow_mode(FollowMode::Tail);
+        let pin = pin::Shared::default();
+        list.set_scroll_handler({
+            let pin = pin.clone();
+            move |_, _, _| pin.scrolled.set(true)
+        });
         let subscription = cx.observe(&agent, |conversation, _, cx| conversation.sync(cx));
         let folder = agent.read(cx).folder(cx);
         let mut conversation = Self {
@@ -106,6 +117,7 @@ impl Conversation {
             text_menu: Menu::new(|conversation| &mut conversation.text_menu, cx),
             folder,
             ticking: false,
+            pin,
             _agent: subscription,
         };
         conversation.sync(cx);
@@ -117,7 +129,15 @@ impl Conversation {
     /// out anew. Rows that come while the agent works make an entrance.
     fn sync(&mut self, cx: &mut Context<Self>) {
         let agent = self.agent.read(cx);
-        let rows = rows::rows(agent.transcript(), &self.disclosure);
+        let mut rows = rows::rows(agent.transcript(), &self.disclosure);
+        if pin::target(&rows).is_some() {
+            rows.push((Row::Room, 0));
+        }
+        // A message the person just sent, rather than a conversation that
+        // was read in.
+        let sent = !self.rows.is_empty()
+            && pin::target(&rows).map(|at| at.item_ix)
+                > pin::target(&self.rows).map(|at| at.item_ix);
         let change = rows::change(&self.rows, &rows);
         for at in change.changed {
             self.list.remeasure_items(at..at + 1);
@@ -157,6 +177,9 @@ impl Conversation {
         }
         self.seen = seen;
         self.rows = rows;
+        if sent {
+            self.pin_newest();
+        }
         self.tick(cx);
         cx.notify();
     }
@@ -267,7 +290,7 @@ impl Conversation {
                 let text = message.text.trim_end();
                 let text =
                     (!text.is_empty()).then(|| self.message_text(turn, text, colors, window, cx));
-                let space = if at == 0 { px(0.) } else { SPACE_3 * 2. };
+                let space = pin::message_space(at);
                 (items::message(&message, text, queued, colors), space)
             }
             Row::Header { turn } => {
@@ -374,6 +397,7 @@ impl Conversation {
                     SPACE_3,
                 )
             }
+            Row::Room => return div().h(self.pin.room.get()).into_any_element(),
             Row::End { turn } => match turns.get(turn).map(|turn| &turn.state) {
                 Some(TurnState::Ended(ending)) => {
                     let ending = ending.clone();
@@ -403,14 +427,14 @@ fn key(turn: usize, item: usize) -> u64 {
     (turn as u64) << 24 | item as u64
 }
 
-/// `content` in the composer's column: at most `COMPOSER_MAX_WIDTH`,
+/// `content` in the docked composer's column: at most `CONVERSATION_MAX_WIDTH`,
 /// centered, `SPACE_3` clear of the card's sides when the card is narrower,
 /// `space` under what is above.
 fn in_column(content: impl IntoElement, space: Pixels) -> Div {
     div().w_full().px(SPACE_3).flex().justify_center().child(
         div()
             .w_full()
-            .max_w(COMPOSER_MAX_WIDTH)
+            .max_w(CONVERSATION_MAX_WIDTH)
             .pt(space)
             .child(content),
     )
@@ -419,7 +443,9 @@ fn in_column(content: impl IntoElement, space: Pixels) -> Div {
 impl Render for Conversation {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // The list redraws its view on every scroll, so this follows it.
-        let away = !self.list.is_following_tail() && self.list.is_scrolled_to_end() == Some(false);
+        let away = !self.list.is_following_tail()
+            && !self.pin.held.get()
+            && self.list.is_scrolled_to_end() == Some(false);
         let rows = list(
             self.list.clone(),
             cx.processor(|conversation, at, window, cx| conversation.render_row(at, window, cx)),
@@ -427,11 +453,9 @@ impl Render for Conversation {
         .flex_1()
         .min_h_0()
         .w_full()
-        .pt(SPACE_3)
-        // Room under the last row, inside the scroll, so at the end it stands
-        // clear of the composer and of the edge fade, while rows scrolled up
-        // still pass under the fade into the composer.
-        .pb(SCROLL_EDGE_FADE + SPACE_2);
+        .pt(pin::LIST_TOP)
+        // Rows scrolled up still pass under the fade into the composer.
+        .pb(pin::list_bottom());
         let menu = self.render_text_menu(window, cx);
         div()
             .relative()
@@ -456,6 +480,7 @@ impl Render for Conversation {
             )
             .child(rows)
             .child(self.edge_fade(cx))
+            .child(self.pin_watch(cx))
             .when(away, |view| view.child(self.scroll_to_end_button(cx)))
             .children(menu)
     }

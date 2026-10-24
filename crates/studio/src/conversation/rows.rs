@@ -40,6 +40,9 @@ pub enum Row {
     /// What the agent is doing, under everything, while a turn runs or a
     /// message waits.
     Working,
+    /// Room under the newest turn, so its message can stand at the top of
+    /// the view however little came back yet.
+    Room,
 }
 
 /// Where an item stands among its group's.

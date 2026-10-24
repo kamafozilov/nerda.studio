@@ -73,13 +73,23 @@ file was set aside, hands out session ids again.
 ## The conversation
 
 `crates/studio/src/conversation/` draws the transcript in the main area over the docked
-composer, in the composer's column: at most `COMPOSER_MAX_WIDTH`, centered, `SPACE_3`
+composer, in the docked composer's column: at most `CONVERSATION_MAX_WIDTH` (880), wider
+than a draft's composer so tables and code have room, centered, `SPACE_3`
 clear of the card's sides. A draft shows its composer alone, as before.
 
 - **Rows.** Each turn is its message, its header, then what came back, item by item,
   then how it ended. A row whose look changed is measured again where it is; from where
   rows came or went, the list lays out anew, so streaming text grows only its own row.
-- **Sticking to the bottom.** Newest is at the bottom, and the list keeps to it while
+- **The newest message at the top.** A message sent goes to the top of the view, where
+  a conversation's first message stands, and its turn grows under it: the list keeps room
+  under the newest turn, as much as the view lacks to show it from its message down,
+  so each request reads as a page of its own. While the turn is shorter than the view
+  the list holds still there, however its rows grow or fold; once it grows past the
+  view's end the list keeps to the end, as below. The person's own scroll lets the
+  message go, and scrolling back to the end takes it up again. A conversation opened
+  shows its end, so its newest turn stands at the top the same way
+  (`crates/studio/src/conversation/pin.rs`).
+- **Sticking to the bottom.** Past the view, the list keeps to the bottom while
   output streams. Scrolled up, it stays where it is, however much streams below, until
   scrolled back to the bottom, or until "Scroll to the end" is pressed: a `CONTROL_SIZE`
   circle centered over the composer, `SPACE_2` above the list's bottom, on
@@ -92,15 +102,18 @@ clear of the card's sides. A draft shows its composer alone, as before.
   the fade, and rows scrolled up still pass under the fade into the composer.
 - **The person's message** sits at the column's trailing edge, at most
   `MESSAGE_MAX_WIDTH` (80%) of it, on `field_background` with `COMPOSER_RADIUS` corners,
-  `SPACE_3` by `SPACE_2` in, its text in `TEXT_BODY` `text_primary` with its line breaks.
+  `SPACE_3` by `SPACE_2` in, its text in `TEXT_READING` `text_primary` with its line breaks.
   Its attachments are the composer's chips without the remove button, over the text: a
   file or folder by its name, the whole path in the tooltip; an image, sent by its
   bytes, by its format ("PNG image", "JPEG image", "GIF image", "WebP image"). One that
   waits for the turn before shows "Queued" under it, in `TEXT_SMALL` `text_secondary`.
-- **The agent's text** fills the column in `text_primary`, as Markdown (CommonMark with
+- **The agent's text** fills the column in `text_primary` at `TEXT_READING` (14), a step
+  over the controls' `TEXT_BODY` so a long reply reads without effort, on lines 1.6 times
+  as tall (`READING_LINE_HEIGHT`), as Markdown (CommonMark with
   GitHub's tables, task lists and strikethrough, by `pulldown-cmark`): paragraphs
-  `SPACE_2` apart; headings in semibold at `TEXT_HEADING` (18), `TEXT_HEADING_2` (16),
-  `TEXT_HEADING_3` (14), then `TEXT_BODY`, `SPACE_3` more clear of what comes before;
+  `SPACE_3` apart, `SPACE_2` inside a list's item; headings in semibold at
+  `TEXT_READING_HEADINGS` (20, 17, 15) on lines 1.35 times as tall, then `TEXT_READING`,
+  `SPACE_3` more clear of what comes before;
   bold, italic and struck text; a horizontal rule as a `border` hairline with
   `SPACE_2` of margin above and below. Uzbek's ʻ and ʼ show as ‘ and ’, which look the
   same, so a line wraps between words, not inside oʻ or gʻ.
@@ -112,22 +125,24 @@ clear of the card's sides. A draft shows its composer alone, as before.
     `src/app.rs:12`, `README.md:3` or `#L12`), or a link to one. It shows a file or
     folder icon in `mention`, the name in medium weight, its folder after a `·` when
     another path of the same name is named in the text, and its place (`L12`, `L12:C3`)
-    in `text_secondary`, on `mention_background` under a `mention_border` hairline. A path
+    in `text_secondary`, on `mention_background` under a `mention_border` hairline, which
+    turns `mention` under the pointer, the pointer a hand. A path
     reads inside the project's folder unless absolute or from `~/`. A click opens it in
     its app; the tooltip gives its path from the home folder and a file's size, or "Not
     found".
   A line break stays one, as in the terminal the agent writes for. Text renders as it
   streams; a code fence not closed yet runs to the end, a table shows the rows that came.
-  - **Links**, and web addresses written out bare, are in `link`; a click opens a web or
-    mail address in the browser. A link to a path is a file chip, above.
-  - **Lists** keep their markers in a 20 pt column in `text_secondary`, widened a digit
+  - **Links**, and web addresses written out bare, are in `link`; under the pointer a
+    link is underlined in its color, a hairline where the text would draw its own, and
+    the pointer turns a hand. A click opens a web or mail address in the browser. A link to a path is a file chip, above.
+  - **Lists** keep their markers in a 22 pt column in `text_secondary`, widened a digit
     at a time past 99; bullets go disc, ring, square by depth. A task list's item has a
     `ICON_SIZE_ROW` box with a `text_secondary` hairline instead, checked when done.
   - **Quotes** stand behind a two-hairline `border` rule.
   - **Code blocks** sit on `field_background` with `MENU_RADIUS` corners: a header with
     the fence's language in `MONOSPACE_FONT` `TEXT_CAPTION` `text_secondary`, and Copy, a
     `FIELD_TARGET_SIZE` button whose icon turns a check, its tooltip "Copied", for
-    1.2 s; then the code at `TEXT_SMALL`, scrolling sideways when a line is longer than
+    1.2 s; then the code at `TEXT_CODE` (13), scrolling sideways when a line is longer than
     the column, while a vertical wheel over it still scrolls the conversation. A
     language a grammar knows (`syntect` with `two-face`'s, by name or extension, and
     names such as `shell` or `jsonc`) colors its tokens in `syntax`'s keyword, string,
@@ -136,11 +151,14 @@ clear of the card's sides. A draft shows its composer alone, as before.
     parsed a line at a time: each finished line once, only the line still coming again.
     The grammars load on a thread of their own at launch.
   - **Tables** sit in a frame: a `border` hairline with `MENU_RADIUS` corners, the head
-    on `field_background` in semibold, a hairline between rows, no lines between
-    columns, cells `SPACE_3` by `SPACE_2` in, at `TEXT_BODY`. Each column is as wide as
-    its widest cell (code and chips measured in their own fonts), up to 320, and shares
-    out the room left over; past that cells wrap, down to 120 or their longest word, a
-    head never. A table that can't fit scrolls sideways inside its frame. Columns keep
+    in medium `text_secondary` on the card, a hairline between rows, no lines between
+    columns, cells `SPACE_3` by `SPACE_2` in, at `TEXT_READING`. Each column is as wide as
+    its widest cell, measured in the fonts it is drawn in (code monospaced, bold and
+    italic runs, a file's medium name), so a word never breaks for being bolder than
+    measured, up to 320. The room left over goes to the columns whose cells wrap, so a
+    short column such as a name or a number keeps its width; when none wraps every
+    column shares it. Past that cells wrap, down to 120 or their longest word, a head
+    never. A table that can't fit scrolls sideways inside its frame. Columns keep
     GitHub's alignment.
 
 - **Selecting the agent's text.** A press on a reply's text starts a selection there,

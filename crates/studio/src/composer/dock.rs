@@ -3,17 +3,18 @@
 //! docks to the card's bottom. Rather than jump there, it glides down from
 //! where it stood on `COMPOSER_DOCK`: the docked layout takes over at once,
 //! drawn shifted up by the distance it moved, and the shift springs to
-//! nothing. The bottom edges are what is compared, so a box that shrinks as
-//! its text clears keeps its foot on the path. Under Reduce motion it docks at
-//! once.
+//! nothing, as the column widens from the draft's width to the
+//! conversation's on the same spring. The bottom edges are what is compared,
+//! so a box that shrinks as its text clears keeps its foot on the path. Under
+//! Reduce motion it docks at once.
 
 use std::{cell::Cell, rc::Rc};
 
 use gpui::{
     AnimationExt, AnyElement, Context, IntoElement, Pixels, SpringAnimation, SpringState, Styled,
-    canvas, div, prelude::*, px,
+    canvas, px,
 };
-use theme::{SPACE_3, motion};
+use theme::{COMPOSER_MAX_WIDTH, CONVERSATION_MAX_WIDTH, SPACE_3, motion};
 
 use super::Composer;
 
@@ -102,23 +103,29 @@ impl Composer {
         });
     }
 
-    /// The docked composer, shifted up by what is left of its glide.
-    pub(super) fn docked(&self, placement: gpui::Div) -> AnyElement {
+    /// The docked composer's column, shifted up and narrowed by what is
+    /// left of its glide.
+    pub(super) fn docked(&self, column: gpui::Div) -> AnyElement {
         let Some(docking) = &self.docking else {
-            return placement.into_any_element();
+            return column.into_any_element();
         };
         let rise = docking.rise;
         let spring = SpringAnimation::new(motion::COMPOSER_DOCK)
             .to(1.)
             .with_epsilon(motion::PHASE_EPSILON)
             .from(0.);
-        div()
-            .w_full()
-            .child(placement)
+        let widening = CONVERSATION_MAX_WIDTH - COMPOSER_MAX_WIDTH;
+        column
             .with_spring(
                 ("composer-dock", self.session.0),
                 spring,
-                move |glide, phase: f32| glide.relative().top(-rise * (1. - phase.clamp(0., 1.))),
+                move |glide, phase: f32| {
+                    let left = 1. - phase.clamp(0., 1.);
+                    glide
+                        .relative()
+                        .top(-rise * left)
+                        .max_w(CONVERSATION_MAX_WIDTH - widening * left)
+                },
             )
             .into_any_element()
     }

@@ -1,13 +1,15 @@
 //! Text with chips painted under some of its runs: a rounded fill and
 //! hairline behind each, wrapping with the text, and an icon in the room
-//! the run keeps for it.
+//! the run keeps for it. What opens on a click answers the pointer: a link
+//! is underlined and a chip's hairline takes its color.
 
 use std::ops::Range;
 
 use gpui::{
-    AnyElement, App, BorderStyle, Bounds, Element, ElementId, GlobalElementId, Hitbox,
-    HitboxBehavior, Hsla, InspectorElementId, IntoElement, LayoutId, Pixels, SharedString,
-    TextLayout, TransformationMatrix, Window, point, px, quad, size,
+    AnyElement, App, BorderStyle, Bounds, CursorStyle, DispatchPhase, Element, ElementId,
+    GlobalElementId, Hitbox, HitboxBehavior, Hsla, InspectorElementId, IntoElement, LayoutId,
+    MouseMoveEvent, Pixels, SharedString, TextLayout, TransformationMatrix, UnderlineStyle, Window,
+    point, px, quad, size, underline_y_offset,
 };
 use theme::{HAIRLINE, ICON_SIZE_SMALL};
 
@@ -23,12 +25,17 @@ pub struct Paint {
     pub fill: Hsla,
     pub border: Hsla,
     pub icon: Option<(usize, SharedString, Hsla)>,
+    /// Its hairline under the pointer, for a chip that opens.
+    pub hovered: Option<Hsla>,
 }
 
 pub struct Chipped {
     child: AnyElement,
     layout: TextLayout,
     chips: Vec<Paint>,
+    /// The links, underlined in their color under the pointer.
+    links: Vec<Range<usize>>,
+    link_color: Hsla,
     select: Option<Select>,
 }
 
@@ -40,8 +47,39 @@ impl Chipped {
             child,
             layout,
             chips,
+            links: Vec::new(),
+            link_color: Hsla::default(),
             select: None,
         }
+    }
+
+    /// Underlines each of `links` in `color` while the pointer is on it.
+    pub fn links(mut self, links: Vec<Range<usize>>, color: Hsla) -> Self {
+        self.links = links;
+        self.link_color = color;
+        self
+    }
+
+    /// Whether anything in the text answers the pointer.
+    fn hoverable(&self) -> bool {
+        self.select.is_some()
+            || !self.links.is_empty()
+            || self.chips.iter().any(|chip| chip.hovered.is_some())
+    }
+
+    /// The link or opening chip under the pointer, by its range.
+    fn hovered(&self, hitbox: Option<&Hitbox>, window: &Window) -> Option<Range<usize>> {
+        let hitbox = hitbox.filter(|hitbox| hitbox.is_hovered(window))?;
+        hovered_in(&self.layout, &self.targets(), window.mouse_position())
+            .filter(|_| hitbox.bounds.contains(&window.mouse_position()))
+    }
+
+    /// The ranges that open on a click.
+    fn targets(&self) -> Vec<Range<usize>> {
+        let chips = (self.chips.iter())
+            .filter(|chip| chip.hovered.is_some())
+            .map(|chip| chip.range.clone());
+        self.links.iter().cloned().chain(chips).collect()
     }
 
     /// Lets the pointer select the text.
@@ -92,7 +130,7 @@ impl Element for Chipped {
     ) -> Option<Hitbox> {
         // Under the text's own, so its links keep their pointer.
         let hitbox =
-            (self.select.is_some()).then(|| window.insert_hitbox(bounds, HitboxBehavior::Normal));
+            (self.hoverable()).then(|| window.insert_hitbox(bounds, HitboxBehavior::Normal));
         self.child.prepaint(window, cx);
         hitbox
     }
@@ -108,9 +146,14 @@ impl Element for Chipped {
         cx: &mut App,
     ) {
         let line_height = self.layout.line_height();
-        let height = (line_height - px(2.)).min(px(19.));
+        let height = (line_height - px(2.)).min(px(20.));
         let inset = (line_height - height) / 2.;
+        let hovered = self.hovered(hitbox.as_ref(), window);
         for chip in &self.chips {
+            let border = match chip.hovered {
+                Some(color) if hovered.as_ref() == Some(&chip.range) => color,
+                _ => chip.border,
+            };
             for (left, right, top) in lines(&self.layout, &chip.range) {
                 let bounds = Bounds::new(point(left, top + inset), size(right - left, height));
                 window.paint_quad(quad(
@@ -118,7 +161,7 @@ impl Element for Chipped {
                     CHIP_RADIUS,
                     chip.fill,
                     HAIRLINE,
-                    chip.border,
+                    border,
                     BorderStyle::Solid,
                 ));
             }
@@ -130,6 +173,28 @@ impl Element for Chipped {
             }
         }
         self.child.paint(window, cx);
+        if let Some(range) = hovered.as_ref().filter(|range| self.links.contains(range)) {
+            self.underline(range, window);
+        }
+        if let Some(hitbox) = hitbox {
+            if hovered.is_some() {
+                window.set_cursor_style(CursorStyle::PointingHand, hitbox);
+            }
+            // Draws again as the pointer comes onto a link or leaves it,
+            // the text's edges included.
+            let (layout, targets, hitbox) = (self.layout.clone(), self.targets(), hitbox.clone());
+            window.on_mouse_event(move |event: &MouseMoveEvent, phase, window, _| {
+                if phase != DispatchPhase::Bubble {
+                    return;
+                }
+                let now = (hitbox.is_hovered(window) && hitbox.bounds.contains(&event.position))
+                    .then(|| hovered_in(&layout, &targets, event.position))
+                    .flatten();
+                if now != hovered {
+                    window.refresh();
+                }
+            });
+        }
         for chip in &self.chips {
             let Some((at, path, color)) = &chip.icon else {
                 continue;
@@ -151,6 +216,36 @@ impl Element for Chipped {
                 .ok();
         }
     }
+}
+
+impl Chipped {
+    /// A hairline under `range` on each line it covers, where the text
+    /// would draw its own.
+    fn underline(&self, range: &Range<usize>, window: &mut Window) {
+        let Some(line) = self.layout.line_layout_for_index(range.start) else {
+            return;
+        };
+        let line = &line.unwrapped_layout;
+        let below = underline_y_offset(self.layout.line_height(), line.ascent, line.descent);
+        let style = UnderlineStyle {
+            thickness: HAIRLINE,
+            color: Some(self.link_color),
+            wavy: false,
+        };
+        for (left, right, top) in lines(&self.layout, range) {
+            window.paint_underline(point(left, top + below), right - left, &style);
+        }
+    }
+}
+
+/// Which of `targets` the text holds at `position`.
+fn hovered_in(
+    layout: &TextLayout,
+    targets: &[Range<usize>],
+    position: gpui::Point<Pixels>,
+) -> Option<Range<usize>> {
+    let at = layout.index_for_position(position).ok()?;
+    targets.iter().find(|range| range.contains(&at)).cloned()
 }
 
 /// Where `range` sits on each line it covers: its left and right edges and

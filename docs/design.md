@@ -120,8 +120,9 @@ insets and sizes:
   is `TEXT_SESSION_TITLE` (14). Two sizes are smaller: `TEXT_SMALL` (12), for a session
   row's supporting lines, whose contrast does not depend on size; and `TEXT_CAPTION`
   (11), for a code block's and a tool row's labels. Headings in the main area are
-  `TEXT_HEADING` (18), and the agent's second and third levels `TEXT_HEADING_2` (16) and
-  `TEXT_HEADING_3` (14).
+  `TEXT_HEADING` (18). What is read at length, the conversation's messages and replies,
+  is a step larger: `TEXT_READING` (14), its headings `TEXT_READING_HEADINGS` (20, 17,
+  15) and its code `TEXT_CODE` (13); session.md has the rest.
 - A field or a message with a hairline pads its content `HAIRLINE` (1) less, so the
   content stands in the same columns as the unbordered rows around it. A menu does too,
   so its items stand `SPACE_1` in from its outer edge.
