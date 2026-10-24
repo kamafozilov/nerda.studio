@@ -89,10 +89,6 @@ pub struct Colors {
     /// `composer_background` at 88%, so the picture shows faintly through.
     /// Its text keeps 4.5:1 over the brightest image.
     pub composer_glass: Hsla,
-    /// Edge of the composer's box while its text has focus: quieter than
-    /// `focus_ring`, since the box is large and the cursor already shows
-    /// where typing goes.
-    pub composer_focus: Hsla,
     /// Fill of a tab that isn't selected, so each tab reads as a shape.
     pub tab_background: Hsla,
     /// Fill of the selected tab, under a `border` hairline.
@@ -196,7 +192,6 @@ impl Theme {
                 chip_background: rgba(palette.chip).into(),
                 composer_background: rgba(palette.composer).into(),
                 composer_glass: rgba(palette.composer_glass).into(),
-                composer_focus: rgba(palette.composer_focus).into(),
                 tab_background: rgba(palette.tab).into(),
                 tab_selected: rgba(palette.tab_selected).into(),
                 claude: rgba(palette.claude).into(),

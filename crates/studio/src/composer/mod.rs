@@ -217,13 +217,13 @@ impl Composer {
         self.agent.update(cx, |agent, _| agent.stop());
     }
 
-    /// The box: the text over the toolbar, on the field's fill, its hairline
-    /// turning `composer_focus` while the text has focus. A click anywhere in it
-    /// puts the cursor in the text.
+    /// The box: the text over the toolbar, on the field's fill under a
+    /// `border` hairline that stays as it is while the text has focus: the
+    /// cursor shows where typing goes. A click anywhere in it puts the
+    /// cursor in the text.
     fn render_box(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
         let input_focus = self.input.focus_handle(cx);
-        let focused = input_focus.contains_focused(window, cx);
         let toolbar = self.render_toolbar(window, cx);
         let text = self.render_text(cx);
         let target = div().id("composer-box");
@@ -235,11 +235,7 @@ impl Composer {
             .gap(SPACE_2)
             .rounded(COMPOSER_RADIUS)
             .border_1()
-            .border_color(if focused {
-                colors.composer_focus
-            } else {
-                colors.border
-            })
+            .border_color(colors.border)
             .bg(self.surfaces(cx).raised)
             .cursor_text()
             .on_click(

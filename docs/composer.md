@@ -18,11 +18,10 @@ conversation over a docked composer are in [session.md](session.md).
   shows a pattern behind its column, chosen from the button at the card's bottom:
   [backdrop.md](backdrop.md).
 - **The box** reads as a text field: `composer_background`, opaque (`202021` dark, the
-  selected tab's gray; white light), a `border` hairline that turns
-  `composer_focus` while the text has focus, and `COMPOSER_RADIUS` (12) corners, rounder
-  than a field's since it holds a toolbar too. `composer_focus` is text primary at 22%,
-  quieter than a field's `focus_ring`: the box is large, and its cursor already shows
-  where typing goes. Its content stands `SPACE_3` in, less the hairline. No shadow and
+  selected tab's gray; white light), a `border`
+  hairline that stays the same while the text has focus (the cursor shows where typing
+  goes), and `COMPOSER_RADIUS` (12) corners, rounder than a field's since
+  it holds a toolbar too. Its content stands `SPACE_3` in, less the hairline. No shadow and
   no material of its own. A click anywhere in it puts the cursor in the text.
 - **The text** shows "Ask anything, or describe a change" in `text_secondary` while
   empty. It starts `COMPOSER_MIN_LINES` (3) lines tall, so a draft's composer and a
@@ -186,12 +185,7 @@ translucent field it had before:
 | --- | --- |
 | Placeholder, `text_secondary` | 7.58 / 7.72 |
 | Text, `text_primary` | 14.52 / 17.24 |
-| `composer_focus` hairline | 1.96 sampled, dark |
 | Send's arrow, against its fill | 6.84 / 9.26 |
-
-The focused hairline is under the 3:1 a field's `focus_ring` keeps, on purpose: the
-box's cursor shows focus, and the owner asked for a quieter edge. Over the card it
-reads 2.28.
 
 Sampled on screen over the desktop behind the window at the time, the placeholder read
 6.58 / 6.50 and the text 12.62 / 14.55, between the arithmetic's worst and best.
