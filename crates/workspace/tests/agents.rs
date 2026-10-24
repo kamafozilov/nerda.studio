@@ -39,12 +39,12 @@ const TWO_SESSIONS: &str = r#"{
 }"#;
 
 #[test]
-fn sessions_start_on_opus_at_high_asking_first() {
+fn sessions_start_on_opus_at_high_in_full_access() {
     let temp = TempDir::new();
     let mut workspace = Workspace::default();
     let project = add(&mut workspace, &temp, "web");
     let session = workspace.new_session(project, Timestamp(2)).unwrap();
-    let expected = choice("opus", Effort::High, Access::AskFirst);
+    let expected = choice("opus", Effort::High, Access::FullAccess);
     assert_eq!(workspace.last_choice(), &expected);
     assert_eq!(workspace.session(session).unwrap().choice, expected);
 
@@ -52,8 +52,8 @@ fn sessions_start_on_opus_at_high_asking_first() {
     assert_eq!(agent.name, "Claude Code");
     assert_eq!(agent.model(&expected.model).unwrap().label, "Opus 5.5");
     assert_eq!(
-        agent.access_mode(Access::AskFirst).unwrap().label,
-        "Ask first"
+        agent.access_mode(Access::FullAccess).unwrap().label,
+        "Full access"
     );
 }
 
@@ -117,7 +117,7 @@ fn an_unknown_agent_or_model_is_kept_as_written() {
     assert_eq!(worked.model, ModelId("claude-opus-4-1".to_owned()));
     // An effort or access a newer build wrote reads as the default.
     assert_eq!(worked.effort, Effort::High);
-    assert_eq!(worked.access, Access::AskFirst);
+    assert_eq!(worked.access, Access::FullAccess);
     let draft = &workspace.session(SessionId(2)).unwrap().choice;
     assert_eq!(draft.agent, AgentId("other-agent".to_owned()));
     assert!(workspace::agent(&draft.agent).is_none());
@@ -155,7 +155,7 @@ fn the_choice_becomes_the_agents_arguments() {
             "--effort",
             "high",
             "--permission-mode",
-            "manual"
+            "bypassPermissions"
         ]
     );
     assert_eq!(

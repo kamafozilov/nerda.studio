@@ -39,15 +39,17 @@ impl Effort {
     }
 }
 
-/// What the agent may do without asking first.
+/// What the agent may do without asking first. The app runs every session
+/// in Full access; the others stay so a saved choice and the agent's
+/// protocol still read.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Access {
-    #[default]
     AskFirst,
     AcceptEdits,
     Plan,
     Auto,
+    #[default]
     FullAccess,
 }
 
@@ -210,7 +212,7 @@ impl Agent {
 /// What a session runs: which agent and model, how hard it thinks, and what
 /// it may do without asking. Missing from a saved session, a part reads as
 /// the default; an effort or access a newer build wrote reads as the default
-/// too, Ask first being the most careful.
+/// too.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AgentChoice {
@@ -223,7 +225,7 @@ pub struct AgentChoice {
 }
 
 impl Default for AgentChoice {
-    /// The first agent on its default model, at High, asking first.
+    /// The first agent on its default model, at High, in Full access.
     fn default() -> Self {
         let agent = &AGENTS[0];
         Self {

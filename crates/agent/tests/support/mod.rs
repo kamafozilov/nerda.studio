@@ -11,7 +11,7 @@ use agent::{
     Command, Conversation, ConversationId, Event, Events, Launch, Message, Status, Transcript,
 };
 use serde_json::Value;
-use workspace::{AgentChoice, ModelId};
+use workspace::{Access, AgentChoice, ModelId};
 
 /// Every recorded fixture: the wire of real `claude` runs, trimmed and with
 /// private paths replaced. Agent lines are what it wrote on stdout; a
@@ -193,6 +193,7 @@ pub fn fake(dir: &TempDir) -> Launch {
         folder: dir.path().to_owned(),
         choice: AgentChoice {
             model: ModelId("haiku".to_owned()),
+            access: Access::AskFirst,
             ..AgentChoice::default()
         },
         conversation: Conversation::New(ConversationId::new()),

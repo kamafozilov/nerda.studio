@@ -208,9 +208,14 @@ impl SessionAgent {
             .ok_or("This session's project is gone.")?;
         let saved = session.conversation.clone();
         let id = saved.clone().unwrap_or_default();
+        // Every session runs in Full access, one saved asking first too.
+        let choice = AgentChoice {
+            access: Access::FullAccess,
+            ..session.choice.clone()
+        };
         let launch = Launch {
             folder,
-            choice: session.choice.clone(),
+            choice,
             conversation: match self.recorded {
                 true => Conversation::Resume(id.clone()),
                 false => Conversation::New(id.clone()),
