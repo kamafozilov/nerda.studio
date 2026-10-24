@@ -1,4 +1,5 @@
-//! Projects (folders on disk) and the agent sessions inside them, with persistence.
+//! Projects (folders on disk, or the computer itself) and the agent sessions
+//! inside them, with persistence.
 
 mod age;
 mod agents;
@@ -23,10 +24,11 @@ pub use error::{AddProjectError, LoadError};
 pub use git::{Head, head};
 pub use history::Visits;
 pub use model::{
-    AddedProject, ConversationId, Page, Project, ProjectId, ProjectScope, Session, SessionId,
-    SessionSort, Tab, Timestamp,
+    AddedProject, ConversationId, NO_PROJECT, Page, Project, ProjectId, ProjectKind, ProjectScope,
+    Session, SessionId, SessionSort, Tab, Timestamp,
 };
 pub use paths::home_relative;
+pub use query::matches_search;
 pub use store::{default_data_dir, default_instance_lock_path, default_state_path, write_state};
 
 /// Title given to every freshly created session.
@@ -77,8 +79,32 @@ impl Workspace {
             title,
             path,
             created_at: now,
+            kind: ProjectKind::Folder,
         });
         Ok(AddedProject::Added(id))
+    }
+
+    /// The computer as a project, created the first time it is asked for;
+    /// `None` only when the platform names no home folder to run it in.
+    pub fn computer_project(&mut self, now: Timestamp) -> Option<ProjectId> {
+        if let Some(computer) = self.computer() {
+            return Some(computer.id);
+        }
+        let path = paths::resolve_project_dir(&dirs::home_dir()?).ok()?;
+        let id = ProjectId(self.allocate_id());
+        self.projects.push(Project {
+            id,
+            title: NO_PROJECT.to_owned(),
+            path,
+            created_at: now,
+            kind: ProjectKind::Computer,
+        });
+        Some(id)
+    }
+
+    /// The computer as a project, once a session has been started on it.
+    pub fn computer(&self) -> Option<&Project> {
+        (self.projects.iter()).find(|project| project.kind == ProjectKind::Computer)
     }
 
     /// Returns the project's unused draft session, or creates one; `None` if the project is unknown.

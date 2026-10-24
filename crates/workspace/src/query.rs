@@ -1,6 +1,9 @@
 use std::{cmp::Reverse, path::Component};
 
-use crate::{Project, ProjectId, ProjectScope, Session, SessionSort, Timestamp, Workspace};
+use crate::{
+    NO_PROJECT, Project, ProjectId, ProjectKind, ProjectScope, Session, SessionSort, Timestamp,
+    Workspace,
+};
 
 impl Workspace {
     /// Projects, most recently active first; ties by title ignoring case, then by id.
@@ -49,16 +52,15 @@ impl Workspace {
         sessions
     }
 
-    /// Projects whose name, as shown, contains the query, most recently
-    /// active first; matching folds as [`Self::visible_sessions`] does.
+    /// Folder projects whose name, as shown, contains the query, most
+    /// recently active first; matching folds as [`Self::visible_sessions`]
+    /// does. The computer is never among them: it is no folder to pick by name.
     pub fn matching_projects(&self, query: &str) -> Vec<&Project> {
-        let needle = fold(&query.split_whitespace().collect::<Vec<_>>().join(" "));
         self.projects()
             .into_iter()
+            .filter(|project| project.kind.is_folder())
             .filter(|project| {
-                needle.is_empty()
-                    || (self.display_name(project.id))
-                        .is_some_and(|name| fold(&name).contains(&needle))
+                (self.display_name(project.id)).is_some_and(|name| matches_search(&name, query))
             })
             .collect()
     }
@@ -82,11 +84,15 @@ impl Workspace {
             .max_by_key(|session| (session.activity(), session.id))
     }
 
-    /// The project's name as the UI shows it: its title, or, when another project
-    /// has the same title, the shortest end of its path that no such project
-    /// shares ("site/web" beside "app/web"). `None` for an unknown project.
+    /// The project's name as the UI shows it: "No project" for the computer;
+    /// for a folder its title, or, when another project has the same title,
+    /// the shortest end of its path that no such project shares ("site/web"
+    /// beside "app/web"). `None` for an unknown project.
     pub fn display_name(&self, id: ProjectId) -> Option<String> {
         let project = self.project(id)?;
+        if project.kind == ProjectKind::Computer {
+            return Some(NO_PROJECT.to_owned());
+        }
         let twins: Vec<Vec<Component>> = self
             .projects
             .iter()
@@ -125,6 +131,13 @@ impl Workspace {
             SessionSort::Created => session.created_at,
         }
     }
+}
+
+/// Whether `name` contains the query, folded as search folds both and with
+/// its runs of whitespace read as one space; an empty query matches anything.
+pub fn matches_search(name: &str, query: &str) -> bool {
+    let needle = fold(&query.split_whitespace().collect::<Vec<_>>().join(" "));
+    needle.is_empty() || fold(name).contains(&needle)
 }
 
 /// Text as search compares it: lowercase, ё as е, and every apostrophe-like

@@ -29,14 +29,39 @@ impl Timestamp {
     }
 }
 
-/// A folder on disk that sessions run in.
+/// Where sessions run: a folder on disk that sessions run in, or the
+/// computer itself.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Project {
     pub id: ProjectId,
     pub title: String,
-    /// Canonical absolute path, used for duplicate detection.
+    /// Canonical absolute path, used for duplicate detection; the home folder
+    /// for the computer.
     pub path: PathBuf,
     pub created_at: Timestamp,
+    /// Files from before the computer could be a project hold none, and a
+    /// folder is written without one, so its entry reads the same as before.
+    #[serde(default, skip_serializing_if = "ProjectKind::is_folder")]
+    pub kind: ProjectKind,
+}
+
+/// What the computer is called as a project.
+pub const NO_PROJECT: &str = "No project";
+
+/// What a project is. The computer, "No project" on screen, is at most one
+/// project: sessions in it work on the computer itself, from the home folder.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ProjectKind {
+    #[default]
+    Folder,
+    Computer,
+}
+
+impl ProjectKind {
+    pub fn is_folder(&self) -> bool {
+        *self == ProjectKind::Folder
+    }
 }
 
 /// The agent's own id for a session's conversation, by which a later process
