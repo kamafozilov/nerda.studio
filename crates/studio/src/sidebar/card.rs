@@ -11,12 +11,12 @@ use std::{
 };
 
 use gpui::{
-    AnyElement, ClickEvent, Context, FontWeight, Hsla, IntoElement, ParentElement, SharedString,
-    Styled, Task, div, prelude::*, svg,
+    AnyElement, ClickEvent, Context, FontWeight, Hsla, IntoElement, MouseButton, MouseDownEvent,
+    ParentElement, SharedString, Styled, Task, div, prelude::*, svg,
 };
 use theme::{
-    BADGE_ICON, BADGE_RADIUS, BADGE_SIZE, BADGE_TEXT, CONTROL_RADIUS, Colors, ICON_SIZE_SMALL,
-    ROW_GAP, SESSION_ROW_HEIGHT, SPACE_1, SPACE_2, TEXT_CAPTION, Theme,
+    BADGE_ICON, BADGE_RADIUS, BADGE_SIZE, BADGE_TEXT, CONTROL_RADIUS, CONTROL_SIZE, Colors,
+    ICON_SIZE_SMALL, ROW_GAP, SESSION_ROW_HEIGHT, SPACE_1, SPACE_2, TEXT_CAPTION, Theme,
 };
 use workspace::{
     AgentId, Head, Project, ProjectId, ProjectKind, Session, SessionId, Timestamp, compact_age,
@@ -257,7 +257,7 @@ impl Sidebar {
         };
         let id = row.id;
         let selected = self.drawn_selection == Some(id);
-        let hovered = self.hover_target() == Some(index);
+        let hovered = self.hover_target() == Some(index) || self.row_menu_session() == Some(id);
         let target = if selected {
             colors.row_selected
         } else if hovered {
@@ -267,6 +267,10 @@ impl Sidebar {
         };
         let fill = self.fills.at(Key::Session(id), target, Instant::now());
         let on_surface = selected || hovered;
+        // Under the pointer the row's button takes its trailing edge, where
+        // the age and the logo stood.
+        let action = (self.pointer.row == Some(index)).then(|| self.render_row_action(id, cx));
+        let acting = action.is_some();
         let (primary, secondary) = if on_surface {
             (colors.text_primary, colors.text_secondary)
         } else {
@@ -289,20 +293,26 @@ impl Sidebar {
             .text_color(secondary)
             .child(row.project.badge(&colors))
             .child(truncated(row.project.name()))
-            .child(div().flex_none().child(row.age.clone()));
+            .when(!acting, |line| {
+                line.child(div().flex_none().child(row.age.clone()))
+            });
         let title = div()
             .flex()
             .items_center()
             .gap(SPACE_2)
             .text_color(primary)
             .child(truncated(row.title.clone()))
-            .children(logo(&row.agent, colors).map(|(icon, color)| {
-                svg()
-                    .path(icon.path())
-                    .flex_none()
-                    .size(ICON_SIZE_SMALL)
-                    .text_color(color)
-            }));
+            .children(
+                logo(&row.agent, colors)
+                    .filter(|_| !acting)
+                    .map(|(icon, color)| {
+                        svg()
+                            .path(icon.path())
+                            .flex_none()
+                            .size(ICON_SIZE_SMALL)
+                            .text_color(color)
+                    }),
+            );
         slot.id(("session-slot", id.0))
             .on_hover(cx.listener(move |sidebar, hovered: &bool, _, cx| {
                 sidebar.hover_row(index, *hovered, cx)
@@ -310,8 +320,14 @@ impl Sidebar {
             .child(
                 div()
                     .id(("session", id.0))
+                    .relative()
                     .h(SESSION_ROW_HEIGHT)
-                    .px(SPACE_2)
+                    .pl(SPACE_2)
+                    .pr(if acting {
+                        CONTROL_SIZE + SPACE_1
+                    } else {
+                        SPACE_2
+                    })
                     .flex()
                     .flex_col()
                     .justify_center()
@@ -321,8 +337,24 @@ impl Sidebar {
                     .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
                         sidebar.open_session(id, cx)
                     }))
+                    .on_mouse_down(
+                        MouseButton::Right,
+                        cx.listener(move |sidebar, event: &MouseDownEvent, window, cx| {
+                            sidebar.open_row_menu(id, event.position, window, cx)
+                        }),
+                    )
                     .child(project)
-                    .child(title),
+                    .child(title)
+                    .children(action.map(|action| {
+                        div()
+                            .absolute()
+                            .top_0()
+                            .bottom_0()
+                            .right(SPACE_1)
+                            .flex()
+                            .items_center()
+                            .child(action)
+                    })),
             )
             .into_any_element()
     }

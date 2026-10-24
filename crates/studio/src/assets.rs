@@ -11,6 +11,8 @@ use gpui::{AssetSource, Result, SharedString};
 /// An icon the app draws. GPUI paints an SVG in its own `text_color` only.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Icon {
+    /// Archives a session: out of the list, into the archive.
+    Archive,
     /// Back to the tab shown before.
     Back,
     /// Opens the choice of pattern behind a new session's composer.
@@ -31,6 +33,7 @@ pub enum Icon {
     Forward,
     Folder,
     FolderAdd,
+    FolderOpen,
     FolderUp,
     /// The branch a session's project is on.
     GitBranch,
@@ -53,6 +56,8 @@ pub enum Icon {
     Send,
     Settings,
     Sort,
+    /// Brings an archived session back to the list.
+    Unarchive,
     Usage,
     /// Shows something set aside, such as the backdrop's hidden image.
     View,
@@ -75,6 +80,7 @@ impl Icon {
 
     pub fn path(self) -> &'static str {
         match self {
+            Self::Archive => "icons/archive-03.svg",
             Self::Back => "icons/arrow-left-01.svg",
             Self::Backdrop => "icons/paint-board.svg",
             Self::Check => "icons/tick-02.svg",
@@ -87,6 +93,7 @@ impl Icon {
             Self::Forward => "icons/arrow-right-01.svg",
             Self::Folder => "icons/folder-01.svg",
             Self::FolderAdd => "icons/folder-add.svg",
+            Self::FolderOpen => "icons/folder-open.svg",
             Self::FolderUp => "icons/folder-upload.svg",
             Self::GitBranch => "icons/git-branch.svg",
             Self::Image => "icons/image-01.svg",
@@ -101,6 +108,7 @@ impl Icon {
             Self::Send => "icons/arrow-up-02.svg",
             Self::Settings => "icons/gear.svg",
             Self::Sort => "icons/list-filter.svg",
+            Self::Unarchive => "icons/unarchive-03.svg",
             Self::Usage => "icons/gauge.svg",
             Self::View => "icons/view.svg",
             Self::ViewOff => "icons/view-off-slash.svg",
@@ -109,6 +117,18 @@ impl Icon {
 }
 
 const FILES: &[(&str, &[u8])] = &[
+    (
+        "icons/archive-03.svg",
+        include_bytes!("../assets/icons/archive-03.svg"),
+    ),
+    (
+        "icons/folder-open.svg",
+        include_bytes!("../assets/icons/folder-open.svg"),
+    ),
+    (
+        "icons/unarchive-03.svg",
+        include_bytes!("../assets/icons/unarchive-03.svg"),
+    ),
     (
         "icons/add-01.svg",
         include_bytes!("../assets/icons/add-01.svg"),

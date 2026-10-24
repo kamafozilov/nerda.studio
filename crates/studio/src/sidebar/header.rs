@@ -139,7 +139,11 @@ impl Sidebar {
                 .text_size(TEXT_SMALL)
                 .font_weight(FontWeight::MEDIUM)
                 .text_color(colors.text_tertiary)
-                .child("Sessions")
+                .child(if self.archive_open {
+                    "Archived"
+                } else {
+                    "Sessions"
+                })
                 .into_any_element()
         };
         let toggle = if self.search_open {

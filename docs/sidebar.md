@@ -16,7 +16,8 @@ are in [design.md](design.md).
 - **The sessions' menu** (⋯) holds Add project, then Sort and Project, which open
   beside it with their choices (Last activity or Created; All projects, No project
   once a session has run in it, then a hairline and the folder projects), each naming
-  its current one. The sort and the filter are saved. A filter to one project
+  its current one, then Archived. The sort and the filter are saved; the archive
+  shows until it is switched off or the app quits. A filter to one project
   keeps the menu button on `hover`.
 - **Search**: the Search button or `Cmd-K` (`Ctrl-K` elsewhere) turns the sessions'
   title into the search field and puts the cursor in it, its text selected, opening the
@@ -43,6 +44,19 @@ are in [design.md](design.md).
   project's hue, which comes from its folder and so stays across launches. No
   project's badge is a computer at `BADGE_ICON` (10) in `text_secondary` on
   `key_background`.
+- **A session's actions.** Under the pointer a row's age and logo give way to an
+  icon button at its trailing edge, `CONTROL_SIZE`, centered on the row: Archive, or
+  Restore in the archive. It acts on one click; a double click acts once, so its second
+  click never lands on the row that moved up under it. A right click on a row opens its
+  menu at the pointer, the row keeping its wash meanwhile: New Session in Project, Show
+  in Finder for a folder project, Close Tab while the session's tab is on screen, then
+  past a hairline Archive, or Restore.
+- **The archive.** Archiving takes a session out of the list and closes its tab as
+  closing it would; it keeps its title, its conversation and its agent. Archived in the
+  sessions' menu, checked while on, shows the archive in the list's place, titled
+  "Archived": the archived sessions under the same sort, filter and search, or "No
+  archived sessions". Restore puts a session back where its activity places it, as a
+  message sent in it does.
 - **Branches and ages** are read off the UI thread: branches, which the composer shows,
   from folder projects' checkouts when projects come and go, when the window comes to front
   and with the ages; at launch the window waits up to 50 ms for them, so its first frame

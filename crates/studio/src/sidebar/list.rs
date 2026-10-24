@@ -93,7 +93,12 @@ impl Sidebar {
         self.rows.clear();
         let now = Timestamp::now();
         let mut faces: HashMap<ProjectId, ProjectFace> = HashMap::new();
-        for session in workspace.visible_sessions(&self.query) {
+        let sessions = if self.archive_open {
+            workspace.archived_sessions(&self.query)
+        } else {
+            workspace.visible_sessions(&self.query)
+        };
+        for session in sessions {
             let Some(project) = workspace.project(session.project) else {
                 continue;
             };
@@ -122,7 +127,7 @@ impl Sidebar {
         };
         // A search or a filter replaces the list: its rows show their fills
         // at once rather than fading from the old list's.
-        let read_for = (self.query.clone(), workspace.scope());
+        let read_for = (self.query.clone(), workspace.scope(), self.archive_open);
         if read_for != self.rows_read_for {
             self.fills.forget_sessions();
         }
@@ -209,6 +214,7 @@ impl Sidebar {
                 (true, _) => {
                     format!("No sessions match \u{201c}{}\u{201d}", self.query.trim()).into()
                 }
+                (false, _) if self.archive_open => "No archived sessions".into(),
                 (false, Some(project)) if project.kind == ProjectKind::Computer => {
                     "No sessions without a project yet".into()
                 }

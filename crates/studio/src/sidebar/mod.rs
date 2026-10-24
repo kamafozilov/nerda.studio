@@ -6,6 +6,7 @@
 //! live by session title; a new session reuses its project's empty session; adding
 //! a folder that is already a project opens that project instead.
 
+mod archive;
 mod card;
 mod fade;
 mod footer;
@@ -63,9 +64,9 @@ pub struct Sidebar {
     query: String,
     /// The workspace, the search or the clock moved on since `rows` was read.
     stale: bool,
-    /// The search and the filter `rows` was read under: a change to either
-    /// replaces the list.
-    rows_read_for: (String, ProjectScope),
+    /// The search, the filter and the view, the sessions or the archive,
+    /// `rows` was read under: a change to any replaces the list.
+    rows_read_for: (String, ProjectScope, bool),
     /// The sessions on screen, in order, as the list draws them; read once
     /// per change, not on every frame of a fade.
     rows: Vec<Row>,
@@ -93,6 +94,10 @@ pub struct Sidebar {
     /// Each row's fill on its way to what it should show.
     fills: Fills,
     menu: Menu<Sidebar, ()>,
+    /// The menu a right click on a session's row opens.
+    row_menu: Menu<Sidebar, archive::RowMenu>,
+    /// The list shows the archive in place of the sessions.
+    archive_open: bool,
     /// Where focus was before `focus_search` took it, given back by Escape on an
     /// empty search and when the sidebar closes.
     focus_before_search: Option<FocusHandle>,
@@ -152,7 +157,7 @@ impl Sidebar {
             search,
             query: String::new(),
             stale: true,
-            rows_read_for: (String::new(), ProjectScope::All),
+            rows_read_for: (String::new(), ProjectScope::All, false),
             rows: Vec::new(),
             search_open: false,
             highlighted: 0,
@@ -164,6 +169,8 @@ impl Sidebar {
             selected_nav: None,
             fills: Fills::default(),
             menu: Menu::new(|sidebar| &mut sidebar.menu, cx),
+            row_menu: Menu::new(|sidebar| &mut sidebar.row_menu, cx),
+            archive_open: false,
             focus_before_search: None,
             home_focus,
             open,
@@ -402,6 +409,7 @@ impl Render for Sidebar {
         self.refresh_rows(cx);
         let notice = self.render_notice(cx);
         let list = self.render_list(window, cx);
+        let row_menu = self.render_row_menu(window, cx);
         div()
             .on_mouse_exit(
                 cx.listener(|sidebar, _: &MouseExitEvent, _, cx| sidebar.pointer_left(cx)),
@@ -416,5 +424,6 @@ impl Render for Sidebar {
             .children(notice)
             .child(list)
             .child(self.render_footer(window, cx))
+            .children(row_menu)
     }
 }

@@ -121,6 +121,14 @@ impl Sidebar {
                 Item::submenu("project", "Project", project_name, project_entries)
                     .icon(Icon::Folder, muted),
             ),
+            Entry::Separator,
+            Entry::Item(
+                Item::new("archived", "Archived", |sidebar: &mut Sidebar, _, cx| {
+                    sidebar.toggle_archive(cx)
+                })
+                .icon(Icon::Archive, muted)
+                .checked_at_end(self.archive_open),
+            ),
         ]
     }
 }
