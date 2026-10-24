@@ -40,15 +40,17 @@ below), or a named reason it could not be run.
 
 ### Parallel sessions
 
-Several sessions work on the project at once. Each works in its own git worktree on its
-own branch, never in the owner's checkout (the first path `git worktree list` prints):
-the owner's live-reload runner builds whatever that checkout holds, half-done edits
-included.
-owner's, so the first build takes seconds; a worktree without `target/` gets one with
-`cp -c -R <owner's checkout>/target target`. Commit on the branch; it reaches `main` when
-the owner asks for it. A session that does run in the owner's checkout keeps every save
-building, since the runner shows each one. Live reload (`cargo run -p dev`) refuses to
-run in a worktree: its builds would take the owner's window over.
+Several sessions work on the project at once. A session works where the owner started
+it, and never makes a worktree or a branch to move itself elsewhere:
+
+- **Started in the owner's checkout** (the first path `git worktree list` prints): the
+  work stays there, on its branch. The owner's live-reload runner builds every save, so
+  each save keeps the app building, and work is never split by swapping files in it.
+- **Started in a worktree** (one the owner made for the session): the work stays there. Its
+  `target/` starts as an APFS clone of the owner's; one without gets
+  `cp -c -R <owner's checkout>/target target`. It reaches `main` when the owner asks.
+  Live reload (`cargo run -p dev`) refuses to run in a worktree: its builds would take
+  the owner's window over.
 
 Several `try` builds can run at once, from one session or many: each has its own data
 folder and window.
