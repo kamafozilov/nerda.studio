@@ -40,6 +40,20 @@ pub(crate) struct Palette {
     pub text_secondary: u32,
     pub text_secondary_on_surface: u32,
     pub text_tertiary: u32,
+    /// What failed, such as a tool call: L 0.72 C 0.16 (dark) or L 0.50 C 0.18
+    /// (light) at h 27, 6.99:1 and 5.68:1 on the card over the worst desktop.
+    pub danger: u32,
+    /// Lines a change added, in green at h 150: L 0.78 C 0.15 or L 0.48 C 0.12,
+    /// 9.84:1 and 5.29:1 on the card.
+    pub diff_added: u32,
+    /// Washes under a diff's added and removed lines: `diff_added` and
+    /// `danger` at 12% (dark) or 8% (light); `text_primary` reads on both.
+    pub diff_added_background: u32,
+    pub diff_removed_background: u32,
+    /// The dots of the working indicator, top row to bottom: blue, amber and
+    /// pink at h 245, 60 and 10 (L 0.84 / 0.82 / 0.76 dark, 0.60 / 0.62 /
+    /// 0.60 light). Nothing is read on them.
+    pub activity: [u32; 3],
     /// Project badges as (fill, initials), one per hue: red, orange, yellow,
     /// green, teal, blue, violet, pink. Fill at L 0.38 C 0.075 (dark) or L 0.91
     /// C 0.045 (light), initials at L 0.87 C 0.10 or L 0.43 C 0.12, chroma cut to
@@ -75,6 +89,11 @@ pub(crate) const DARK: Palette = Palette {
     text_secondary: 0xa0a0a1ff,
     text_secondary_on_surface: 0xa0a0a1ff,
     text_tertiary: 0x797979ff,
+    danger: 0xf97770ff,
+    diff_added: 0x67d283ff,
+    diff_added_background: 0x67d2831f,
+    diff_removed_background: 0xf977701f,
+    activity: [0xabcff0ff, 0xf0b788ff, 0xf78c9eff],
     badges: [
         (0x64312eff, 0xfec4beff),
         (0x5f3813ff, 0xffc79bff),
@@ -115,6 +134,11 @@ pub(crate) const LIGHT: Palette = Palette {
     text_secondary: 0x505358ff,
     text_secondary_on_surface: 0x45474cff,
     text_tertiary: 0x505358ff,
+    danger: 0xb32322ff,
+    diff_added: 0x197037ff,
+    diff_added_background: 0x19703714,
+    diff_removed_background: 0xb3232214,
+    activity: [0x4886b8ff, 0xbe7125ff, 0xcc4f6aff],
     badges: [
         (0xfed6d2ff, 0x852e2cff),
         (0xf9dbc4ff, 0x764002ff),

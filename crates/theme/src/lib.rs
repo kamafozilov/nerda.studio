@@ -116,6 +116,17 @@ pub struct Colors {
     /// `text_secondary`. Dark keeps 4.55:1 on the base; light has no lighter
     /// gray that keeps 4.5:1 on glass, so it is `text_secondary` there.
     pub text_tertiary: Hsla,
+    /// What failed, such as a tool call's mark and output.
+    pub danger: Hsla,
+    /// The count of lines a change added; the removed count uses `danger`.
+    pub diff_added: Hsla,
+    /// Under a diff's added line.
+    pub diff_added_background: Hsla,
+    /// Under a diff's removed line.
+    pub diff_removed_background: Hsla,
+    /// The working indicator's dots, by row from the top; nothing is read
+    /// on them.
+    pub activity: [Hsla; 3],
     /// The badges that tell projects apart by color; a project keeps its hue.
     pub badges: [BadgeColors; 8],
 }
@@ -195,6 +206,11 @@ impl Theme {
                 text_secondary: rgba(palette.text_secondary).into(),
                 text_secondary_on_surface: rgba(palette.text_secondary_on_surface).into(),
                 text_tertiary: rgba(palette.text_tertiary).into(),
+                danger: rgba(palette.danger).into(),
+                diff_added: rgba(palette.diff_added).into(),
+                diff_added_background: rgba(palette.diff_added_background).into(),
+                diff_removed_background: rgba(palette.diff_removed_background).into(),
+                activity: palette.activity.map(|color| rgba(color).into()),
                 badges: palette.badges.map(|(fill, text)| BadgeColors {
                     fill: rgba(fill).into(),
                     text: rgba(text).into(),
