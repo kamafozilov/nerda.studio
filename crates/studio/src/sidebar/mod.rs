@@ -110,6 +110,8 @@ pub struct Sidebar {
     /// The projects whose heads were read, to read again when they change.
     headed_projects: Vec<ProjectId>,
     heads_task: Task<()>,
+    /// Each project's own icon, read with the heads, for those that keep one.
+    icons: std::collections::HashMap<ProjectId, std::path::PathBuf>,
     /// Redraws the rows when the first of their ages next changes ("5m" to
     /// "6m"), and reads the heads again then.
     age_timer: Task<()>,
@@ -177,6 +179,7 @@ impl Sidebar {
             scroll: UniformListScrollHandle::new(),
             headed_projects: Vec::new(),
             heads_task: Task::ready(()),
+            icons: Default::default(),
             age_timer: Task::ready(()),
             _subscriptions: subscriptions,
         };

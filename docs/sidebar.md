@@ -31,19 +31,22 @@ are in [design.md](design.md).
   to a field out of sight.
 - **Sessions** are one list, newest first under the sort. Projects are not a level of the
   list: the filter narrows it to one. Each session is a row `SESSION_ROW_HEIGHT` (44)
-  tall, two lines `SPACE_1` / 2 apart. Over, in `TEXT_CAPTION`: the project's badge,
-  its name as the sidebar shows it, and how long ago the session was active ("now",
-  "5m", "3h", "2d", "4w", "1y") at the trailing edge. Under, the title from the row's
-  leading edge, and at its end the logo of the agent the session runs, at
-  `ICON_SIZE_SMALL` in the agent's color; an agent with no logo in this build shows
-  none. The title is `text_secondary` and the project line `text_tertiary`; on the
-  wash of the selected row or the one under the pointer or the search highlight they
-  turn `text_primary` and `text_secondary`. The badge is `BADGE_SIZE` (14) with
-  `BADGE_RADIUS` (3) corners, the project's initials (the first letters of its first
-  two words: arcada.next is AN, oʻquv is OQ) in semibold `BADGE_TEXT` (8), in the
-  project's hue, which comes from its folder and so stays across launches. No
-  project's badge is a computer at `BADGE_ICON` (10) in `text_secondary` on
-  `key_background`.
+  tall, two lines `SPACE_1` / 2 apart. Over, in `TEXT_CAPTION`: the project's icon,
+  `SPACE_1` × 1.5 before its name as the sidebar shows it, and how long ago the session
+  was active ("now", "5m", "3h", "2d", "4w", "1y") at the trailing edge. Under, the
+  title from the row's leading edge, and at its end the logo of the agent the session
+  runs, at `ICON_SIZE_SMALL` in the agent's color; an agent with no logo in this build
+  shows none. The title is `text_secondary` and the project line `text_tertiary`; on
+  the wash of the selected row or the one under the pointer or the search highlight
+  they turn `text_primary` and `text_secondary`.
+- **A project's icon** is `PROJECT_ICON` (12) square: the favicon or logo the project
+  keeps (`favicon.svg`, `.png` or `.ico` at its top, in `public/` or `static/`; `icon`
+  in `app/` or `src/app/`; a `logo`; else the first of its `apps/` that has one; never
+  built output, nor a file over 512 KB), with `PROJECT_ICON_RADIUS` (2) corners. A
+  project without one, or whose icon doesn't read, shows a folder in the hue of the
+  badges' initials, which comes from its folder and so stays across launches; No
+  project shows a computer in the line's color. Icons are read off the UI thread with
+  the branches.
 - **A session's actions.** Under the pointer a row's age and logo give way to an
   icon button at its trailing edge, `CONTROL_SIZE`, centered on the row: Archive, or
   Restore in the archive. It acts on one click; a double click acts once, so its second

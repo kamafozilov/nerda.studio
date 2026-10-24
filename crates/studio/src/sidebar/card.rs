@@ -1,8 +1,8 @@
-//! A session row, two lines. Over, in small type, its project's badge and
+//! A session row, two lines. Over, in small type, its project's icon and
 //! name, and how long ago it was active; under, its title from the row's
-//! leading edge, and the logo of the agent it runs at its end. The badge's
-//! hue and initials tell projects apart at a glance; the computer's badge is
-//! its icon.
+//! leading edge, and the logo of the agent it runs at its end. The icon is
+//! the project's own favicon or logo where it keeps one, else a folder in the
+//! project's hue; the computer's is its icon.
 
 use std::{
     collections::HashMap,
@@ -11,12 +11,12 @@ use std::{
 };
 
 use gpui::{
-    AnyElement, ClickEvent, Context, FontWeight, Hsla, IntoElement, MouseButton, MouseDownEvent,
-    ParentElement, SharedString, Styled, Task, div, prelude::*, svg,
+    AnyElement, ClickEvent, Context, Hsla, IntoElement, MouseButton, MouseDownEvent, ObjectFit,
+    ParentElement, SharedString, Styled, StyledImage, Task, div, img, prelude::*, svg,
 };
 use theme::{
-    BADGE_ICON, BADGE_RADIUS, BADGE_SIZE, BADGE_TEXT, CONTROL_RADIUS, CONTROL_SIZE, Colors,
-    ICON_SIZE_SMALL, ROW_GAP, SESSION_ROW_HEIGHT, SPACE_1, SPACE_2, TEXT_CAPTION, Theme,
+    CONTROL_RADIUS, CONTROL_SIZE, Colors, ICON_SIZE_SMALL, PROJECT_ICON, PROJECT_ICON_RADIUS,
+    ROW_GAP, SESSION_ROW_HEIGHT, SPACE_1, SPACE_2, TEXT_CAPTION, Theme,
 };
 use workspace::{
     AgentId, Head, Project, ProjectId, ProjectKind, Session, SessionId, Timestamp, compact_age,
@@ -39,66 +39,64 @@ pub(super) struct Row {
 }
 
 /// A project as its sessions' rows show it, worked out once per refresh and
-/// shared by its rows: its name as the sidebar shows it, and its badge.
+/// shared by its rows: its name as the sidebar shows it, and its icon.
 #[derive(Clone)]
 pub(super) enum ProjectFace {
-    /// A folder's initials, in its hue.
+    /// A folder: its own icon if it keeps one, and its hue.
     Folder {
         name: SharedString,
-        initials: SharedString,
+        icon: Option<PathBuf>,
         hue: usize,
     },
-    /// The computer's icon on a neutral fill: no folder to name or color it by.
+    /// The computer: no folder to draw or color it by.
     Computer { name: SharedString },
 }
 
 impl ProjectFace {
-    pub fn new(project: &Project, name: String) -> Self {
+    pub fn new(project: &Project, name: String, icon: Option<PathBuf>) -> Self {
         let name = name.into();
         match project.kind {
             ProjectKind::Folder => Self::Folder {
                 name,
-                initials: initials(&project.title).into(),
+                icon,
                 hue: hue(&project.path),
             },
             ProjectKind::Computer => Self::Computer { name },
         }
     }
 
-    /// The badge, `BADGE_SIZE` with `BADGE_RADIUS` corners.
-    fn badge(&self, colors: &Colors) -> AnyElement {
-        let badge = div()
-            .size(BADGE_SIZE)
-            .flex_none()
-            .rounded(BADGE_RADIUS)
-            .flex()
-            .items_center()
-            .justify_center();
+    /// The icon before the project's name, `PROJECT_ICON` square: the
+    /// project's own, else a folder in the hue of its badge's initials, which
+    /// read on the glass and on a row's surface; the computer in `secondary`,
+    /// the line's color. An icon that fails to read shows the folder.
+    pub fn icon(&self, colors: &Colors, secondary: Hsla) -> AnyElement {
+        let glyph = |icon: Icon, color: Hsla| {
+            svg()
+                .path(icon.path())
+                .size(PROJECT_ICON)
+                .flex_none()
+                .text_color(color)
+                .into_any_element()
+        };
         match self {
-            Self::Folder { initials, hue, .. } => {
-                let face = colors.badges[hue % colors.badges.len()];
-                badge
-                    .bg(face.fill)
-                    .text_size(BADGE_TEXT)
-                    .line_height(BADGE_SIZE)
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .text_color(face.text)
-                    .child(initials.clone())
-                    .into_any_element()
+            Self::Folder { icon, hue, .. } => {
+                let folder = colors.badges[hue % colors.badges.len()].text;
+                match icon {
+                    Some(path) => img(path.clone())
+                        .size(PROJECT_ICON)
+                        .flex_none()
+                        .rounded(PROJECT_ICON_RADIUS)
+                        .object_fit(ObjectFit::Contain)
+                        .with_fallback(move || glyph(Icon::Folder, folder))
+                        .into_any_element(),
+                    None => glyph(Icon::Folder, folder),
+                }
             }
-            Self::Computer { .. } => badge
-                .bg(colors.key_background)
-                .child(
-                    svg()
-                        .path(Icon::Computer.path())
-                        .size(BADGE_ICON)
-                        .text_color(colors.text_secondary),
-                )
-                .into_any_element(),
+            Self::Computer { .. } => glyph(Icon::Computer, secondary),
         }
     }
 
-    fn name(&self) -> SharedString {
+    pub fn name(&self) -> SharedString {
         match self {
             Self::Folder { name, .. } | Self::Computer { name } => name.clone(),
         }
@@ -116,31 +114,7 @@ impl ProjectFace {
     }
 }
 
-/// Up to two letters for a badge: the first of each of the name's first two
-/// words ("arcada.next" is AN), or the first two of a one-word name.
-fn initials(title: &str) -> String {
-    // An apostrophe is part of the letter before it, as in the Uzbek oʻ:
-    // "oʻquv" is OQ, not Oʻ.
-    let title: String = title
-        .chars()
-        .filter(|c| !matches!(c, 'ʻ' | 'ʼ' | '\'' | '‘' | '’' | '`'))
-        .collect();
-    let mut words = title
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|word| !word.is_empty());
-    let letters: String = match (words.next(), words.next()) {
-        (Some(first), Some(second)) => first
-            .chars()
-            .take(1)
-            .chain(second.chars().take(1))
-            .collect(),
-        (Some(only), None) => only.chars().take(2).collect(),
-        _ => title.chars().take(1).collect(),
-    };
-    letters.to_uppercase()
-}
-
-/// A project's badge hue, from its folder, so it keeps it across launches.
+/// A project's hue, from its folder, so it keeps it across launches.
 fn hue(path: &Path) -> usize {
     // FNV-1a: stable across builds, unlike the standard library's hasher.
     let hash = path
@@ -157,12 +131,25 @@ fn hue(path: &Path) -> usize {
 /// them.
 const LAUNCH_HEADS_WAIT: Duration = Duration::from_millis(50);
 
-/// The head of each project's checkout, for those in one.
-fn read_heads(projects: Vec<(ProjectId, PathBuf)>) -> HashMap<ProjectId, Head> {
-    projects
-        .into_iter()
-        .filter_map(|(id, path)| workspace::head(&path).map(|head| (id, head)))
-        .collect()
+/// What the projects' folders hold that the sidebar shows: the head of each
+/// checkout, and each project's own icon, for those that have them.
+#[derive(Default)]
+struct Folders {
+    heads: HashMap<ProjectId, Head>,
+    icons: HashMap<ProjectId, PathBuf>,
+}
+
+fn read_folders(projects: Vec<(ProjectId, PathBuf)>) -> Folders {
+    let mut folders = Folders::default();
+    for (id, path) in projects {
+        if let Some(head) = workspace::head(&path) {
+            folders.heads.insert(id, head);
+        }
+        if let Some(icon) = workspace::project_icon(&path) {
+            folders.icons.insert(id, icon);
+        }
+    }
+    folders
 }
 
 impl Sidebar {
@@ -173,14 +160,12 @@ impl Sidebar {
         let projects = self.projects_to_head(cx);
         let read = cx
             .background_executor()
-            .spawn(async move { read_heads(projects) });
+            .spawn(async move { read_folders(projects) });
         match cx
             .foreground_executor()
             .block_with_timeout(LAUNCH_HEADS_WAIT, read)
         {
-            Ok(heads) => self
-                .store
-                .update(cx, |store, cx| store.set_heads(heads, cx)),
+            Ok(folders) => self.take_folders(folders, cx),
             Err(read) => self.heads_task = self.take_heads(read, cx),
         }
     }
@@ -214,27 +199,33 @@ impl Sidebar {
         let projects = self.projects_to_head(cx);
         let read = cx
             .background_executor()
-            .spawn(async move { read_heads(projects) });
+            .spawn(async move { read_folders(projects) });
         self.heads_task = self.take_heads(read, cx);
     }
 
-    /// Hands the store the heads `read` finds once it does; the composer redraws
-    /// if one changed.
+    /// Takes what `read` finds once it does: the composer redraws if a head
+    /// changed, the rows if an icon did.
     fn take_heads(
         &mut self,
-        read: impl Future<Output = HashMap<ProjectId, Head>> + 'static,
+        read: impl Future<Output = Folders> + 'static,
         cx: &mut Context<Self>,
     ) -> Task<()> {
         cx.spawn(async move |sidebar, cx| {
-            let heads = read.await;
+            let folders = read.await;
             sidebar
-                .update(cx, |sidebar, cx| {
-                    sidebar
-                        .store
-                        .update(cx, |store, cx| store.set_heads(heads, cx))
-                })
+                .update(cx, |sidebar, cx| sidebar.take_folders(folders, cx))
                 .ok();
         })
+    }
+
+    /// Hands the store the heads; the rows read again if an icon changed.
+    fn take_folders(&mut self, folders: Folders, cx: &mut Context<Self>) {
+        if self.icons != folders.icons {
+            self.icons = folders.icons;
+            self.stale = true;
+            cx.notify();
+        }
+        (self.store).update(cx, |store, cx| store.set_heads(folders.heads, cx));
     }
 
     /// The row at `index`, `ROW_GAP` over the next. The selected row and the
@@ -288,10 +279,10 @@ impl Sidebar {
         let project = div()
             .flex()
             .items_center()
-            .gap(SPACE_2)
+            .gap(SPACE_1 + SPACE_1 / 2.)
             .text_size(TEXT_CAPTION)
             .text_color(secondary)
-            .child(row.project.badge(&colors))
+            .child(row.project.icon(&colors, secondary))
             .child(truncated(row.project.name()))
             .when(!acting, |line| {
                 line.child(div().flex_none().child(row.age.clone()))

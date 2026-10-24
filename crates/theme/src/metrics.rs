@@ -45,15 +45,12 @@ pub const ROW_HEIGHT: Pixels = px(28.);
 /// Height of a session's row in the sidebar: two lines, its project in small
 /// type over its title.
 pub const SESSION_ROW_HEIGHT: Pixels = px(44.);
-/// Side of a project badge, the colored square with the project's initials,
-/// before the project's name in a session's row.
-pub const BADGE_SIZE: Pixels = px(14.);
-/// Corners of a project badge.
-pub const BADGE_RADIUS: Pixels = px(3.);
-/// The computer's icon on No project's badge.
-pub const BADGE_ICON: Pixels = px(10.);
-/// The initials on a project badge: two capitals fit its 14 px.
-pub const BADGE_TEXT: Pixels = px(8.);
+/// Side of a project's icon before its name in a session's row: its own
+/// favicon or logo, or a folder.
+pub const PROJECT_ICON: Pixels = px(12.);
+/// Corners of a project's own icon, so a square bitmap doesn't read sharper
+/// than the glyphs around it.
+pub const PROJECT_ICON_RADIUS: Pixels = px(2.);
 /// Space between neighboring rows in the sidebar, where a selected row and a
 /// hovered one can sit side by side and must stay two shapes.
 pub const ROW_GAP: Pixels = px(1.);

@@ -103,10 +103,8 @@ impl Sidebar {
                 continue;
             };
             let face = faces.entry(project.id).or_insert_with(|| {
-                ProjectFace::new(
-                    project,
-                    workspace.display_name(project.id).unwrap_or_default(),
-                )
+                let name = workspace.display_name(project.id).unwrap_or_default();
+                ProjectFace::new(project, name, self.icons.get(&project.id).cloned())
             });
             self.rows.push(face.row(session, now));
         }
