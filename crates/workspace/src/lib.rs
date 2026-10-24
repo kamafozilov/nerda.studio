@@ -3,6 +3,7 @@
 
 mod age;
 mod agents;
+mod backdrop;
 pub mod browse;
 mod error;
 mod git;
@@ -20,6 +21,7 @@ pub use agents::{
     AGENTS, Access, AccessMode, Agent, AgentChoice, AgentId, Effort, EffortLevel, Model, ModelId,
     agent,
 };
+pub use backdrop::{Backdrop, BackdropStyle, BackdropTint};
 pub use error::{AddProjectError, LoadError};
 pub use git::{Head, head};
 pub use history::Visits;
@@ -59,6 +61,8 @@ pub struct Workspace {
     tabs: Vec<Tab>,
     /// The choice last made in any session, which new sessions start from.
     last_choice: AgentChoice,
+    /// What stands behind a new session's composer.
+    backdrop: Backdrop,
 }
 
 impl Workspace {
@@ -135,6 +139,14 @@ impl Workspace {
     }
 
     /// The choice last made in any session, which new sessions start from.
+    pub fn backdrop(&self) -> Backdrop {
+        self.backdrop
+    }
+
+    pub fn set_backdrop(&mut self, backdrop: Backdrop) {
+        self.backdrop = backdrop;
+    }
+
     pub fn last_choice(&self) -> &AgentChoice {
         &self.last_choice
     }
