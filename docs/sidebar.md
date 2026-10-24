@@ -39,16 +39,25 @@ are in [design.md](design.md).
   shows none. The title is `text_secondary` and the project line `text_tertiary`; on
   the wash of the selected row or the one under the pointer or the search highlight
   they turn `text_primary` and `text_secondary`.
-- **A project's icon** is `PROJECT_ICON` (12) square: the favicon or logo the project
-  keeps (`favicon.svg`, `.png` or `.ico` at its top, in `public/` or `static/`; `icon`
-  in `app/` or `src/app/`; a `logo`; else the first of its `apps/` that has one; never
-  built output, nor a file over 512 KB), with `PROJECT_ICON_RADIUS` (2) corners. A
-  project without one, or whose icon doesn't read, shows a folder in the hue of the
-  badges' initials, which comes from its folder and so stays across launches; No
-  project shows a computer in the line's color. Icons are read off the UI thread with
-  the branches.
-- **A session's actions.** Under the pointer a row's age and logo give way to an
-  icon button at its trailing edge, `CONTROL_SIZE`, centered on the row: Archive, or
+- **A project's icon** stands in a `PROJECT_ICON` (14) slot: the favicon or logo the
+  project keeps (`favicon.svg`, `.png` or `.ico` at its top, in `public/` or `static/`;
+  `icon` in `app/` or `src/app/`; a `logo`; else the first of its `apps/` that has one;
+  never built output, nor a file over 512 KB), filling the slot with
+  `PROJECT_ICON_RADIUS` (3) corners. It is made ready off the UI thread with the
+  branches, and drawn again only when the file changes: a vector at the slot's pixel
+  size, so a 16 px favicon stays sharp, a bitmap scaled down once, either centered so a
+  mark that isn't square keeps its shape. A wordmark more than twice as wide as tall
+  (or tall as wide) is refused. A dark mark on transparency stands on a plate of
+  `text_primary` at 90% on the dark glass, inset 2, and a light one likewise on the
+  light glass; a mark with colors or a ground of its own stands as it is. A project
+  without an icon, or whose icon doesn't read, shows a folder at `ICON_SIZE_SMALL` in
+  the hue of the badges' initials, which comes from its folder and so stays across
+  launches; No project shows a computer in the line's color.
+- **A session's actions.** A row keeps a 24 wide column at its trailing edge for its
+  age and logo, so its title truncates the same whatever shows there. Under the
+  pointer an icon button, `CONTROL_SIZE` and `SPACE_1` clear of the row's edge,
+  centered on the row, fades in over that column as the age and the logo fade out,
+  over `ROW_FADE` as the row's fill does, and back as the pointer leaves: Archive, or
   Restore in the archive. It acts on one click; a double click acts once, so its second
   click never lands on the row that moved up under it. A right click on a row opens its
   menu at the pointer, the row keeping its wash meanwhile: New Session in Project, Show

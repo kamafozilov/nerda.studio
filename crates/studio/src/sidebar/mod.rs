@@ -14,6 +14,7 @@ mod header;
 mod list;
 mod menu;
 mod nav;
+mod project_icon;
 
 pub(crate) use header::icon_button;
 
@@ -111,7 +112,7 @@ pub struct Sidebar {
     headed_projects: Vec<ProjectId>,
     heads_task: Task<()>,
     /// Each project's own icon, read with the heads, for those that keep one.
-    icons: std::collections::HashMap<ProjectId, std::path::PathBuf>,
+    icons: std::collections::HashMap<ProjectId, std::sync::Arc<card::FoundIcon>>,
     /// Redraws the rows when the first of their ages next changes ("5m" to
     /// "6m"), and reads the heads again then.
     age_timer: Task<()>,

@@ -1,5 +1,6 @@
 //! Each sidebar row's own fill, fading over `ROW_FADE` to what the row should
-//! show: the selection's wash, the hover's, or none. Nothing slides from row
+//! show: the selection's wash, the hover's, or none; and a session row's
+//! button, faded in over its age and logo the same way. Nothing slides from row
 //! to row; the row the pointer leaves fades out as the next fades in.
 
 use std::{collections::HashMap, time::Instant};
@@ -14,6 +15,8 @@ pub(super) enum Key {
     /// New session or a page, by its place among them.
     Nav(usize),
     Session(SessionId),
+    /// A session row's button, its alpha the button's opacity.
+    Action(SessionId),
 }
 
 #[derive(Clone, Copy)]

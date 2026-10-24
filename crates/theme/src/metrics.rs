@@ -45,12 +45,12 @@ pub const ROW_HEIGHT: Pixels = px(28.);
 /// Height of a session's row in the sidebar: two lines, its project in small
 /// type over its title.
 pub const SESSION_ROW_HEIGHT: Pixels = px(44.);
-/// Side of a project's icon before its name in a session's row: its own
-/// favicon or logo, or a folder.
-pub const PROJECT_ICON: Pixels = px(12.);
+/// Side of the slot before a project's name in a session's row, which its
+/// own favicon or logo fills, or a folder at `ICON_SIZE_SMALL` stands in.
+pub const PROJECT_ICON: Pixels = px(14.);
 /// Corners of a project's own icon, so a square bitmap doesn't read sharper
 /// than the glyphs around it.
-pub const PROJECT_ICON_RADIUS: Pixels = px(2.);
+pub const PROJECT_ICON_RADIUS: Pixels = px(3.);
 /// Space between neighboring rows in the sidebar, where a selected row and a
 /// hovered one can sit side by side and must stay two shapes.
 pub const ROW_GAP: Pixels = px(1.);

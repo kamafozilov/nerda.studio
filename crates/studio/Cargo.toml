@@ -11,6 +11,8 @@ backdrop.workspace = true
 gpui.workspace = true
 gpui_platform.workspace = true
 image = { version = "0.25", default-features = false, features = ["bmp", "gif", "ico", "jpeg", "png", "tiff", "webp"] }
+# Draws a project's SVG icon at the size it shows; the version GPUI builds on.
+resvg = { version = "0.46", default-features = false }
 # The agent's replies are CommonMark, whose emphasis, lists and fences are a
 # spec's worth of rules: a hand parser would get them wrong. Pure Rust, no
 # HTML writer.
