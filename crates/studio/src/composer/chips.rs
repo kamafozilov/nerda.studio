@@ -17,7 +17,7 @@ use super::{
     Composer,
     attachments::{Attachment, AttachmentKind},
 };
-use crate::{assets::Icon, tooltip::TooltipExt};
+use crate::{assets::Icon, sidebar, tooltip::TooltipExt};
 
 impl Composer {
     /// The row of chips, or nothing while there are no attachments.
@@ -65,44 +65,21 @@ impl Composer {
         )
         .with_tooltip(workspace::home_relative(&path));
         let remove_group = SharedString::from(format!("{group}-remove"));
-        // 16 visible, taking clicks over WCAG's 24 minimum; the negative
-        // margin keeps it where the chip's padding puts it.
-        let remove = div()
-            .id(ElementId::NamedChild(
-                Arc::new(ElementId::Path(path.clone())),
-                "remove".into(),
-            ))
-            .group(remove_group.clone())
-            .flex_none()
-            .size(FIELD_TARGET_SIZE)
-            .m(-(FIELD_TARGET_SIZE - ICON_SIZE) / 2.)
-            .flex()
-            .items_center()
-            .justify_center()
-            .invisible()
-            .group_hover(group.clone(), |button| button.visible())
-            .cursor_pointer()
-            .on_click(cx.listener(move |composer, _: &ClickEvent, _, cx| {
-                cx.stop_propagation();
-                composer.detach(&path, cx);
-            }))
-            .child(
-                div()
-                    .size(ICON_SIZE)
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .rounded(CONTROL_RADIUS)
-                    .group_hover(remove_group.clone(), |button| button.bg(colors.hover))
-                    .child(
-                        svg()
-                            .path(Icon::Close.path())
-                            .size(ICON_SIZE_SMALL)
-                            .text_color(colors.text_secondary)
-                            .group_hover(remove_group, |icon| icon.text_color(colors.text_primary)),
-                    ),
-            )
-            .with_tooltip("Remove");
+        // The negative margin keeps its larger target where the chip's
+        // padding puts it.
+        let remove = sidebar::close_button(
+            ElementId::NamedChild(Arc::new(ElementId::Path(path.clone())), "remove".into()),
+            remove_group,
+            colors,
+        )
+        .m(-(FIELD_TARGET_SIZE - ICON_SIZE_SMALL) / 2.)
+        .invisible()
+        .group_hover(group.clone(), |button| button.visible())
+        .on_click(cx.listener(move |composer, _: &ClickEvent, _, cx| {
+            cx.stop_propagation();
+            composer.detach(&path, cx);
+        }))
+        .with_tooltip("Remove");
         chip(colors)
             .group(group)
             .pr(SPACE_1)

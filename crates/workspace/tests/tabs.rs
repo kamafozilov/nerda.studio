@@ -100,6 +100,35 @@ fn a_draft_closes_beside_another_tab_and_a_used_tab_closes_alone() {
 }
 
 #[test]
+fn a_session_opened_from_the_draft_takes_its_tab() {
+    let mut workspace = with_tabs(3);
+    let draft = workspace.new_session(ProjectId(1), Timestamp(100)).unwrap();
+    workspace.open_session(draft);
+    workspace.move_tab(Tab::Session(draft), 0);
+    assert_eq!(workspace.open_tabs()[0], Tab::Session(draft));
+
+    // A tab already open is selected; the draft keeps its own.
+    workspace.open_session(SessionId(5));
+    assert_eq!(workspace.open_tabs()[0], Tab::Session(draft));
+
+    // One not open takes the draft's place.
+    workspace.close_tab(tab(5), Timestamp(100));
+    workspace.open_session(draft);
+    workspace.open_session(SessionId(5));
+    assert_eq!(workspace.open_tabs(), ids(&[5, 3, 4, 6]));
+    assert_eq!(workspace.selected_session(), Some(SessionId(5)));
+
+    // From another project's draft it opens last, and the draft's tab goes.
+    let mut workspace = with_tabs(4);
+    workspace.close_tab(tab(5), Timestamp(100));
+    workspace.open_session(SessionId(8));
+    assert_eq!(workspace.tabs(), ids(&[3, 4, 7, 6, 8]));
+    workspace.open_session(SessionId(5));
+    assert_eq!(workspace.tabs(), ids(&[3, 4, 7, 6, 5]));
+    assert_eq!(workspace.open_tabs(), ids(&[3, 4, 6, 5]));
+}
+
+#[test]
 fn close_others_and_either_side_keep_the_chosen_tab_selected() {
     let mut workspace = with_tabs(3);
     workspace.close_tabs_before(tab(5), Timestamp(100));

@@ -156,7 +156,9 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   New session follows the last tab.
 - **Opening and closing tabs.** A session opened from the sidebar, a shortcut or New
   session gets a tab at the end unless it has one; so does a page, which has one tab at
-  most, however often it is opened. Closing the selected tab selects its right neighbor,
+  most, however often it is opened. A used session opened while the project's unused
+  draft is selected takes the draft's tab, in its place; from another project's draft it
+  opens at the end and the draft's tab goes. Closing the selected tab selects its right neighbor,
   else its left; closing the last tab on screen opens the project's draft, so a project on
   screen always shows something, and before the first project leaves the welcome. A tab
   closes from its button, a middle click, `Cmd-W`, or its menu (a right click): Close
@@ -209,6 +211,10 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   blink over, and in a window in the background it hides, as the system's fields do.
   Every field is one `TextInput` with this rhythm. A button inside a field, such as
   Clear, shows `ICON_SIZE` but takes clicks over `FIELD_TARGET_SIZE` (24).
+- **A close button** inside a tab, a chip or a message is the small x alone, without a
+  plate: `ICON_SIZE_SMALL` (12) at a heavier stroke so it still reads, `text_tertiary`
+  at rest and `text_primary` under the pointer, taking clicks over `FIELD_TARGET_SIZE`
+  (`crates/studio/src/close_button.rs`).
 - **Key caps**, the shortcut beside a label, in a tooltip, a menu item or a hint, follow
   [key-caps.md](key-caps.md).
 - **The sidebar's** header, session cards, messages, empty states and footer follow

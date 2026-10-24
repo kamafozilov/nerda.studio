@@ -3,8 +3,8 @@
 //! place.
 
 use gpui::{
-    App, ClickEvent, Context, Div, Focusable, FontWeight, IntoElement, ParentElement, Pixels,
-    SharedString, Stateful, Styled, Window, div, prelude::*, svg,
+    App, ClickEvent, Context, Div, ElementId, Focusable, FontWeight, IntoElement, ParentElement,
+    Pixels, SharedString, Stateful, Styled, Window, div, prelude::*, svg,
 };
 use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, Colors, DISABLED_OPACITY, FIELD_TARGET_SIZE, ICON_SIZE,
@@ -81,42 +81,45 @@ fn icon_button_sized(
     build(button).with_tooltip(label)
 }
 
-/// A close button inside a field or a message: 16 pt visible, taking clicks over
-/// WCAG's 24 pt minimum, the negative margin keeping it where the padding puts
-/// it.
-pub(super) fn close_button(
+/// A close button inside a tab, a chip or a message: the small x alone, no
+/// plate, `text_tertiary` at rest and `text_primary` under the pointer, taking
+/// clicks over WCAG's 24 pt minimum. Chain its listeners, placement and tooltip
+/// on the result.
+pub(crate) fn close_button(
+    id: impl Into<ElementId>,
+    group: impl Into<SharedString>,
+    colors: Colors,
+) -> Stateful<Div> {
+    let group = group.into();
+    div()
+        .id(id)
+        .group(group.clone())
+        .flex_none()
+        .size(FIELD_TARGET_SIZE)
+        .flex()
+        .items_center()
+        .justify_center()
+        .cursor_pointer()
+        .child(
+            svg()
+                .path(Icon::CloseSmall.path())
+                .size(ICON_SIZE_SMALL)
+                .text_color(colors.text_tertiary)
+                .group_hover(group, |icon| icon.text_color(colors.text_primary)),
+        )
+}
+
+/// A close button in a row of content: it takes `ICON_SIZE_SMALL` of the row,
+/// the negative margin keeping its larger target where the padding puts it.
+pub(super) fn inline_close_button(
     id: &'static str,
     label: &'static str,
     colors: Colors,
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
 ) -> WithTooltip {
-    div()
-        .id(id)
-        .group(id)
-        .flex_none()
-        .size(FIELD_TARGET_SIZE)
-        .m(-(FIELD_TARGET_SIZE - ICON_SIZE) / 2.)
-        .flex()
-        .items_center()
-        .justify_center()
-        .cursor_pointer()
+    close_button(id, id, colors)
+        .m(-(FIELD_TARGET_SIZE - ICON_SIZE_SMALL) / 2.)
         .on_click(on_click)
-        .child(
-            div()
-                .size(ICON_SIZE)
-                .flex()
-                .items_center()
-                .justify_center()
-                .rounded(CONTROL_RADIUS)
-                .group_hover(id, |button| button.bg(colors.hover))
-                .child(
-                    svg()
-                        .path(Icon::Close.path())
-                        .size(ICON_SIZE_SMALL)
-                        .text_color(colors.text_secondary)
-                        .group_hover(id, |icon| icon.text_color(colors.text_primary)),
-                ),
-        )
         .with_tooltip(label)
 }
 

@@ -8,14 +8,14 @@ use gpui::{
     relative, svg,
 };
 use theme::{
-    CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, HAIRLINE, ICON_SIZE, ICON_SIZE_SMALL,
-    SPACE_1, SPACE_2, TAB_CLOSE_MIN_WIDTH, TAB_GAP, TAB_MAX_WIDTH, TAB_SELECTED_MIN_WIDTH,
+    CONTROL_RADIUS, CONTROL_SIZE, Colors, FIELD_TARGET_SIZE, HAIRLINE, ICON_SIZE, SPACE_2,
+    TAB_CLOSE_MIN_WIDTH, TAB_GAP, TAB_MAX_WIDTH, TAB_SELECTED_MIN_WIDTH,
     motion::{PHASE_EPSILON, PIXEL_EPSILON, TAB_ENTER, TAB_EXIT},
 };
 use workspace::Tab;
 
 use super::{Label, TabStrip};
-use crate::{assets::Icon, kbd::Shortcut, tooltip::TooltipExt};
+use crate::{kbd::Shortcut, sidebar, tooltip::TooltipExt};
 
 /// Narrowest share of its settled width a growing tab is drawn at; below it the
 /// slot shows next to nothing anyway.
@@ -128,7 +128,7 @@ impl TabStrip {
                 tab.hover(|tab| tab.bg(colors.hover))
             })
             .when(can_close, |tab| {
-                tab.pr(FIELD_TARGET_SIZE + SPACE_1)
+                tab.pr(FIELD_TARGET_SIZE)
                     .child(close_button(id, label, colors, cx))
             })
             .on_mouse_down(
@@ -227,15 +227,7 @@ fn close_button(
     colors: Colors,
     cx: &mut Context<TabStrip>,
 ) -> impl IntoElement {
-    let button = label.close.clone();
-    let target = div()
-        .id(button.clone())
-        .group(button.clone())
-        .size(FIELD_TARGET_SIZE)
-        .flex()
-        .items_center()
-        .justify_center()
-        .cursor_pointer()
+    let target = sidebar::close_button(label.close.clone(), label.close.clone(), colors)
         .opacity(0.)
         .group_hover(label.group.clone(), |button| button.opacity(1.))
         // The press closes, never starts a drag.
@@ -243,28 +235,12 @@ fn close_button(
         .on_click(cx.listener(move |strip, _: &ClickEvent, _, cx| {
             cx.stop_propagation();
             strip.close(id, cx);
-        }))
-        .child(
-            div()
-                .size(ICON_SIZE)
-                .flex()
-                .items_center()
-                .justify_center()
-                .rounded(CONTROL_RADIUS)
-                .group_hover(button.clone(), |wash| wash.bg(colors.hover))
-                .child(
-                    svg()
-                        .path(Icon::Close.path())
-                        .size(ICON_SIZE_SMALL)
-                        .text_color(colors.text_secondary)
-                        .group_hover(button, |icon| icon.text_color(colors.text_primary)),
-                ),
-        );
+        }));
     // The tooltip positions its control relatively, so this holder places it.
     div()
         .absolute()
-        .right(SPACE_1)
-        .top((CONTROL_SIZE - FIELD_TARGET_SIZE) / 2.)
+        .right_0()
+        .top((CONTROL_SIZE - FIELD_TARGET_SIZE) / 2. - HAIRLINE)
         .child(
             target
                 .with_tooltip("Close tab")

@@ -25,6 +25,9 @@ pub enum Icon {
     /// Copies something, such as a code block, to the clipboard.
     Copy,
     Close,
+    /// The x of a close button inside a tab, a chip or a message: `Close` at a
+    /// heavier stroke, as it is drawn at `ICON_SIZE_SMALL`.
+    CloseSmall,
     /// No project: a session working on the computer itself.
     Computer,
     /// The Design page.
@@ -118,6 +121,7 @@ impl Icon {
             Self::ChevronDown => "icons/arrow-down-01.svg",
             Self::Copy => "icons/copy-01.svg",
             Self::Close => "icons/cancel-01.svg",
+            Self::CloseSmall => "icons/cancel-small.svg",
             Self::Computer => "icons/computer.svg",
             Self::Design => "icons/pen-tool-03.svg",
             Self::File => "icons/file-02.svg",
@@ -257,6 +261,10 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/cancel-01.svg",
         include_bytes!("../assets/icons/cancel-01.svg"),
+    ),
+    (
+        "icons/cancel-small.svg",
+        include_bytes!("../assets/icons/cancel-small.svg"),
     ),
     (
         "icons/claude.svg",

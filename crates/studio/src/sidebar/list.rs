@@ -20,7 +20,7 @@ use workspace::{ProjectId, ProjectKind, ProjectScope, Tab, Timestamp, age_change
 
 use super::{
     Sidebar,
-    header::close_button,
+    header::inline_close_button,
     nav::{NEW_SESSION, page_row},
     project_face::ProjectFace,
 };
@@ -67,7 +67,7 @@ impl Sidebar {
                         .text_color(colors.text_primary)
                         .child(notice),
                 )
-                .child(close_button(
+                .child(inline_close_button(
                     "dismiss-notice",
                     "Dismiss message",
                     colors,

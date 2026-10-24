@@ -5,7 +5,8 @@
 //! selects its right neighbor, else its left, and closing the last tab on
 //! screen opens the project's draft, so a project on screen always shows
 //! something. That draft alone on screen can't close: closing it would only
-//! open it again.
+//! open it again. A used session opened while the draft is on screen takes
+//! the draft's tab instead of a new one.
 
 use std::collections::HashSet;
 
@@ -33,16 +34,31 @@ impl Workspace {
     }
 
     /// Shows a tab: opens it last unless it is open, and selects it. A session
-    /// brings its project on screen; an unknown one changes nothing.
+    /// brings its project on screen; an unknown one changes nothing. A used
+    /// session opened from the unused draft on screen takes the draft's tab: in
+    /// its place in the same project, last in another.
     pub fn open_tab(&mut self, tab: Tab) {
+        let mut draft = None;
         if let Tab::Session(id) = tab {
             let Some(project) = self.session(id).map(|session| session.project) else {
                 return;
             };
+            draft = self
+                .selected
+                .filter(|&selected| self.is_draft(selected) && !self.is_draft(tab))
+                .map(|selected| (selected, self.project_on_screen == Some(project)));
             self.project_on_screen = Some(project);
         }
         if !self.tabs.contains(&tab) {
-            self.tabs.push(tab);
+            let place = draft.and_then(|(draft, same_project)| {
+                let index = self.tabs.iter().position(|&open| open == draft)?;
+                self.tabs.remove(index);
+                same_project.then_some(index)
+            });
+            match place {
+                Some(index) => self.tabs.insert(index, tab),
+                None => self.tabs.push(tab),
+            }
         }
         self.selected = Some(tab);
     }

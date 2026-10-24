@@ -17,7 +17,7 @@ mod nav;
 mod project_face;
 mod project_icon;
 
-pub(crate) use header::icon_button;
+pub(crate) use header::{close_button, icon_button};
 
 use std::path::Path;
 
