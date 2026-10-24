@@ -159,7 +159,7 @@ impl Element for TextElement {
                 ),
                 colors.text_primary,
             );
-            (None, input.cursor_visible().then_some(cursor))
+            (None, input.cursor_visible(window).then_some(cursor))
         } else {
             let selection = fill(
                 Bounds::from_corners(

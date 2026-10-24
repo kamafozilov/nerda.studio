@@ -1,5 +1,7 @@
 //! The cursor's blink: solid for a moment after each move or edit, so typing
-//! never hides it, then on and off until the input loses focus.
+//! never hides it, then on and off until the input loses focus. In a window
+//! in the background the cursor hides, as the system's fields do, so no
+//! field ever shows a cursor that stands still.
 
 use std::{ops::Range, time::Duration};
 
@@ -30,14 +32,14 @@ impl Default for Blink {
 }
 
 impl TextInput {
-    /// Whether the cursor shows this frame.
-    pub(super) fn cursor_visible(&self) -> bool {
-        self.blink.visible
+    /// Whether the cursor shows this frame: blinking on, in the active window.
+    pub(super) fn cursor_visible(&self, window: &Window) -> bool {
+        self.blink.visible && window.is_window_active()
     }
 
     /// Run on each render: shows the cursor and restarts the blink when the
     /// selection, the text or the focus changed; stops it without focus or
-    /// while the window is in the background, leaving the cursor on.
+    /// while the window is in the background, where the cursor hides.
     pub(super) fn keep_blinking(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let focused = self.focus_handle.is_focused(window) && window.is_window_active();
         let seen = Some((self.selected_range.clone(), self.content.clone(), focused));

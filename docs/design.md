@@ -206,14 +206,15 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   closes it too, and so does focus going elsewhere. Supporting text under the highlight
   is `text_secondary_on_surface`.
 - **Text fields** look like a place to type before they're focused: `field_background`
-  fill, a `border` hairline, `CONTROL_RADIUS`; focus turns the hairline `focus_ring`. That
-  is text primary at 48% (dark) and 53% (light), the faintest that keeps 3:1 against the
-  field and the sidebar over a white and a black desktop: measured 3.03 / 3.02. The
-  cursor and selection span the font's ascent to descent (15 pt at `TEXT_BODY`), not the
-  21 pt line. The cursor blinks, 530 ms on and 530 off, while its field has focus in
-  the active window; each move or edit shows it solid and starts the blink over, and in
-  a window in the background it stays on, still. A button inside a field, such as Clear, shows `ICON_SIZE` but takes clicks
-  over `FIELD_TARGET_SIZE` (24).
+  fill, a `border` hairline, `CONTROL_RADIUS`; focus turns the hairline `focus_ring`.
+  That is text primary at 48% (dark) and 53% (light), the faintest that keeps 3:1
+  against the field and the sidebar over a white and a black desktop: measured 3.03 /
+  3.02. The cursor and selection span the font's ascent to descent (15 pt at
+  `TEXT_BODY`), not the 21 pt line. The cursor blinks, 530 ms on and 530 off, while its
+  field has focus in the active window; each move or edit shows it solid and starts the
+  blink over, and in a window in the background it hides, as the system's fields do.
+  Every field is one `TextInput` with this rhythm. A button inside a field, such as
+  Clear, shows `ICON_SIZE` but takes clicks over `FIELD_TARGET_SIZE` (24).
 - **Key caps** show a shortcut beside a button's label or in a hint: `KEY_CAP_SIZE` (20)
   high and at least as wide, `key_background` fill with no hairline, `SPACE_1` corners,
   the key in `text_secondary`. Return is an icon, other keys text (⌘, `esc`). Inside a
