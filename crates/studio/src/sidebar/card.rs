@@ -1,26 +1,24 @@
-//! A session row: a card of three lines. Its project's badge, name and how long
-//! ago it was active; its title; then where it runs, the project's branch, or
-//! its folder outside git. The badge's hue and initials tell projects apart at a
-//! glance, and two projects of the same name by their names.
+//! A session row: one line of its project's badge, its title and how long ago
+//! it was active. The badge's hue and initials tell projects apart at a
+//! glance.
 
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use gpui::{
-    AnyElement, ClickEvent, Context, FontWeight, IntoElement, ParentElement, SharedString, Styled,
-    Task, div, prelude::*, px, svg,
+    AnyElement, ClickEvent, Context, FontWeight, Hsla, IntoElement, ParentElement, SharedString,
+    Styled, Task, div, prelude::*,
 };
 use theme::{
-    BADGE_SIZE, BADGE_TEXT, CARD_LINE, CARD_LINE_GAP, CARD_TITLE_LINE, ICON_SIZE_SMALL, ROW_GAP,
-    SESSION_ROW_HEIGHT, SPACE_1, SPACE_2, TEXT_SMALL, Theme,
+    BADGE_SIZE, BADGE_TEXT, CONTROL_RADIUS, ROW_GAP, ROW_HEIGHT, SPACE_1, SPACE_2, TEXT_CAPTION,
+    Theme,
 };
 use workspace::{Head, Project, ProjectId, Session, SessionId, Timestamp, compact_age};
 
-use super::Sidebar;
-use crate::assets::Icon;
+use super::{Sidebar, fade::Key};
 
 /// What a session row shows, read from the workspace when it changes rather
 /// than on every frame.
@@ -34,43 +32,20 @@ pub(super) struct Row {
     pub project: ProjectFace,
 }
 
-/// A project as its sessions' cards show it, worked out once per refresh and
-/// shared by its cards.
+/// A project as its sessions' rows show it, worked out once per refresh and
+/// shared by its rows.
 #[derive(Clone)]
 pub(super) struct ProjectFace {
-    pub name: SharedString,
-    /// The name is the end of the project's path ("north/web"), telling it
-    /// apart from another project of the same name, so it is cut at its start.
-    pub name_is_path: bool,
     /// The badge's initials and hue.
     pub initials: SharedString,
     pub hue: usize,
-    pub place: Place,
-}
-
-/// Where a project's sessions run.
-#[derive(Clone)]
-pub(super) enum Place {
-    /// The branch its checkout is on, or the commit when on none; cut in the
-    /// middle, keeping its prefix and its end.
-    Head(SharedString),
-    /// Its folder, outside git, with the home folder as `~`; cut at its
-    /// start, keeping the folder's own name.
-    Folder(SharedString),
 }
 
 impl ProjectFace {
-    pub fn new(project: &Project, name: String, head: Option<&Head>) -> Self {
-        let place = match head {
-            Some(Head::Branch(name) | Head::Detached(name)) => Place::Head(name.clone().into()),
-            None => Place::Folder(workspace::home_relative(&project.path).into()),
-        };
+    pub fn new(project: &Project) -> Self {
         Self {
             initials: initials(&project.title).into(),
             hue: hue(&project.path),
-            name_is_path: name != project.title,
-            name: name.into(),
-            place,
         }
     }
 
@@ -173,7 +148,7 @@ impl Sidebar {
         cx.notify();
     }
 
-    /// Reads every project's head off the UI thread; the cards redraw if one
+    /// Reads every project's head off the UI thread; the composer redraws if one
     /// changed. Runs when projects come and go, when the window comes to
     /// front, and when the ages tick, so a branch switched elsewhere shows.
     pub fn refresh_heads(&mut self, cx: &mut Context<Self>) {
@@ -184,7 +159,7 @@ impl Sidebar {
         self.heads_task = self.take_heads(read, cx);
     }
 
-    /// Hands the store the heads `read` finds once it does; the cards redraw
+    /// Hands the store the heads `read` finds once it does; the composer redraws
     /// if one changed.
     fn take_heads(
         &mut self,
@@ -203,66 +178,42 @@ impl Sidebar {
         })
     }
 
-    /// The card for row `index`. Its slot spans the list, `ROW_GAP` taller than
-    /// the card, and tracks the pointer for the hover surface; the surfaces
-    /// themselves are the list's.
-    pub(super) fn render_session_row(&self, index: usize, cx: &mut Context<Self>) -> AnyElement {
+    /// The row at `index`, `ROW_GAP` over the next. The selected row and the
+    /// one under the pointer or the search highlight take their wash and
+    /// `text_primary`, and their age `text_secondary`, which keeps its
+    /// contrast there.
+    pub(super) fn render_session_row(
+        &mut self,
+        index: usize,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let colors = Theme::of(cx).colors;
         let slot = div()
             .w_full()
-            .h(SESSION_ROW_HEIGHT + ROW_GAP)
-            .px(SPACE_2)
-            .flex()
-            .items_center();
+            .h(ROW_HEIGHT + ROW_GAP)
+            .pb(ROW_GAP)
+            .px(SPACE_2);
         let Some(row) = self.rows.get(index) else {
             return slot.into_any_element();
         };
         let id = row.id;
-        let now = std::time::Instant::now();
-        let shift = self.shifts.offset(id, now);
-        let opacity = self.shifts.opacity(id, now);
-        let face = &row.project;
-        let badge = colors.badges[face.hue % colors.badges.len()];
-        let truncated = || div().overflow_hidden().whitespace_nowrap().text_ellipsis();
-        // On a surface, the supporting lines take the color that keeps their
-        // contrast there; the selection and the hover redraw the card anyway.
-        let on_surface = self.drawn_selection == Some(id) || self.hover_target() == Some(index);
-        let secondary = if on_surface {
-            colors.text_secondary_on_surface
+        let selected = self.drawn_selection == Some(id);
+        let hovered = self.hover_target() == Some(index);
+        let target = if selected {
+            colors.row_selected
+        } else if hovered {
+            colors.hover
         } else {
-            colors.text_secondary
+            Hsla::transparent_black()
         };
-        let (place_icon, place) = match &face.place {
-            Place::Head(name) => (
-                Icon::GitBranch,
-                truncated().text_ellipsis_middle().child(name.clone()),
-            ),
-            Place::Folder(path) => (
-                Icon::Folder,
-                truncated().text_ellipsis_start().child(path.clone()),
-            ),
-        };
-        // The badge and the place's icon share a column, so the project's name
-        // and the place line up after them.
-        let line = |lead: AnyElement| {
-            div()
-                .h(CARD_LINE)
-                .flex()
-                .items_center()
-                .gap(SPACE_2)
-                .text_size(TEXT_SMALL)
-                .line_height(CARD_LINE)
-                .text_color(secondary)
-                .child(
-                    div()
-                        .size(BADGE_SIZE)
-                        .flex_none()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(lead),
-                )
-        };
+        let badge = colors.badges[row.project.hue % colors.badges.len()];
+        let (title, initials, age) = (
+            row.title.clone(),
+            row.project.initials.clone(),
+            row.age.clone(),
+        );
+        let fill = self.fills.at(Key::Session(id), target, Instant::now());
+        let on_surface = selected || hovered;
         slot.id(("session-slot", id.0))
             .on_hover(cx.listener(move |sidebar, hovered: &bool, _, cx| {
                 sidebar.hover_row(index, *hovered, cx)
@@ -270,63 +221,55 @@ impl Sidebar {
             .child(
                 div()
                     .id(("session", id.0))
-                    .flex_1()
-                    .min_w_0()
-                    .h(SESSION_ROW_HEIGHT)
-                    .p(SPACE_2)
+                    .h(ROW_HEIGHT)
+                    .px(SPACE_2)
                     .flex()
-                    .flex_col()
-                    // Mid-glide, the card is drawn off its slot, which keeps the
-                    // pointer's place; see `shift`.
-                    .when(shift != 0., |card| card.relative().top(px(shift)))
-                    .when(opacity < 1., |card| card.opacity(opacity))
+                    .items_center()
+                    .gap(SPACE_2)
+                    .rounded(CONTROL_RADIUS)
+                    .bg(fill)
                     .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
                         sidebar.open_session(id, cx)
                     }))
                     .child(
-                        line(
-                            div()
-                                .size(BADGE_SIZE)
-                                .rounded(SPACE_1)
-                                .bg(badge.fill)
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .text_size(BADGE_TEXT)
-                                .line_height(BADGE_SIZE)
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(badge.text)
-                                .child(face.initials.clone())
-                                .into_any_element(),
-                        )
-                        .child(
-                            truncated()
-                                .when(face.name_is_path, |name| name.text_ellipsis_start())
-                                .flex_1()
-                                .min_w_0()
-                                .child(face.name.clone()),
-                        )
-                        .child(div().flex_none().child(row.age.clone())),
+                        div()
+                            .size(BADGE_SIZE)
+                            .flex_none()
+                            .rounded(SPACE_1)
+                            .bg(badge.fill)
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .text_size(BADGE_TEXT)
+                            .line_height(BADGE_SIZE)
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(badge.text)
+                            .child(initials),
                     )
                     .child(
-                        truncated()
-                            .mt(SPACE_1)
-                            .h(CARD_TITLE_LINE)
-                            .line_height(CARD_TITLE_LINE)
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(colors.text_primary)
-                            .child(row.title.clone()),
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .whitespace_nowrap()
+                            .text_ellipsis()
+                            .text_color(if on_surface {
+                                colors.text_primary
+                            } else {
+                                colors.text_secondary
+                            })
+                            .child(title),
                     )
                     .child(
-                        line(
-                            svg()
-                                .path(place_icon.path())
-                                .size(ICON_SIZE_SMALL)
-                                .text_color(secondary)
-                                .into_any_element(),
-                        )
-                        .mt(CARD_LINE_GAP)
-                        .child(place.flex_1().min_w_0()),
+                        div()
+                            .flex_none()
+                            .text_size(TEXT_CAPTION)
+                            .text_color(if on_surface {
+                                colors.text_secondary
+                            } else {
+                                colors.text_tertiary
+                            })
+                            .child(age),
                     ),
             )
             .into_any_element()

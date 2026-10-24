@@ -4,40 +4,40 @@ The sidebar under the top row, on the glass: the header, the session list and th
 footer (`crates/studio/src/sidebar/`). The materials, colors, rows and motion it uses
 are in [design.md](design.md).
 
-- **The sidebar header** is three parts: the search field across the sidebar, flush with
-  the top; then the pages, Notes, Design and Routines, as rows with their icon, `SPACE_2`
-  under it, the selection's surface under the one on screen; then the title "Sessions" in
-  medium-weight `text_primary` at the leading edge, lined up with the sessions' titles,
-  with filter and sort, Add project and New session at the trailing edge. The title and
-  the filter show once there is a project. The sort and the filter are saved. A filter to
-  one project keeps the filter button on `hover`, and New session then starts the session
-  in that project, its tooltip naming it ("New session in web"); the shortcut starts it
-  in the project on screen.
-- **Search**: `Cmd-K` (`Ctrl-K` elsewhere) puts the cursor in the search field, its text
-  selected, opening the sidebar first if it is closed and closing any open menu; it does
-  nothing while a palette is open over the window. The field shows the shortcut as a key
-  cap at its trailing edge while it is focused or under the pointer and empty, so at rest
-  the placeholder has it to itself. Enter opens the result the hover surface marks;
-  Enter, and Escape on an empty search, give focus back to where `Cmd-K` took it from,
-  else to the window, and so does closing the sidebar: typing never goes to a field out
-  of sight.
+- **The sidebar header** is two parts. First New session and the pages, Notes, Design
+  and Routines, as rows of `ROW_HEIGHT` `ROW_GAP` apart: an `ICON_SIZE_ROW` icon and a
+  medium-weight title, both `text_secondary` at rest and `text_primary` on the wash of
+  the row on screen or under the pointer. New session is on screen while a draft is,
+  and shows its shortcut (⌘N) as a key cap under the pointer; it starts the session in
+  the project the list is filtered to, else where the shortcut would. Before the first
+  project it stays at 40% with a tooltip saying why. Then, `SPACE_3` lower, the title
+  "Sessions" in medium-weight `TEXT_SMALL` `text_tertiary`, with Search and the
+  sessions' menu at its trailing edge.
+- **The sessions' menu** (⋯) holds Add project, then Sort and Project, which open
+  beside it with their choices (Last activity or Created; All projects or one), each
+  naming its current one. The sort and the filter are saved. A filter to one project
+  keeps the menu button on `hover`.
+- **Search**: the Search button or `Cmd-K` (`Ctrl-K` elsewhere) shows the search field
+  under the title and puts the cursor in it, its text selected, opening the sidebar first
+  if it is closed and closing any open menu; `Cmd-K` does nothing while a palette is open
+  over the window. The field shows the shortcut as a key cap at its trailing edge while
+  it is focused or under the pointer and empty. Enter opens the result the hover marks;
+  Enter, and Escape on an empty search, put the field away and give focus back to where
+  it was taken from, else to the window, and so does closing the sidebar: typing never
+  goes to a field out of sight. Focus leaving an empty field puts it away too.
 - **Sessions** are one list, newest first under the sort. Projects are not a level of the
-  list: the filter narrows it to one. Each session is a card, `SESSION_ROW_HEIGHT` (72)
-  in its slot, of three lines in `SPACE_2` padding (8 + 16 + 4 + 18 + 2 + 16 + 8,
-  `CARD_LINE`, `CARD_TITLE_LINE` and `CARD_LINE_GAP`): the project's badge, its name and
-  how long ago the session was active ("now", "5m", "3h", "2d", "4w", "1y") in
-  `TEXT_SMALL` `text_secondary`; the title in medium-weight `text_primary`; then where it
-  runs, the branch (or the commit) its project's checkout is on, else its folder, `~` for
-  home. The badge is `BADGE_SIZE` (16) with `SPACE_1` corners, the project's initials
-  (the first letters of its first two words: arcada.next is AN, oʻquv is OQ) in semibold
-  `BADGE_TEXT` (9), in the project's hue, which comes from its folder and so stays across
-  launches. The badge and the branch icon share the pages' icon column, and the project's
-  name and the branch the pages' title column. On the hover or selection surface the
-  supporting lines turn `text_secondary_on_surface`, which keeps their contrast there.
-- **Branches and ages** are read off the UI thread: branches from the checkout's files (a
-  reftable checkout shows its folder) when projects come and go, when the window comes to
-  front and with the ages; at launch the window waits up to 50 ms for them, so its first
-  frame already shows them. Ages redraw when the first of them next reads differently,
+  list: the filter narrows it to one. Each session is a row: the project's badge, the
+  title, and how long ago the session was active ("now", "5m", "3h", "2d", "4w", "1y") in
+  `TEXT_CAPTION` `text_tertiary`. The title is `text_secondary`, and `text_primary` on
+  the wash of the selected row or the one under the pointer or the search highlight,
+  where the age turns `text_secondary`. The badge is `BADGE_SIZE` (16) with `SPACE_1`
+  corners, the project's initials (the first letters of its first two words:
+  arcada.next is AN, oʻquv is OQ) in semibold `BADGE_TEXT` (9), in the project's hue,
+  which comes from its folder and so stays across launches.
+- **Branches and ages** are read off the UI thread: branches, which the composer shows,
+  from the checkout's files when projects come and go, when the window comes to front
+  and with the ages; at launch the window waits up to 50 ms for them, so its first frame
+  already shows them. Ages redraw when the first of them next reads differently,
   and at least once a minute and when the window comes to front, since the timer stops
   while the Mac sleeps.
 - **Problems** show as a message under the sidebar header until dismissed: what failed and
@@ -51,47 +51,27 @@ are in [design.md](design.md).
   until its first message, and stays out of the list, search and the projects' order;
   New session in its project opens the same draft again.
 - **An empty list** ("No sessions yet", "No sessions in web yet" under a filter, "No
-  sessions match …") is one `text_secondary` line in the cards' title column, `SPACE_2`
-  under the header.
+  sessions match …") is one `text_secondary` line under the header.
 - **Titles** come from a session's first message, its first line that isn't blank, cut
   to 200 characters, unless the session has a title of its own. They show as one line:
   line breaks, tabs and runs of spaces read as one space,
-  and a blank title reads "Untitled session", in the cards and the tabs alike. Search
+  and a blank title reads "Untitled session", in the rows and the tabs alike. Search
   matches them ignoring case, е for ё, and a plain apostrophe for ʻ, ʼ and the curly
   ones.
-- **Names truncate** where the rest tells most: a title and a project's name at the end,
-  a name that is a path's end ("north/web", for two projects named web) and a folder at
-  the start, a branch in the middle.
-- **Before the first project** the sidebar stays blank under its header; the main area
+- **Names truncate** at the end: a session's title, a project's name in a menu.
+- **Before the first project** the list stays blank under the sessions' title; the main area
   says what a project is and offers "Add project", centered, unless a page is on screen.
-- **The sidebar footer** holds Usage, Pull requests and Settings at its trailing edge, their
-  bottom on the card's bottom edge. They are pages beside the listed ones: a click shows
-  the page's tab, opening it if it isn't open, and the button of the page on screen keeps
-  its `hover` surface. `Cmd-,` (`Ctrl-,` elsewhere) and the app menu's Settings… show
+- **The sidebar footer**, under a `border` hairline, holds Usage, Pull requests and
+  Settings at its trailing edge, their bottom on the card's bottom edge. They are pages
+  beside the listed ones: a click shows the page's tab, opening it if it isn't open, and
+  the button of the page on screen keeps its `hover` surface. `Cmd-,` (`Ctrl-,` elsewhere) and the app menu's Settings… show
   Settings.
 
 ## Motion
 
-- **Row surfaces glide.** Each list, the pages and the sessions, draws one selection
-  surface and one hover surface. The hover surface follows the pointer from row to row on
-  `HOVER_ENTER` (0.06 s, about 80 ms to settle), fades in where it first lands rather
-  than sliding in from where it last was (also after a long scroll, or from a row out of
-  view), and fades out on `HOVER_EXIT` (0.045 s) when the pointer leaves, the window
-  included (GPUI otherwise finds it again at its last place inside). While searching it
-  marks the result Enter opens, which arrows and the pointer move. It stays off the
-  selected row, which its own surface marks: the two washes together would take the row's
-  text under 4.5:1.
-- The selection surface glides to a newly chosen row on `SELECTION_ENTER` (0.12 s) and
-  fades on `SELECTION_EXIT` (0.09 s), as when a page takes the screen. It lands instead
-  of gliding when its list was replaced (Enter on a search result), when the old or the
-  new row is out of view, and while the sidebar is closed. A surface whose row moved
-  because the list changed, not the choice, takes its place at once, riding its card
-  while the cards glide. A session chosen elsewhere, a tab or a shortcut, scrolls into
-  view. A surface never slides from one list to the other.
-- **Cards glide when the list changes under them**, as when a new session lands on top or
-  the sort changes: each moves from where it was drawn to its new place on `ROW_SHIFT`
-  (0.14 s), one from more than 12 places away starting just past the view, and a new card
-  fades in once the card it takes the place of has mostly moved off. A change mid-glide
-  carries every card on from where it is. A search or a project filter replaces the list
-  at once, as do Reduce motion and a closed sidebar. A card whose new place is out of
-  view leaves at once: the list draws only the rows in view.
+- **Each row fades its own fill.** A row's wash fades in over `ROW_FADE` (100 ms) as it
+  is chosen or the pointer enters it, and out as the pointer leaves, so moving down the
+  list one row fades out as the next fades in; nothing slides from row to row. Its text
+  turns at once. A row drawn for the first time, a list a search or a filter replaced,
+  and Reduce motion show the fill at once.
+- A session chosen elsewhere, a tab or a shortcut, scrolls into view.

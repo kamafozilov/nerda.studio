@@ -20,30 +20,18 @@ const fn spring(response: f32, damping_ratio: f32) -> SpringConfig {
 
 /// A panel sliding in, such as the sidebar opening. Critically damped: a click
 /// carries no momentum to overshoot with.
-pub const PANEL_ENTER: SpringConfig = spring(0.3, 1.);
+pub const PANEL_ENTER: SpringConfig = spring(0.2, 1.);
 /// A panel sliding out: quicker than its entrance, since nothing new arrives.
-pub const PANEL_EXIT: SpringConfig = spring(0.25, 1.);
+pub const PANEL_EXIT: SpringConfig = spring(0.17, 1.);
 
 /// A tab's slot opening in the top row, or a dragged tab settling into its slot.
 pub const TAB_ENTER: SpringConfig = spring(0.25, 1.);
 /// A closed tab's slot collapsing before it leaves the row.
 pub const TAB_EXIT: SpringConfig = spring(0.2, 1.);
 
-/// The hover surface gliding to the row under the pointer, or fading in on the
-/// first row it enters: about 80 ms to settle, quick enough to keep up with a
-/// sweep down the list.
-pub const HOVER_ENTER: SpringConfig = spring(0.06, 1.);
-/// The hover surface fading out as the pointer leaves the list.
-pub const HOVER_EXIT: SpringConfig = spring(0.045, 1.);
-/// The selection surface gliding to a newly chosen row: about 160 ms, slower
-/// than the hover, since the eye follows the choice to where it lands.
-pub const SELECTION_ENTER: SpringConfig = spring(0.12, 1.);
-/// The selection surface fading out, as when a page takes the screen.
-pub const SELECTION_EXIT: SpringConfig = spring(0.09, 1.);
-
-/// Cards gliding to new places when the list changes under them, and a new card
-/// fading in: about 150 ms for a card's height.
-pub const ROW_SHIFT: SpringConfig = spring(0.14, 1.);
+/// A row's fill fading in or out under the pointer or the selection, and its
+/// quick, so a sweep down a list keeps up. The text turns at once.
+pub const ROW_FADE: Duration = Duration::from_millis(100);
 
 /// Settling tolerance for a 0-to-1 phase, a quarter of a pixel on the sidebar.
 pub const PHASE_EPSILON: f32 = 0.001;

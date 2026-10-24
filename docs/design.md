@@ -9,7 +9,7 @@ components read them through `Theme::of(cx)` and the constants in `theme`, never
 | Layer | What it is | Token |
 | --- | --- | --- |
 | Window base | The blurred desktop under a tint. The top row and the sidebar sit on it directly. | `window_background` |
-| Main area | A card raised over the base: `MAIN_RADIUS` (10) corners and a hairline, `MAIN_INSET` (6) clear of the window's right and bottom edges, and of its left while the sidebar is closed. | `panel_background`, `border` |
+| Main area | A card raised over the base: `MAIN_RADIUS` (12) corners and a hairline, `MAIN_INSET` (6) clear of the window's right and bottom edges, and of its left while the sidebar is closed. | `panel_background`, `border` |
 
 - **Glass** on macOS and Windows: the window uses `WindowBackgroundAppearance::Blurred`
   and the base tint is translucent. Measured on macOS 27, GPUI's blur
@@ -35,25 +35,25 @@ Colors are roles: a token names its job, and a component uses it only in that jo
 that is missing gets a new token, computed and measured as below, never a borrowed one.
 
 Every value comes from OKLCH with one cool neutral hue (h 265, C 0.006; text C 0.009), in
-`crates/theme/src/palette.rs` as `0xRRGGBBAA`, except the dark base and tabs, which the
-owner picked as near-neutral grays (`0a0a0b`, `131313`, `202021`). Dark appearance has
-no glass: its base is opaque, so the sidebar and the tabs read the same over any
-desktop. Light keeps its glass.
+`crates/theme/src/palette.rs` as `0xRRGGBBAA`, except dark, which is neutral: grays and
+text with no hue, washes of white. Dark appearance has no glass: its base is opaque, so
+the sidebar and the tabs read the same over any desktop. Light keeps its glass.
 
 | Role | Dark | Light | Use |
 | --- | --- | --- | --- |
 | `window_background` (glass) | `0a0a0b`, opaque | `f3f5f9` at 81% (`ce`) | Window base, sidebar |
 | `window_background` (solid) | `0a0a0b` | `f3f5f9` | Window base without blur |
-| `panel_background` | `141415` at 72% (`111112` on the base) | `fbfdff` at 72% | Main area over the base |
+| `panel_background` | `131314` | `fbfdff` at 72% | Main area over the base |
 | `tab_background` | `131313` | text primary at 4% | A tab that isn't selected |
 | `composer_background` | `202021` | `ffffff` | The composer's box and the project pill |
 | `popover_background` | `202021` | `fbfdff` | Menus, palettes, dialogs; opaque |
 | `tab_selected` | `202021`, under a `border` hairline | text primary at 10% | The selected tab |
-| `border` | text primary at 10% | text primary at 10% | Sidebar edge, dividers |
-| `hover` | text primary at 6% | text primary at 6% | Hovered control |
-| `text_primary` | `eff2f8` (L 0.96) | `191b1f` (L 0.22) | Titles, body, hovered icons |
-| `text_secondary` | `aeb1b7` (L 0.76) | `505358` (L 0.44) | Supporting text, icons at rest |
-| `text_secondary_on_surface` | `c7cad0` (L 0.837) | `45474c` (L 0.399) | Supporting text on a row's `hover` or `row_selected` surface |
+| `border` | white at 8% | text primary at 10% | Sidebar edge, dividers |
+| `hover`, `row_selected` | white at 8%, both | text primary at 6%, 10% | Hovered control or row; the selected row |
+| `text_primary` | `f5f5f5` (L 0.97) | `191b1f` (L 0.22) | Titles, body, hovered icons |
+| `text_secondary` | `a0a0a1` (L 0.71) | `505358` (L 0.44) | Supporting text, icons at rest |
+| `text_secondary_on_surface` | `a0a0a1` | `45474c` (L 0.399) | Supporting text on a row's `hover` or `row_selected` surface |
+| `text_tertiary` | `797979` (L 0.57), 4.55 on the base | `505358` | Section titles, a row's age |
 | `scrim` | `151619` at 64% | `fbfdff` at 60% | Dims the window under a dialog; nothing is read on it |
 | `key_background` | text primary at 10% | text primary at 10% | Key cap fill; `text_secondary` on it keeps 4.92 / 5.51 even under `hover` |
 | `danger` | `d12921` | `d12921` | Fill of a button that can't be taken back, such as Quit; `text_on_danger` (white) on it keeps 5.18 |
@@ -79,9 +79,9 @@ over a white and a black desktop (dark / light):
 
 The composite was checked on screen against this arithmetic: over a white backdrop the
 dark sidebar renders 67, 68, 70 (predicted 67), the light one over black 196, 198, 201
-(predicted 196). Changing a tint or a text color means recomputing this table. There is
-no tertiary text color: one light enough to look tertiary falls near 3:1 on the sidebar.
-Under a row's surface `text_secondary` falls short, so a row whose surface is drawn
+(predicted 196). Changing a tint or a text color means recomputing this table. Light
+has no lighter gray that keeps 4.5:1 on glass, so its `text_tertiary` is `text_secondary`;
+dark's falls under 4.5:1 on a row's surface, where such text turns `text_secondary`. Under a row's surface `text_secondary` falls short, so a row whose surface is drawn
 because of state (the selection, or the sidebar's hover, which redraws the row) puts its
 supporting text in `text_secondary_on_surface`, the faintest gray that keeps 4.5:1 on
 either surface over the worst desktop (4.51 / 4.50 with the wash under the text; 4.70 /
@@ -95,7 +95,7 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
 - The window has one top row, `HEADER_HEIGHT` (44), across the whole window on the glass:
   the macOS traffic lights, the sidebar toggle, Back and Forward, then the tabs over the
   card. Everything in it centers on it.
-- The sidebar is `SIDEBAR_WIDTH` (260), under the top row, and meets the card. `Cmd-B`
+- The sidebar is `SIDEBAR_WIDTH` (240), under the top row, and meets the card. `Cmd-B`
   (`Ctrl-B` elsewhere) or its toggle hides it: the toggle stays in place, Back and Forward
   ride the sidebar's edge, `SPACE_2` inside it in line with the sidebar's own trailing
   controls, and come to rest after the toggle.
@@ -140,14 +140,9 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   another, at once. A press hides it.
 - **Rows** are `ROW_HEIGHT` (28), spanning the list with `SPACE_2` sides and a rounded
   surface inside: `row_selected` under the selection, `hover` under the pointer or the
-  keyboard highlight. In the sidebar, where a selected row and a hovered one can be
-  neighbors, each row's slot is `ROW_GAP` (2) taller and centers the surface, so
-  neighboring surfaces stand 2 apart. A sidebar list draws one selection surface and one
-  hover surface, which glide from row to row (see Motion), rather than a fill per row;
-  the slot, gap included, tracks the pointer, so no gap is dead. In the session list the
-  surfaces are drawn over the rows, in their scrolled space: both washes are text
-  primary at a low alpha, so text primary under them reads as it was. Text truncates
-  with an ellipsis; secondary labels truncate first.
+  keyboard highlight. In the sidebar rows stand `ROW_GAP` (1) apart, so a selected row
+  and a hovered neighbor stay two shapes, and each row's fill fades on its own (see
+  Motion). Text truncates with an ellipsis; secondary labels truncate first.
 - GPUI shapes text before hover is known, so a `.hover()` style never changes a text
   color: it changes a fill or an icon. The sidebar's lists track the pointer in their own
   state and redraw, so a row there may change its text color under the pointer.
@@ -202,11 +197,12 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
 - **Closing the window** leaves the app running, as Mac apps do; a click on its Dock icon
   opens the window again on the same projects. Elsewhere closing it quits.
 - **Menus** are `popover_background` (opaque) with a hairline, a large shadow,
-  `MENU_RADIUS` (10: the items' `CONTROL_RADIUS` plus the `SPACE_1` between them and the
-  menu's outer edge, so the corners nest), at least `MENU_WIDTH` (220) wide, growing to
-  fit their widest line up to 320, and to 360 tall before they scroll
-  (`crates/studio/src/menu.rs`). Arrows move the highlight, as the pointer does; Enter or a
-  click picks. A window-wide backdrop under the menu takes the click that closes it, so
+  `MENU_RADIUS` (8), at least `MENU_WIDTH` (220) wide, growing to fit their widest line
+  up to 320, and to 360 tall before they scroll (`crates/studio/src/menu/`). Item icons are
+  `ICON_SIZE_ROW` (14) in `text_tertiary`; separators run edge to edge. Arrows move the
+  highlight, as the pointer does; Enter or a click picks. An item with a submenu names
+  its current choice and a chevron; the pointer resting on it, a click, Enter or the
+  right arrow opens the submenu beside it, and the left arrow goes back. A window-wide backdrop under the menu takes the click that closes it, so
   that click presses nothing else, the second press of a double-click excepted; Escape
   closes it too, and so does focus going elsewhere. Supporting text under the highlight
   is `text_secondary_on_surface`.
@@ -257,21 +253,20 @@ toggle pressed again mid-flight turns back from where it is, keeping its speed. 
   motion, so an action always looks the same. The motion never holds input: typing goes
   on while it plays.
 - **No overshoot** where nothing was thrown: damping ratio 1. Exits are quicker than
-  entrances: `PANEL_ENTER` responds in 0.3 s, `PANEL_EXIT` in 0.25 s.
+  entrances: `PANEL_ENTER` responds in 0.2 s, `PANEL_EXIT` in 0.17 s.
 - **Reduce motion** in the system settings snaps every animation to its end.
   `crates/studio/src/accessibility.rs` reads the setting on macOS and Windows when the
   window opens, comes to front or changes appearance, on each toggle and each change to
   the tabs, and hands it to GPUI, which does not read it itself; Linux has no one
-  setting. The cards' glide reads it as it starts.
+  setting. The sidebar rows' fills read it as they start.
 - **The sidebar** animates its width and fades with it. Its contents stay pinned to the
   window's left edge while the sidebar's edge sweeps over them, so nothing passes under the
   traffic lights or the toggle, which never move. On the same spring the card's left inset
   grows and Back and Forward ride the sidebar's edge. The tabs keep the width they have
   beside the open sidebar, the narrower of their two, so their titles truncate once, not
   on every frame, and no tab or New session passes the window's edge.
-- **The sidebar's lists** glide their selection and hover surfaces from row to row, and
-  their cards to new places when the list changes; [sidebar.md](sidebar.md) has the rules
-  and the springs.
+- **The sidebar's rows** fade their own fills over `ROW_FADE` (100 ms); nothing slides
+  from row to row ([sidebar.md](sidebar.md)).
 - **Tabs**: an opened tab's slot grows from nothing on `TAB_ENTER` (0.25 s) and a closed
   one collapses in place on `TAB_EXIT` (0.2 s) before it leaves, so its neighbors give way
   gradually; the tab inside keeps its settled width and the slot's edge cuts it. Reopened
@@ -279,9 +274,7 @@ toggle pressed again mid-flight turns back from where it is, keeping its speed. 
   glide into their slots on `TAB_ENTER`. Switching projects replaces the row at once: it
   is not a close.
 
-Measured on macOS at 120 Hz: the sidebar closes to 90% in 159 ms and settles in 374 ms;
-it opens to 90% in 204 ms. Reversed mid-flight, it carries on for two frames and turns
-back without a jump. A tab opens to 90% in about 160 ms and settles in 350 ms; a closed
+Measured on macOS at 120 Hz: a tab opens to 90% in about 160 ms and settles in 350 ms; a closed
 one is gone in 200 ms (debug build).
 
 ## Window chrome

@@ -39,6 +39,8 @@ impl Sidebar {
         // The buttons' bottom sits on the card's bottom edge, `MAIN_INSET` up.
         div()
             .flex_none()
+            .border_t_1()
+            .border_color(colors.border)
             .px(SPACE_2)
             .pt(SPACE_2)
             .pb(MAIN_INSET)

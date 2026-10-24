@@ -1,5 +1,6 @@
-//! The filter and sort menu: how sessions are ordered and which project they come
-//! from.
+//! The sessions' menu, from the button by their title: add a project, how
+//! sessions are ordered, and which project they come from. The order and the
+//! project open beside the menu, each naming its current choice.
 
 use gpui::{
     Anchor, ClickEvent, Context, IntoElement, ParentElement, SharedString, Styled, Window, div,
@@ -8,7 +9,7 @@ use gpui::{
 use theme::Theme;
 use workspace::{ProjectScope, SessionSort, Workspace};
 
-use super::{Sidebar, header::icon_button};
+use super::{Sidebar, header::row_button};
 use crate::{
     assets::Icon,
     menu::{Entry, Item, Placement},
@@ -28,18 +29,17 @@ impl Sidebar {
         let menu = self.menu.render(
             "menu",
             self.menu_entries(cx),
-            Placement::Hang(Anchor::TopRight),
+            Placement::Hang(Anchor::TopLeft),
             window,
             cx,
         );
         div()
             .relative()
             .flex_none()
-            .child(icon_button(
+            .child(row_button(
                 "menu",
-                Icon::Sort,
-                "Sort and filter sessions",
-                true,
+                Icon::More,
+                "Sessions menu",
                 colors,
                 |button| {
                     button
@@ -49,52 +49,73 @@ impl Sidebar {
                         }))
                 },
             ))
-            // The menu hangs from the button's bottom-right corner.
-            .children(menu.map(|menu| div().absolute().top_full().right_0().child(menu)))
+            // The menu hangs from the button's bottom-left corner, out over the card.
+            .children(menu.map(|menu| div().absolute().top_full().left_0().child(menu)))
     }
 
     fn menu_entries(&self, cx: &mut Context<Self>) -> Vec<Entry<Self>> {
+        let colors = Theme::of(cx).colors;
         let workspace = self.store.read(cx).workspace();
         let sort = workspace.sort();
         let scope = workspace.scope();
-        let mut entries = vec![
-            Entry::Section("Sort by".into()),
-            choice(
-                "sort-activity",
-                "Last activity",
-                sort == SessionSort::LastActivity,
-                |workspace| workspace.set_sort(SessionSort::LastActivity),
-            ),
-            choice(
-                "sort-created",
-                "Created",
-                sort == SessionSort::Created,
-                |workspace| workspace.set_sort(SessionSort::Created),
-            ),
-            Entry::Separator,
-            Entry::Section("Project".into()),
-            choice(
-                "scope-all",
-                "All projects",
-                scope == ProjectScope::All,
-                |workspace| workspace.set_scope(ProjectScope::All),
-            ),
+        let sorts = [
+            ("sort-activity", "Last activity", SessionSort::LastActivity),
+            ("sort-created", "Created", SessionSort::Created),
         ];
+        let sort_name = sorts
+            .iter()
+            .find(|(_, _, each)| *each == sort)
+            .map_or("", |(_, name, _)| *name);
+        let sort_entries = sorts
+            .into_iter()
+            .map(|(id, name, each)| {
+                choice(id, name, sort == each, move |workspace| {
+                    workspace.set_sort(each)
+                })
+            })
+            .collect();
+        let mut project_entries = vec![choice(
+            "scope-all",
+            "All projects",
+            scope == ProjectScope::All,
+            |workspace| workspace.set_scope(ProjectScope::All),
+        )];
         for project in workspace.projects() {
             let id = project.id;
             let name = SharedString::from(workspace.display_name(id).unwrap_or_default());
-            entries.push(choice(
+            project_entries.push(choice(
                 ("scope", id.0),
                 name,
                 scope == ProjectScope::Project(id),
                 move |workspace| workspace.set_scope(ProjectScope::Project(id)),
             ));
         }
-        entries
+        let project_name: SharedString = match scope {
+            ProjectScope::All => "All".into(),
+            ProjectScope::Project(id) => workspace.display_name(id).unwrap_or_default().into(),
+        };
+        let muted = colors.text_tertiary;
+        vec![
+            Entry::Item(
+                Item::new("add-project", "Add project", |_, window, cx| {
+                    window.dispatch_action(Box::new(crate::shell::AddProject), cx)
+                })
+                .icon(Icon::FolderAdd, muted),
+            ),
+            Entry::Separator,
+            Entry::Item(
+                Item::submenu("sort", "Sort", sort_name, sort_entries).icon(Icon::Sort, muted),
+            ),
+            Entry::Item(
+                Item::submenu("project", "Project", project_name, project_entries)
+                    .icon(Icon::Folder, muted),
+            ),
+        ]
     }
 }
 
-/// A choice in the menu, checked while it applies: picking it applies it.
+/// A choice in a submenu, checked at its end while it applies: picking it
+/// applies it.
 fn choice(
     id: impl Into<gpui::ElementId>,
     label: impl Into<SharedString>,
@@ -107,6 +128,6 @@ fn choice(
                 store.update(cx, |workspace| choose(workspace))
             })
         })
-        .checked(checked),
+        .checked_at_end(checked),
     )
 }

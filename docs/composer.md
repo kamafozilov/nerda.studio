@@ -112,8 +112,7 @@ conversation over a docked composer are in [session.md](session.md).
     before the branch does.
   - At the trailing edge, the branch its checkout is on, or the commit, cut in the
     middle, at most 40% of the row, the whole of it in the tooltip. Outside git there is
-    no branch. It is the branch the sidebar's cards show, read as
-    [sidebar.md](sidebar.md) says.
+    no branch. It is read as [sidebar.md](sidebar.md) says.
 - **The project menu**, from the pill: downward from a draft, upward from a docked
   composer, 256 wide at least. It leads with a "Search projects" field, 36 tall over a
   hairline, its text starting in the items' icon column, which takes the focus and

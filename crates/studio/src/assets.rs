@@ -32,6 +32,8 @@ pub enum Icon {
     GitBranch,
     /// An attached image.
     Image,
+    /// Opens a menu of more actions.
+    More,
     NewSession,
     /// A new tab in the top row.
     NewTab,
@@ -78,6 +80,7 @@ impl Icon {
             Self::FolderUp => "icons/folder-upload.svg",
             Self::GitBranch => "icons/git-branch.svg",
             Self::Image => "icons/image-01.svg",
+            Self::More => "icons/more-horizontal.svg",
             Self::NewSession => "icons/pencil-edit-02.svg",
             Self::NewTab => "icons/add-01.svg",
             Self::Notes => "icons/note-01.svg",
@@ -169,6 +172,10 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/list-filter.svg",
         include_bytes!("../assets/icons/list-filter.svg"),
+    ),
+    (
+        "icons/more-horizontal.svg",
+        include_bytes!("../assets/icons/more-horizontal.svg"),
     ),
     (
         "icons/note-01.svg",

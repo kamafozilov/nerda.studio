@@ -1,15 +1,14 @@
-//! The header: the search field across the sidebar, then the pages, then the
-//! list's title, filter and sort, add project, new session.
+//! The header: New session and the pages, then the sessions' title with
+//! search and the list's menu, and the search field while it is open.
 
 use gpui::{
-    App, ClickEvent, Context, Div, Focusable, FontWeight, IntoElement, ParentElement, SharedString,
-    Stateful, Styled, Window, div, prelude::*, svg,
+    App, ClickEvent, Context, Div, Focusable, FontWeight, IntoElement, ParentElement, Pixels,
+    SharedString, Stateful, Styled, Window, div, prelude::*, svg,
 };
 use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, Colors, DISABLED_OPACITY, FIELD_TARGET_SIZE, HAIRLINE, ICON_SIZE,
-    ICON_SIZE_SMALL, SPACE_1, SPACE_2, Theme,
+    ICON_SIZE_ROW, ICON_SIZE_SMALL, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
 };
-use workspace::ProjectScope;
 
 use super::Sidebar;
 use crate::{
@@ -23,6 +22,30 @@ use crate::{
 pub(crate) fn icon_button(
     id: impl Into<SharedString>,
     icon: Icon,
+    label: impl Into<SharedString>,
+    enabled: bool,
+    colors: Colors,
+    build: impl FnOnce(Stateful<Div>) -> Stateful<Div>,
+) -> WithTooltip {
+    icon_button_sized(id, icon, ICON_SIZE, label, enabled, colors, build)
+}
+
+/// An icon button in the sidebar's section titles, its icon `ICON_SIZE_ROW`
+/// like the rows'.
+pub(super) fn row_button(
+    id: impl Into<SharedString>,
+    icon: Icon,
+    label: impl Into<SharedString>,
+    colors: Colors,
+    build: impl FnOnce(Stateful<Div>) -> Stateful<Div>,
+) -> WithTooltip {
+    icon_button_sized(id, icon, ICON_SIZE_ROW, label, true, colors, build)
+}
+
+fn icon_button_sized(
+    id: impl Into<SharedString>,
+    icon: Icon,
+    icon_size: Pixels,
     label: impl Into<SharedString>,
     enabled: bool,
     colors: Colors,
@@ -46,7 +69,7 @@ pub(crate) fn icon_button(
             // An svg takes no color from its parent, so the hover color is its own.
             svg()
                 .path(icon.path())
-                .size(ICON_SIZE)
+                .size(icon_size)
                 .text_color(colors.text_secondary)
                 .when(enabled, |icon| {
                     icon.group_hover(id, |icon| icon.text_color(colors.text_primary))
@@ -95,96 +118,67 @@ pub(super) fn close_button(
 }
 
 impl Sidebar {
+    /// New session and the pages, then the sessions' title with search and
+    /// the list's menu, then the search field while it is open.
     pub(super) fn render_header(
         &mut self,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let workspace = self.store.read(cx).workspace();
-        let has_projects = workspace.has_projects();
-        // Filtered to one project, the button starts the session there, and says so.
-        let new_session_label: SharedString = match workspace.scope() {
-            _ if !has_projects => "New session: add a project first".into(),
-            ProjectScope::Project(project) => match workspace.display_name(project) {
-                Some(name) => format!("New session in {name}").into(),
-                None => "New session".into(),
-            },
-            ProjectScope::All if cfg!(target_os = "macos") => "New session (⌘N)".into(),
-            ProjectScope::All => "New session (Ctrl+N)".into(),
+        let colors = Theme::of(cx).colors;
+        let search_label = if cfg!(target_os = "macos") {
+            "Search sessions (⌘K)"
+        } else {
+            "Search sessions (Ctrl+K)"
         };
-        // Search first, across the sidebar; then the pages; under them, the list's
-        // title at the leading edge and the actions on it at the trailing edge.
-        div()
+        let search_open = self.search_open;
+        let title = div()
             .mx(SPACE_2)
+            .mt(SPACE_3)
+            .h(CONTROL_SIZE)
             .flex()
-            .flex_col()
-            .gap(SPACE_2)
-            .child(self.render_search_field(window, cx))
-            .child(self.render_pages(cx))
+            .items_center()
             .child(
                 div()
-                    .h(CONTROL_SIZE)
-                    .flex()
-                    .items_center()
-                    .gap(SPACE_1)
-                    // The title and the filter show only once there is something to
-                    // list or filter.
-                    .when(has_projects, |row| {
-                        row.child(self.render_title(cx))
-                            .child(div().flex_1())
-                            .child(self.render_menu_button(window, cx))
-                    })
-                    .when(!has_projects, |row| row.justify_end())
-                    .child(self.render_action_buttons(has_projects, new_session_label, cx)),
+                    .flex_1()
+                    .min_w_0()
+                    .px(SPACE_2)
+                    .text_size(TEXT_SMALL)
+                    .font_weight(FontWeight::MEDIUM)
+                    .text_color(colors.text_tertiary)
+                    .child("Sessions"),
             )
-    }
-
-    /// Names the list; its text lines up with the sessions' titles below.
-    fn render_title(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .flex_none()
-            .pl(SPACE_2)
-            .font_weight(FontWeight::MEDIUM)
-            .text_color(Theme::of(cx).colors.text_primary)
-            .child("Sessions")
-    }
-
-    fn render_action_buttons(
-        &self,
-        has_projects: bool,
-        new_session_label: SharedString,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        let colors = Theme::of(cx).colors;
+            .child(row_button(
+                "search",
+                Icon::Search,
+                search_label,
+                colors,
+                |button| {
+                    button
+                        .when(search_open, |button| button.bg(colors.hover))
+                        .on_click(cx.listener(|sidebar, _: &ClickEvent, window, cx| {
+                            if sidebar.search_open {
+                                sidebar.close_search(window, cx);
+                            } else {
+                                sidebar.focus_search(window, cx);
+                            }
+                        }))
+                },
+            ))
+            .child(self.render_menu_button(window, cx));
         div()
             .flex()
-            .gap(SPACE_1)
-            .child(icon_button(
-                "add-project",
-                Icon::FolderAdd,
-                "Add project",
-                true,
-                colors,
-                |button| {
-                    button.on_click(|_, window, cx| {
-                        window.dispatch_action(Box::new(crate::shell::AddProject), cx)
-                    })
-                },
-            ))
-            .child(icon_button(
-                "new-session",
-                Icon::NewSession,
-                new_session_label,
-                has_projects,
-                colors,
-                |button| {
-                    button.when(has_projects, |button| {
-                        button.on_click(cx.listener(|sidebar, _: &ClickEvent, _, cx| {
-                            sidebar.new_session_in_view(cx)
-                        }))
-                    })
-                },
-            ))
+            .flex_col()
+            .child(self.render_nav(window, cx))
+            .child(title)
+            .when(search_open, |header| {
+                header.child(
+                    div()
+                        .mx(SPACE_2)
+                        .mt(SPACE_1)
+                        .child(self.render_search_field(window, cx)),
+                )
+            })
     }
 
     fn render_search_field(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -223,7 +217,7 @@ impl Sidebar {
             .child(
                 svg()
                     .path(Icon::Search.path())
-                    .size(ICON_SIZE)
+                    .size(ICON_SIZE_ROW)
                     .flex_none()
                     .text_color(colors.text_secondary),
             )

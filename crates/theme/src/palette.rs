@@ -8,6 +8,9 @@
 //! `text_secondary` at 4.5:1 over the worst desktop for each appearance (white
 //! behind dark, black behind light). macOS adds no tint of its own (measured), so
 //! nothing else holds the contrast.
+//!
+//! Dark is opaque and neutral: its grays and text carry no hue, and hover and
+//! selection are the same 8% white wash, so a hovered row reads as a chosen one.
 
 pub(crate) struct Palette {
     pub window_glass: u32,
@@ -31,6 +34,7 @@ pub(crate) struct Palette {
     pub text_primary: u32,
     pub text_secondary: u32,
     pub text_secondary_on_surface: u32,
+    pub text_tertiary: u32,
     pub danger: u32,
     pub text_on_danger: u32,
     /// Project badges as (fill, initials), one per hue: red, orange, yellow,
@@ -43,25 +47,26 @@ pub(crate) struct Palette {
 pub(crate) const DARK: Palette = Palette {
     window_glass: 0x0a0a0bff,
     window_solid: 0x0a0a0bff,
-    panel: 0x141415b8,
-    border: 0xeff2f81a,
-    hover: 0xeff2f80f,
-    row_selected: 0xeff2f81a,
-    text_selection: 0xeff2f833,
-    field: 0xeff2f80f,
-    focus_ring: 0xeff2f87b,
+    panel: 0x131314ff,
+    border: 0xffffff14,
+    hover: 0xffffff14,
+    row_selected: 0xffffff14,
+    text_selection: 0xffffff33,
+    field: 0xffffff0f,
+    focus_ring: 0xffffff7b,
     popover: 0x202021ff,
     scrim: 0x151619a3,
-    key: 0xeff2f81a,
-    chip: 0xeff2f80f,
+    key: 0xffffff1a,
+    chip: 0xffffff0f,
     composer: 0x202021ff,
-    composer_focus: 0xeff2f838,
+    composer_focus: 0xffffff38,
     tab: 0x131313ff,
     tab_selected: 0x202021ff,
     claude: 0xd97757ff,
-    text_primary: 0xeff2f8ff,
-    text_secondary: 0xaeb1b7ff,
-    text_secondary_on_surface: 0xc7cad0ff,
+    text_primary: 0xf5f5f5ff,
+    text_secondary: 0xa0a0a1ff,
+    text_secondary_on_surface: 0xa0a0a1ff,
+    text_tertiary: 0x797979ff,
     danger: 0xd12921ff,
     text_on_danger: 0xffffffff,
     badges: [
@@ -98,6 +103,7 @@ pub(crate) const LIGHT: Palette = Palette {
     text_primary: 0x191b1fff,
     text_secondary: 0x505358ff,
     text_secondary_on_surface: 0x45474cff,
+    text_tertiary: 0x505358ff,
     danger: 0xd12921ff,
     text_on_danger: 0xffffffff,
     badges: [

@@ -6,13 +6,13 @@ use gpui::{Pixels, px};
 /// macOS traffic lights are centered on it.
 pub const HEADER_HEIGHT: Pixels = px(44.);
 /// Width of the sidebar.
-pub const SIDEBAR_WIDTH: Pixels = px(260.);
+pub const SIDEBAR_WIDTH: Pixels = px(240.);
 
 /// Gap between the main area's card and the window's edges; on the left only
 /// while the sidebar is closed, since the open sidebar meets the card.
 pub const MAIN_INSET: Pixels = px(6.);
 /// Corners of the main area's card.
-pub const MAIN_RADIUS: Pixels = px(10.);
+pub const MAIN_RADIUS: Pixels = px(12.);
 
 /// Widest a tab in the top row grows; tabs share the row below that.
 pub const TAB_MAX_WIDTH: Pixels = px(224.);
@@ -32,37 +32,28 @@ pub const CONTROL_RADIUS: Pixels = px(6.);
 pub const DISABLED_OPACITY: f32 = 0.4;
 /// Side of an icon inside a control.
 pub const ICON_SIZE: Pixels = px(16.);
-/// Side of an icon inside a field, such as its clear button, or on a session
-/// card's supporting line.
+/// Side of an icon in a sidebar row, a sidebar header's button or a menu
+/// item: a touch under `ICON_SIZE`, beside `TEXT_BODY`.
+pub const ICON_SIZE_ROW: Pixels = px(14.);
+/// Side of an icon inside a field, such as its clear button.
 pub const ICON_SIZE_SMALL: Pixels = px(12.);
 /// Hit area of a button inside a field, around its `ICON_SIZE` visible part: WCAG
 /// 2.5.8's 24 px minimum target.
 pub const FIELD_TARGET_SIZE: Pixels = px(24.);
 /// Height of one row in a list or menu; rows use `CONTROL_RADIUS` corners.
 pub const ROW_HEIGHT: Pixels = px(28.);
-/// Height of a session row in the sidebar, a card of three lines in `SPACE_2`
-/// padding: the project and the time, the title, then the branch, each line
-/// `CARD_LINE` but the title's `CARD_TITLE_LINE`, `SPACE_1` under the first
-/// and `CARD_LINE_GAP` over the last (8 + 16 + 4 + 18 + 2 + 16 + 8).
-pub const SESSION_ROW_HEIGHT: Pixels = px(72.);
-/// A supporting line of a session card, `TEXT_SMALL` text.
-pub const CARD_LINE: Pixels = px(16.);
-/// A session card's title line, `TEXT_BODY` text.
-pub const CARD_TITLE_LINE: Pixels = px(18.);
-/// Between a session card's title and the line under it.
-pub const CARD_LINE_GAP: Pixels = px(2.);
 /// Side of a project badge, the colored square with the project's initials.
 pub const BADGE_SIZE: Pixels = px(16.);
 /// The initials on a project badge: two capitals fit its 16 px with room.
 pub const BADGE_TEXT: Pixels = px(9.);
-/// Space between the surfaces of neighboring rows in the sidebar list, where a
-/// selected row and a hovered one can sit side by side and must stay two shapes.
-pub const ROW_GAP: Pixels = px(2.);
+/// Space between neighboring rows in the sidebar, where a selected row and a
+/// hovered one can sit side by side and must stay two shapes.
+pub const ROW_GAP: Pixels = px(1.);
 /// Width of a menu that opens from a control.
 pub const MENU_WIDTH: Pixels = px(220.);
-/// Corners of a menu: its items' `CONTROL_RADIUS` plus the `SPACE_1` between
-/// them and its outer edge, hairline included, so the corners nest.
-pub const MENU_RADIUS: Pixels = px(10.);
+/// Corners of a menu: a little rounder than its items' `CONTROL_RADIUS`,
+/// which stand `SPACE_1` in from its edge.
+pub const MENU_RADIUS: Pixels = px(8.);
 /// A hairline: the 1 px border of a field, a card or a menu. Content inside a
 /// bordered box is padded this much less, so it lines up with unbordered rows.
 pub const HAIRLINE: Pixels = px(1.);
@@ -111,8 +102,11 @@ pub const TEXT_HEADING: Pixels = px(18.);
 /// Body text and titles; macOS's standard control size.
 pub const TEXT_BODY: Pixels = px(13.);
 /// Supporting lines under or over a title, such as a session's project and
-/// branch; `text_secondary` keeps its contrast at any size.
+/// branch, or a sidebar section's title; `text_secondary` keeps its contrast
+/// at any size.
 pub const TEXT_SMALL: Pixels = px(12.);
+/// The smallest text: a session row's age.
+pub const TEXT_CAPTION: Pixels = px(11.);
 
 pub const SPACE_1: Pixels = px(4.);
 pub const SPACE_2: Pixels = px(8.);

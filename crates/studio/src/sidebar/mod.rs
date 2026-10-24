@@ -1,5 +1,5 @@
-//! The sidebar under the top row: the header (search, the pages, filter and
-//! sort, add project, new session) and the session list.
+//! The sidebar under the top row: the header (New session, the pages, the
+//! sessions' title with search and the list's menu) and the session list.
 //!
 //! Behavior: every session in one list, naming its project; the filter narrows it
 //! to one project, and a new session from the header goes there. Search filters
@@ -7,13 +7,12 @@
 //! a folder that is already a project opens that project instead.
 
 mod card;
+mod fade;
 mod footer;
-mod glide;
 mod header;
 mod list;
 mod menu;
-mod pages;
-mod shift;
+mod nav;
 
 pub(crate) use header::icon_button;
 
@@ -28,7 +27,7 @@ use workspace::{
     AddProjectError, AddedProject, Page, ProjectId, ProjectScope, SessionId, Timestamp,
 };
 
-use self::{card::Row, glide::Track, shift::Shifts};
+use self::{card::Row, fade::Fills};
 use crate::{
     menu::Menu,
     store::Store,
@@ -67,40 +66,36 @@ pub struct Sidebar {
     /// The workspace, the search or the clock moved on since `rows` was read.
     stale: bool,
     /// The search and the filter `rows` was read under: a change to either
-    /// replaces the list, while any other change moves the cards.
+    /// replaces the list.
     rows_read_for: (String, ProjectScope),
-    shifts: Shifts,
     /// The sessions on screen, in order, as the list draws them; read once
-    /// per change, not on every frame of a glide.
+    /// per change, not on every frame of a fade.
     rows: Vec<Row>,
+    /// Whether the search field shows under the sessions' title: from its
+    /// button or `Cmd-K` until it is dismissed, or loses focus empty.
+    search_open: bool,
     /// The row of the search result Enter opens; meaningful only while searching.
     highlighted: usize,
     /// A session to bring into view on the next render, after a change put it there.
     reveal: Option<SessionId>,
     /// The rows under the pointer.
     pointer: Hovered,
-    /// The rows the list drew last, to tell whether the hover surface's row is
-    /// still in view.
-    drawn_rows: std::ops::Range<usize>,
     /// The pointer left the window over the sidebar. GPUI then finds it over
     /// the row it left from, at its last place inside, so rows entered before
     /// the pointer moves again only wait here, and the next move inside the
     /// sidebar shows them.
     pointer_outside: bool,
     waiting: Hovered,
-    /// The selection as the list last drew it: choosing another session glides
-    /// the surface to it, while the same session moving in the list snaps.
+    /// The session on screen, as the list last read it: a new one scrolls
+    /// into view.
     drawn_selection: Option<SessionId>,
-    /// The selected session's row, while it is in the list.
-    selected_row: Option<usize>,
-    /// The page on screen, as a row of the pages.
-    selected_page: Option<usize>,
+    /// New session while a draft is on screen, or the page on screen, as a
+    /// row above the list.
+    selected_nav: Option<usize>,
     /// The page on screen, when it is one of the footer's.
     footer_page: Option<Page>,
-    selection_surface: Track,
-    hover_surface: Track,
-    page_selection_surface: Track,
-    page_hover_surface: Track,
+    /// Each row's fill on its way to what it should show.
+    fills: Fills,
     menu: Menu<Sidebar, ()>,
     /// Where focus was before `focus_search` took it, given back by Escape on an
     /// empty search and when the sidebar closes.
@@ -145,6 +140,13 @@ impl Sidebar {
                     sidebar.give_focus_back(window, cx);
                 }
             }),
+            // Focus leaving an empty search puts the field away.
+            cx.on_blur(&search_focus, window, |sidebar, _, cx| {
+                if sidebar.query.is_empty() && sidebar.search_open {
+                    sidebar.search_open = false;
+                    cx.notify();
+                }
+            }),
             cx.observe(&store, |sidebar, store, cx| {
                 sidebar.stale = true;
                 let projects = store.read(cx).workspace().project_ids();
@@ -160,22 +162,17 @@ impl Sidebar {
             query: String::new(),
             stale: true,
             rows_read_for: (String::new(), ProjectScope::All),
-            shifts: Shifts::default(),
             rows: Vec::new(),
+            search_open: false,
             highlighted: 0,
             reveal: None,
             pointer: Hovered::default(),
-            drawn_rows: 0..0,
             pointer_outside: false,
             waiting: Hovered::default(),
             drawn_selection: None,
-            selected_row: None,
-            selected_page: None,
+            selected_nav: None,
             footer_page: None,
-            selection_surface: Track::default(),
-            hover_surface: Track::default(),
-            page_selection_surface: Track::default(),
-            page_hover_surface: Track::default(),
+            fills: Fills::default(),
             menu: Menu::new(|sidebar| &mut sidebar.menu, cx),
             focus_before_search: None,
             home_focus,
@@ -194,9 +191,12 @@ impl Sidebar {
         !self.query.trim().is_empty()
     }
 
-    /// Puts the cursor in the search field, its text selected so typing replaces it.
+    /// Shows the search field and puts the cursor in it, its text selected so
+    /// typing replaces it.
     pub fn focus_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.menu.close(window, cx);
+        self.search_open = true;
+        cx.notify();
         let search = self.search.focus_handle(cx);
         if !search.contains_focused(window, cx) {
             self.focus_before_search = window.focused(cx);
@@ -215,6 +215,17 @@ impl Sidebar {
         window.focus(&focus, cx);
     }
 
+    /// Clears the search and puts the field away, giving focus back if it
+    /// held it.
+    fn close_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.clear_search(cx);
+        self.search_open = false;
+        if self.search.focus_handle(cx).contains_focused(window, cx) {
+            self.give_focus_back(window, cx);
+        }
+        cx.notify();
+    }
+
     /// The sidebar opens or closes. Closing, nothing hidden keeps key focus, so
     /// typing never goes to a field out of sight.
     pub fn set_open(&mut self, open: bool, window: &mut Window, cx: &mut Context<Self>) {
@@ -225,6 +236,9 @@ impl Sidebar {
         self.menu.close(window, cx);
         if self.search.focus_handle(cx).contains_focused(window, cx) {
             self.give_focus_back(window, cx);
+        }
+        if self.query.is_empty() {
+            self.search_open = false;
         }
     }
 
@@ -263,19 +277,6 @@ impl Sidebar {
             return;
         };
         self.new_session_in(project, cx);
-    }
-
-    /// The header's New session: in the project the list is filtered to, else
-    /// where the shortcut would start one.
-    fn new_session_in_view(&mut self, cx: &mut Context<Self>) {
-        let workspace = self.store.read(cx).workspace();
-        let project = match workspace.scope() {
-            ProjectScope::Project(project) => Some(project),
-            ProjectScope::All => workspace.context_project(),
-        };
-        if let Some(project) = project {
-            self.new_session_in(project, cx);
-        }
     }
 
     /// Starts a session in `project`, or reopens its empty one, and shows it.
@@ -334,14 +335,7 @@ impl Sidebar {
             return;
         }
         let count = self.rows.len() as isize;
-        let from = self.highlighted;
         self.highlighted = (self.highlighted as isize + step).rem_euclid(count) as usize;
-        // To or from a row out of view the surface lands, as the list jumps.
-        if self.drawn_rows.contains(&from) && self.drawn_rows.contains(&self.highlighted) {
-            self.aim_hover();
-        } else {
-            self.hover_surface.place(self.hover_target());
-        }
         self.scroll
             .scroll_to_item(self.highlighted, ScrollStrategy::Nearest);
         cx.notify();
@@ -359,14 +353,16 @@ impl Sidebar {
         if let Some(session) = self.rows.get(self.highlighted).map(|row| row.id) {
             self.open_session(session, cx);
             // The search is done: focus goes back to where it was.
+            self.search_open = false;
             self.give_focus_back(window, cx);
         }
     }
 
     fn dismiss(&mut self, _: &Dismiss, window: &mut Window, cx: &mut Context<Self>) {
         if self.query.is_empty() {
-            // An empty search gives focus back to where Cmd-K took it from.
-            self.give_focus_back(window, cx);
+            // An empty search goes away and gives focus back to where Cmd-K
+            // took it from.
+            self.close_search(window, cx);
         } else {
             self.clear_search(cx);
         }
@@ -378,8 +374,6 @@ impl Sidebar {
         self.pointer_outside = true;
         self.waiting = Hovered::default();
         self.pointer = Hovered::default();
-        self.aim_hover();
-        self.aim_page_hover();
         cx.notify();
     }
 
@@ -393,17 +387,15 @@ impl Sidebar {
         {
             self.highlighted = row;
         }
-        self.aim_hover();
-        self.aim_page_hover();
         cx.notify();
     }
 }
 
-/// The rows under the pointer: one in the session list, one in the pages.
+/// The rows under the pointer: one in the session list, one above it.
 #[derive(Clone, Copy, Debug, Default)]
 struct Hovered {
     row: Option<usize>,
-    page: Option<usize>,
+    nav: Option<usize>,
 }
 
 /// Notes that the pointer entered or left row `index`, in `slot`; returns
