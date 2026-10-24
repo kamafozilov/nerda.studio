@@ -223,9 +223,9 @@ impl Composer {
         )
     }
 
-    /// Where the session runs, over the box: the project's pill at the
+    /// Where the session runs, over the box: the project's pill on the box's
     /// leading edge, and the branch its checkout is on, or the commit, at
-    /// the trailing edge. Their icons stand in the column of the box's text.
+    /// the trailing edge. Their content stands in the box's padding.
     fn render_context(
         &self,
         draft: bool,
@@ -246,7 +246,6 @@ impl Composer {
             div()
                 .h(CONTROL_SIZE)
                 .mb(SPACE_1)
-                .px(SPACE_3 - SPACE_2)
                 .flex()
                 .items_center()
                 .justify_between()
@@ -260,7 +259,7 @@ impl Composer {
                             .flex_shrink_0()
                             .min_w_0()
                             .max_w(relative(0.4))
-                            .pr(SPACE_2)
+                            .pr(SPACE_3)
                             .flex()
                             .items_center()
                             .gap(SPACE_2)

@@ -10,7 +10,9 @@ mod palette;
 
 pub use metrics::*;
 
-use gpui::{App, Global, Hsla, WindowAppearance, WindowBackgroundAppearance, rgba};
+use gpui::{
+    App, BoxShadow, Global, Hsla, WindowAppearance, WindowBackgroundAppearance, point, px, rgba,
+};
 
 /// The platform's monospaced font, for code: SF Mono on macOS, by the name
 /// CoreText gives the system's monospaced face; Consolas on Windows.
@@ -65,6 +67,11 @@ pub struct Colors {
     /// A menu or popover over the window. Opaque: GPUI does not blur the app's
     /// own content, so nothing translucent may float over it.
     pub popover_background: Hsla,
+    /// Edge of a menu: brighter than `border`, so a menu over a box of the
+    /// same fill, such as the composer, keeps its own edge.
+    pub popover_border: Hsla,
+    /// The layered shadow under a menu, lifting it off what it covers.
+    pub popover_shadow: Hsla,
     /// Dims the window behind a dialog, so the dialog reads as the one thing to act
     /// on. Nothing is read on it, so it may be translucent.
     pub scrim: Hsla,
@@ -108,6 +115,23 @@ pub struct Colors {
     pub badges: [BadgeColors; 8],
 }
 
+impl Colors {
+    /// A menu's shadow: three tight layers rather than one wide blur, so the
+    /// menu reads as lifted just off what it covers.
+    pub fn popover_shadows(&self) -> Vec<BoxShadow> {
+        [(3., 8.), (2., 5.), (1., 1.)]
+            .into_iter()
+            .map(|(y, blur)| BoxShadow {
+                color: self.popover_shadow,
+                offset: point(px(0.), px(y)),
+                blur_radius: px(blur),
+                spread_radius: px(0.),
+                inset: false,
+            })
+            .collect()
+    }
+}
+
 /// One project badge: its fill and the initials on it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BadgeColors {
@@ -149,6 +173,8 @@ impl Theme {
                 field_background: rgba(palette.field).into(),
                 focus_ring: rgba(palette.focus_ring).into(),
                 popover_background: rgba(palette.popover).into(),
+                popover_border: rgba(palette.popover_border).into(),
+                popover_shadow: rgba(palette.popover_shadow).into(),
                 scrim: rgba(palette.scrim).into(),
                 key_background: rgba(palette.key).into(),
                 chip_background: rgba(palette.chip).into(),

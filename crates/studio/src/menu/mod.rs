@@ -219,9 +219,9 @@ impl<T: 'static, K: 'static> Menu<T, K> {
             .flex_col()
             .rounded(MENU_RADIUS)
             .border_1()
-            .border_color(colors.border)
+            .border_color(colors.popover_border)
             .bg(colors.popover_background)
-            .shadow_lg()
+            .shadow(colors.popover_shadows())
     }
 
     /// The backdrop and the menu, while open. The owner draws it where a

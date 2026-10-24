@@ -61,10 +61,9 @@ the sidebar and the tabs read the same over any desktop. Light keeps its glass.
 
 ### Contrast on glass
 
-Dark appearance is opaque now, so its contrast holds over any desktop: `text_primary`
-reads 17.65 on the base, 16.83 on the card, 16.57 on a tab and 14.52 on the selected
-one; `text_secondary` 9.21, 8.78, 8.65 and 7.58. The dark columns below are from its
-glass, kept for the record. In light appearance each tint is the most transparent 8-bit alpha that keeps `text_secondary` at WCAG AA,
+Dark is opaque, so its contrast holds over any desktop: `text_primary` reads 18.15 on
+the base, 17.03 on the card and a tab, 14.93 on the selected tab; `text_secondary` 7.57,
+7.11 and 6.23. The dark columns below are its old glass. In light each tint is the most transparent 8-bit alpha that keeps `text_secondary` at WCAG AA,
 4.5:1, over the worst desktop for its appearance: white behind dark, black behind light.
 A clearer glass would fail it there. WCAG 2 contrast on the composited surface, the lower
 over a white and a black desktop (dark / light):
@@ -77,9 +76,8 @@ over a white and a black desktop (dark / light):
 | `text_secondary` on `hover` / `row_selected` | 4.04 / 4.27, 3.71 / 4.09 | — |
 | `text_secondary_on_surface` on `row_selected` | 4.70 / 4.83 | — |
 
-The composite was checked on screen against this arithmetic: over a white backdrop the
-dark sidebar renders 67, 68, 70 (predicted 67), the light one over black 196, 198, 201
-(predicted 196). Changing a tint or a text color means recomputing this table. Light
+The composite was checked on screen against this arithmetic: the light sidebar over
+black renders 196, 198, 201 (predicted 196). Changing a tint or a text color means recomputing this table. Light
 has no lighter gray that keeps 4.5:1 on glass, so its `text_tertiary` is `text_secondary`;
 dark's falls under 4.5:1 on a row's surface, where such text turns `text_secondary`. Under a row's surface `text_secondary` falls short, so a row whose surface is drawn
 because of state (the selection, or the sidebar's hover, which redraws the row) puts its
@@ -195,16 +193,18 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   with no window open, quit at once.
 - **Closing the window** leaves the app running, as Mac apps do; a click on its Dock icon
   opens the window again on the same projects. Elsewhere closing it quits.
-- **Menus** are `popover_background` (opaque) with a hairline, a large shadow,
-  `MENU_RADIUS` (8), at least `MENU_WIDTH` (220) wide, growing to fit their widest line
-  up to 320, and to 360 tall before they scroll (`crates/studio/src/menu/`). Item icons are
-  `ICON_SIZE_ROW` (14) in `text_tertiary`; separators run edge to edge. Arrows move the
-  highlight, as the pointer does; Enter or a click picks. An item with a submenu names
-  its current choice and a chevron; the pointer resting on it, a click, Enter or the
-  right arrow opens the submenu beside it, and the left arrow goes back. A window-wide backdrop under the menu takes the click that closes it, so
-  that click presses nothing else, the second press of a double-click excepted; Escape
-  closes it too, and so does focus going elsewhere. Supporting text under the highlight
-  is `text_secondary_on_surface`.
+- **Menus** are `popover_background` (opaque) under a `popover_border` hairline,
+  brighter than `border` to keep its edge over the composer, three tight shadows
+  (`popover_shadow`), `MENU_RADIUS` (8), at least `MENU_WIDTH` (220) wide, growing to
+  fit their widest line up to 320, and to 360 tall before they scroll
+  (`crates/studio/src/menu/`). Item icons are `ICON_SIZE_ROW` in `text_tertiary`;
+  separators span the menu. Arrows move the highlight, as the pointer does; Enter or a
+  click picks. An item with a submenu names its current choice and a chevron; the
+  pointer resting on it, a click, Enter or the right arrow opens the submenu beside it,
+  and the left arrow goes back. A window-wide backdrop under the menu takes the click
+  that closes it, so it presses nothing else, the second press of a double-click
+  excepted; Escape closes it too, and so does focus going elsewhere. Supporting text
+  under the highlight: `text_secondary_on_surface`.
 - **Text fields** look like a place to type before they're focused: `field_background`
   fill, a `border` hairline, `CONTROL_RADIUS`; focus turns the hairline `focus_ring`.
   That is text primary at 48% (dark) and 53% (light), the faintest that keeps 3:1
@@ -274,8 +274,8 @@ toggle pressed again mid-flight turns back from where it is, keeping its speed. 
   glide into their slots on `TAB_ENTER`. Switching projects replaces the row at once: it
   is not a close.
 
-Measured on macOS at 120 Hz: a tab opens to 90% in about 160 ms and settles in 350 ms; a closed
-one is gone in 200 ms (debug build).
+At 120 Hz a tab opens to 90% in about 160 ms, settles in 350 ms; a
+closed one is gone in 200 ms.
 
 ## Window chrome
 

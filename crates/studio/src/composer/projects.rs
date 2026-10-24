@@ -5,7 +5,9 @@ use gpui::{
     Anchor, App, ClickEvent, Context, EventEmitter, Focusable, IntoElement, ParentElement,
     SharedString, Styled, Window, div, prelude::*, svg,
 };
-use theme::{CONTROL_RADIUS, CONTROL_SIZE, HAIRLINE, ICON_SIZE, ICON_SIZE_SMALL, SPACE_2, Theme};
+use theme::{
+    CONTROL_RADIUS, CONTROL_SIZE, HAIRLINE, ICON_SIZE, ICON_SIZE_SMALL, SPACE_2, SPACE_3, Theme,
+};
 use workspace::ProjectId;
 
 use super::Composer;
@@ -62,10 +64,12 @@ impl Composer {
     }
 
     /// The project's folder icon, name and a chevron on the composer's fill
-    /// under a hairline, as the box below it is, lighter under the pointer
-    /// and while its menu is open. The menu opens
-    /// downward from a draft, which has the card below it, and upward from a
-    /// docked composer, which sits at the card's bottom.
+    /// under its hairline, lighter under the pointer and while the menu is
+    /// open. The pill stands on the box's leading edge and pads its content
+    /// as the box does, so its icon is in the column of the box's text. The
+    /// menu hangs from that same edge, downward from a draft, which has the
+    /// card below it, and upward from a docked composer, which sits at the
+    /// card's bottom: three edges on one line, never two side by side.
     pub(super) fn render_project_pill(
         &self,
         name: SharedString,
@@ -98,7 +102,7 @@ impl Composer {
             .relative()
             .min_w_0()
             .h(CONTROL_SIZE)
-            .px(SPACE_2 - HAIRLINE)
+            .px(SPACE_3 - HAIRLINE)
             .flex()
             .items_center()
             .gap(SPACE_2)

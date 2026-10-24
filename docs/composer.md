@@ -105,15 +105,16 @@ conversation over a docked composer are in [session.md](session.md).
   backticks in the monospaced font, until the next edit.
 - **The context row**, over the box and `SPACE_1` above it, `CONTROL_SIZE` tall, in
   `TEXT_BODY` `text_secondary`, its icons at `ICON_SIZE` in the column of the box's text:
-  - At the leading edge, the project's pill: a folder, the project's name as the sidebar
-    shows it and a chevron at `ICON_SIZE_SMALL`, `SPACE_2` apart, on
-    `composer_background` under a `border` hairline with `CONTROL_RADIUS`, as the box
-    is, `hover` washed over it under the pointer and while its menu is open; no tooltip. A long name truncates
-    before the branch does.
+  - On the box's leading edge, the project's pill: a folder, the project's name as the
+    sidebar shows it and a chevron at `ICON_SIZE_SMALL`, `SPACE_2` apart, on
+    `composer_background` under a `border` hairline with `CONTROL_RADIUS`, padded as the
+    box is, `hover` washed over it under the pointer and while its menu is open; no
+    tooltip. A long name truncates before the branch does.
   - At the trailing edge, the branch its checkout is on, or the commit, cut in the
     middle, at most 40% of the row, the whole of it in the tooltip. Outside git there is
     no branch. It is read as [sidebar.md](sidebar.md) says.
-- **The project menu**, from the pill: downward from a draft, upward from a docked
+- **The project menu**, from the pill's leading edge, so the pill, the menu and the box
+  stand on one edge, never two side by side: downward from a draft, upward from a docked
   composer, 256 wide at least. It leads with a "Search projects" field, 36 tall over a
   hairline, its text starting in the items' icon column, which takes the focus and
   starts empty; then the projects whose name contains the search, folding
