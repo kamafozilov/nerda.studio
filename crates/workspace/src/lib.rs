@@ -9,6 +9,7 @@ pub mod browse;
 mod error;
 mod git;
 mod history;
+mod icon;
 mod model;
 mod paths;
 mod query;
@@ -26,6 +27,7 @@ pub use backdrop::{Backdrop, BackdropStrength, BackdropStyle, BackdropTint};
 pub use error::{AddProjectError, LoadError};
 pub use git::{Head, head};
 pub use history::Visits;
+pub use icon::project_icon;
 pub use model::{
     AddedProject, ConversationId, NO_PROJECT, Page, Project, ProjectId, ProjectKind, ProjectScope,
     Session, SessionId, SessionSort, Tab, Timestamp,
