@@ -14,6 +14,7 @@ use theme::{
 use super::Sidebar;
 use crate::{
     assets::Icon,
+    kbd::Shortcut,
     tooltip::{TooltipExt, WithTooltip},
 };
 
@@ -126,11 +127,6 @@ impl Sidebar {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
-        let search_label = if cfg!(target_os = "macos") {
-            "Search sessions (⌘K)"
-        } else {
-            "Search sessions (Ctrl+K)"
-        };
         // While searching, the field takes the title's place and Search turns
         // into Close search.
         let lead = if self.search_open {
@@ -159,11 +155,18 @@ impl Sidebar {
                 },
             )
         } else {
-            row_button("search", Icon::Search, search_label, colors, |button| {
-                button.on_click(cx.listener(|sidebar, _: &ClickEvent, window, cx| {
-                    sidebar.focus_search(window, cx)
-                }))
-            })
+            row_button(
+                "search",
+                Icon::Search,
+                "Search sessions",
+                colors,
+                |button| {
+                    button.on_click(cx.listener(|sidebar, _: &ClickEvent, window, cx| {
+                        sidebar.focus_search(window, cx)
+                    }))
+                },
+            )
+            .shortcut(Shortcut::key("K").cmd())
         };
         let title = div()
             .mx(SPACE_2)

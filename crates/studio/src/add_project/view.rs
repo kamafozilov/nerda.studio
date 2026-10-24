@@ -16,7 +16,7 @@ use workspace::browse::{BrowseQuery, ListError, Target};
 use super::{AddProjectPalette, CONTEXT, Row};
 use crate::{
     assets::Icon,
-    key_cap::{Key, key_cap},
+    kbd::{Kbd, Key, Shortcut},
 };
 
 const MAC: bool = cfg!(target_os = "macos");
@@ -52,10 +52,10 @@ impl AddProjectPalette {
             "Add"
         };
         // While a folder is highlighted Enter opens it, so adding takes the modifier.
-        let shortcut: &[Key] = if self.highlighted.is_some() {
-            &[ADD_MODIFIER, Key::Return]
+        let shortcut = if self.highlighted.is_some() {
+            Shortcut::of(Key::Return).cmd()
         } else {
-            &[Key::Return]
+            Shortcut::of(Key::Return)
         };
         // The key cap sits as far from the button's right edge as from its top and
         // bottom; the button's hairline counts toward it.
@@ -110,7 +110,7 @@ impl AddProjectPalette {
                     })
                     .when(!enabled, |button| button.opacity(DISABLED_OPACITY))
                     .child(label)
-                    .child(key_cap(shortcut, colors)),
+                    .child(Kbd::new(shortcut)),
             )
     }
 
@@ -266,15 +266,11 @@ impl AddProjectPalette {
             .border_t_1()
             .border_color(colors.border)
             .text_color(colors.text_secondary)
-            .child(hint(&[Key::Text("↑"), Key::Text("↓")], "Navigate", colors))
+            .child(hint(&[Shortcut::key("↑"), Shortcut::key("↓")], "Navigate"))
             .when(self.highlighted.is_some(), |footer| {
-                footer.child(hint(&[Key::Return], "Open", colors))
+                footer.child(hint(&[Shortcut::of(Key::Return)], "Open"))
             })
-            .child(hint(
-                &[Key::Text(if MAC { "esc" } else { "Esc" })],
-                "Close",
-                colors,
-            ))
+            .child(hint(&[Shortcut::of(Key::Escape)], "Close"))
             .child(div().flex_1())
             .child(
                 div()
@@ -356,15 +352,12 @@ fn section_label(text: &'static str, colors: Colors) -> Div {
         .child(text)
 }
 
-/// The modifier that turns Enter into "add the typed path".
-const ADD_MODIFIER: Key = Key::Text(if MAC { "⌘" } else { "Ctrl" });
-
 /// Key caps, one per key, then what they do.
-fn hint(keys: &[Key], label: &'static str, colors: Colors) -> Div {
+fn hint(keys: &[Shortcut], label: &'static str) -> Div {
     div()
         .flex()
         .items_center()
         .gap(SPACE_1)
-        .children(keys.iter().map(|key| key_cap(&[*key], colors)))
+        .children(keys.iter().map(|keys| Kbd::new(*keys)))
         .child(label)
 }

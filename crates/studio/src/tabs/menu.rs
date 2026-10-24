@@ -5,9 +5,10 @@ use gpui::{AnyElement, Context, Pixels, Point, Window};
 use workspace::{Tab, Timestamp, Workspace};
 
 use super::TabStrip;
-use crate::menu::{Entry, Item, Placement};
-
-const MAC: bool = cfg!(target_os = "macos");
+use crate::{
+    kbd::Shortcut,
+    menu::{Entry, Item, Placement},
+};
 
 /// The tab the menu opened on, and where.
 pub(super) struct TabMenu {
@@ -19,7 +20,7 @@ pub(super) struct TabMenu {
 struct Choice {
     id: &'static str,
     label: &'static str,
-    shortcut: Option<&'static str>,
+    shortcut: Option<Shortcut>,
     enabled: bool,
     run: fn(&mut Workspace, Tab, Timestamp),
 }
@@ -50,14 +51,14 @@ impl TabStrip {
             Choice {
                 id: "close",
                 label: "Close Tab",
-                shortcut: Some(if MAC { "⌘W" } else { "Ctrl+W" }),
+                shortcut: Some(Shortcut::key("W").cmd()),
                 enabled: closable,
                 run: Workspace::close_tab,
             },
             Choice {
                 id: "close-others",
                 label: "Close Other Tabs",
-                shortcut: Some(if MAC { "⌥⌘T" } else { "Ctrl+Alt+T" }),
+                shortcut: Some(Shortcut::key("T").cmd().alt()),
                 enabled: tabs.len() > 1,
                 run: Workspace::close_other_tabs,
             },
@@ -78,7 +79,7 @@ impl TabStrip {
             Choice {
                 id: "close-all",
                 label: "Close All Tabs",
-                shortcut: Some(if MAC { "⇧⌘W" } else { "Ctrl+Shift+W" }),
+                shortcut: Some(Shortcut::key("W").cmd().shift()),
                 enabled: closable,
                 run: |workspace, _, now| workspace.close_all_tabs(now),
             },
@@ -99,11 +100,9 @@ impl TabStrip {
                         store.update(cx, |workspace| run(workspace, tab, Timestamp::now()))
                     })
                 })
-                .enabled(enabled);
-                Entry::Item(match shortcut {
-                    Some(keys) => item.shortcut(keys),
-                    None => item,
-                })
+                .enabled(enabled)
+                .shortcut(shortcut);
+                Entry::Item(item)
             })
             .collect();
         self.menu.render(

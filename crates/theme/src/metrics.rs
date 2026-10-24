@@ -74,6 +74,9 @@ pub const NOTICE_MAX_HEIGHT: Pixels = px(136.);
 /// Height and least width of a key cap, the shortcut beside a button's label or in
 /// a hint: `FIELD_TARGET_SIZE` less a 2 px inset each side.
 pub const KEY_CAP_SIZE: Pixels = px(20.);
+/// Height and least width of a small key cap, the shortcut in a tooltip or a
+/// menu item: it stands 3 px inside a tooltip's hairline.
+pub const KEY_CAP_SIZE_SMALL: Pixels = px(16.);
 
 /// Widest the session composer grows; past it the composer stays centered in
 /// the card, `SPACE_3` clear of its sides below it.

@@ -12,8 +12,8 @@ use theme::{
 
 use super::{GoBack, GoForward, Shell};
 use crate::{
-    assets::Icon, sidebar::icon_button, sidebar_glyph::sidebar_glyph, tooltip::TooltipExt,
-    traffic_lights,
+    assets::Icon, kbd::Shortcut, sidebar::icon_button, sidebar_glyph::sidebar_glyph,
+    tooltip::TooltipExt, traffic_lights,
 };
 
 const MAC: bool = cfg!(target_os = "macos");
@@ -100,11 +100,6 @@ impl Shell {
     /// ride the sidebar's edge, coming to rest beside the toggle once it closes.
     fn navigation(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
-        let (back, forward) = if MAC {
-            ("Back (⌘[)", "Forward (⌘])")
-        } else {
-            ("Back (Ctrl+[)", "Forward (Ctrl+])")
-        };
         let can_go_back = self.visits.can_go_back();
         let can_go_forward = self.visits.can_go_forward();
         div()
@@ -116,20 +111,21 @@ impl Shell {
             .child(self.sidebar_toggle(cx))
             .child(div().flex_1())
             .child(
-                icon_button("back", Icon::Back, back, can_go_back, colors, |button| {
+                icon_button("back", Icon::Back, "Back", can_go_back, colors, |button| {
                     button.occlude().when(can_go_back, |button| {
                         button.on_click(|_: &ClickEvent, window, cx| {
                             window.dispatch_action(Box::new(GoBack), cx)
                         })
                     })
                 })
+                .shortcut(Shortcut::key("[").cmd())
                 .below(),
             )
             .child(
                 icon_button(
                     "forward",
                     Icon::Forward,
-                    forward,
+                    "Forward",
                     can_go_forward,
                     colors,
                     |button| {
@@ -140,6 +136,7 @@ impl Shell {
                         })
                     },
                 )
+                .shortcut(Shortcut::key("]").cmd())
                 .below(),
             )
             .with_spring(
@@ -159,11 +156,10 @@ impl Shell {
 
     fn sidebar_toggle(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
-        let label = match (self.sidebar_open, MAC) {
-            (true, true) => "Hide sidebar (⌘B)",
-            (true, false) => "Hide sidebar (Ctrl+B)",
-            (false, true) => "Show sidebar (⌘B)",
-            (false, false) => "Show sidebar (Ctrl+B)",
+        let label = if self.sidebar_open {
+            "Hide sidebar"
+        } else {
+            "Show sidebar"
         };
         div()
             .id("sidebar-toggle")
@@ -192,6 +188,7 @@ impl Shell {
                 },
             ))
             .with_tooltip(label)
+            .shortcut(Shortcut::key("B").cmd())
             .below()
     }
 }

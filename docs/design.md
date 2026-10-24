@@ -127,14 +127,12 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
 
 ## Controls and lists
 
-- **Icon-only buttons** carry a tooltip naming the action ("Add project", "New session (⌘N)").
+- **Icon-only buttons** carry a tooltip naming the action ("Add project"), then its
+  shortcut in a small key cap ("New session ⌘T").
   A button that can't act yet stays visible at 40% opacity, its tooltip saying why.
-- **Tooltips** sit centered above their control, or below it in the top row, where there
-  is no room above; `SPACE_1` clear of it, never at the pointer, so they don't cover the
-  controls beside it (`crates/studio/src/tooltip.rs`; GPUI's `.tooltip()` follows the
-  pointer and isn't used). One is `TOOLTIP_HEIGHT` (24) high, hairline included. It shows
-  after the pointer rests `TOOLTIP_DELAY` (500 ms); within `TOOLTIP_WARM` (300 ms) of
-  another, at once. A press hides it.
+- **Tooltips** sit centered above their control, or below it in the top row, `SPACE_1`
+  clear of it, never at the pointer; their look and timing are in
+  [key-caps.md](key-caps.md).
 - **Rows** are `ROW_HEIGHT` (28), spanning the list with `SPACE_2` sides and a rounded
   surface inside: `row_selected` under the selection, `hover` under the pointer or the
   keyboard highlight. In the sidebar rows stand `ROW_GAP` (1) apart, so a selected row
@@ -185,8 +183,8 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   finger doesn't close the app (`crates/studio/src/shell/quit.rs`): a dialog centered over
   a window-wide `scrim`, 424 wide with 24 padding and 20 corners, `popover_background`
   with a hairline and a large shadow. It shows the app icon (32), "Quit Nerda Studio?"
-  (18 pt bold), what comes back next time (`text_secondary`), then Cancel (`esc` key cap,
-  `key_background`) and Quit (Return, `danger`), 34 tall with 10 corners in 14 pt medium.
+  (18 pt bold), what comes back next time (`text_secondary`), then Cancel (`esc` outline
+  cap, `key_background`) and Quit (Return outline cap, `danger`), 34 tall with 10 corners in 14 pt medium.
   Return, Quit or a second `Cmd-Q` quits, so holding the key quits too; Escape, Cancel
   or a click on the scrim stays and gives focus back. The dialog sits outside the shell's
   key context: the window's shortcuts rest while it is up. The menu's Quit, and `Cmd-Q`
@@ -215,10 +213,8 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   blink over, and in a window in the background it hides, as the system's fields do.
   Every field is one `TextInput` with this rhythm. A button inside a field, such as
   Clear, shows `ICON_SIZE` but takes clicks over `FIELD_TARGET_SIZE` (24).
-- **Key caps** show a shortcut beside a button's label or in a hint: `KEY_CAP_SIZE` (20)
-  high and at least as wide, `key_background` fill with no hairline, `SPACE_1` corners,
-  the key in `text_secondary`. Return is an icon, other keys text (⌘, `esc`). Inside a
-  button `FIELD_TARGET_SIZE` (24) high, the cap sits 2 px from its top, bottom and right.
+- **Key caps**, the shortcut beside a label, in a tooltip, a menu item or a hint, follow
+  [key-caps.md](key-caps.md).
 - **The sidebar's** header, session cards, messages, empty states and footer follow
   [sidebar.md](sidebar.md).
 - **The composer**, where a session's message is written, follows [composer.md](composer.md).

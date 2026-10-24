@@ -10,7 +10,7 @@ mod composer;
 mod conversation;
 mod empty_page;
 mod instance;
-mod key_cap;
+mod kbd;
 mod menu;
 mod native_window;
 mod shell;

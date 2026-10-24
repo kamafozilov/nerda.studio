@@ -32,7 +32,9 @@ use theme::{
 };
 use workspace::Tab;
 
-use crate::{accessibility, assets::Icon, menu::Menu, sidebar::icon_button, store::Store};
+use crate::{
+    accessibility, assets::Icon, kbd::Shortcut, menu::Menu, sidebar::icon_button, store::Store,
+};
 
 pub struct TabStrip {
     store: Entity<Store>,
@@ -231,19 +233,22 @@ impl TabStrip {
 
     fn new_tab_button(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = Theme::of(cx).colors;
-        let label = if cfg!(target_os = "macos") {
-            "New session (⌘T)"
-        } else {
-            "New session (Ctrl+T)"
-        };
-        icon_button("new-tab", Icon::NewTab, label, true, colors, |button| {
-            button
-                .occlude()
-                .ml(TAB_GAP)
-                .on_click(|_: &ClickEvent, window, cx| {
-                    window.dispatch_action(Box::new(crate::shell::NewSession), cx)
-                })
-        })
+        icon_button(
+            "new-tab",
+            Icon::NewTab,
+            "New session",
+            true,
+            colors,
+            |button| {
+                button
+                    .occlude()
+                    .ml(TAB_GAP)
+                    .on_click(|_: &ClickEvent, window, cx| {
+                        window.dispatch_action(Box::new(crate::shell::NewSession), cx)
+                    })
+            },
+        )
+        .shortcut(Shortcut::key("T").cmd())
         .below()
     }
 }

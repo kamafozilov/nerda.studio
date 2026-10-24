@@ -13,7 +13,10 @@ use theme::{
 };
 
 use super::{Level, Menu};
-use crate::assets::Icon;
+use crate::{
+    assets::Icon,
+    kbd::{Kbd, Shortcut},
+};
 
 /// What a pick does in the menu's owner.
 pub(super) type Pick<T> = Rc<dyn Fn(&mut T, &mut Window, &mut Context<T>)>;
@@ -35,7 +38,7 @@ pub(crate) struct Item<T> {
     check_trails: bool,
     /// A mark before the label, in its own color, such as an agent's logo.
     icon: Option<(Icon, Hsla)>,
-    shortcut: Option<SharedString>,
+    shortcut: Option<Shortcut>,
     pub(super) enabled: bool,
     pub(super) pick: Pick<T>,
     /// Items that open beside this one, with what is chosen among them now.
@@ -93,8 +96,8 @@ impl<T> Item<T> {
         self
     }
 
-    pub fn shortcut(mut self, keys: impl Into<SharedString>) -> Self {
-        self.shortcut = Some(keys.into());
+    pub fn shortcut(mut self, keys: impl Into<Option<Shortcut>>) -> Self {
+        self.shortcut = keys.into();
         self
     }
 
@@ -218,10 +221,8 @@ impl<T: 'static, K: 'static> Menu<T, K> {
             })
             .children(item.shortcut.map(|keys| {
                 div()
-                    .flex_none()
                     .pl(SPACE_1)
-                    .text_color(supporting)
-                    .child(keys)
+                    .child(Kbd::new(keys).small().color(supporting))
             }))
             .children(value.map(|value| {
                 div()

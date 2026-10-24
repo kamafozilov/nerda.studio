@@ -15,7 +15,7 @@ use theme::{
 use workspace::Tab;
 
 use super::{Label, TabStrip};
-use crate::{assets::Icon, tooltip::TooltipExt};
+use crate::{assets::Icon, kbd::Shortcut, tooltip::TooltipExt};
 
 /// Narrowest share of its settled width a growing tab is drawn at; below it the
 /// slot shows next to nothing anyway.
@@ -265,11 +265,8 @@ fn close_button(
         .top((CONTROL_SIZE - FIELD_TARGET_SIZE) / 2.)
         .child(
             target
-                .with_tooltip(if cfg!(target_os = "macos") {
-                    "Close tab (⌘W)"
-                } else {
-                    "Close tab (Ctrl+W)"
-                })
+                .with_tooltip("Close tab")
+                .shortcut(Shortcut::key("W").cmd())
                 .below(),
         )
 }

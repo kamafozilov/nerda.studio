@@ -17,7 +17,7 @@ use workspace::{Page, ProjectScope};
 use super::{Sidebar, fade::Key};
 use crate::{
     assets::Icon,
-    key_cap::{Key as Cap, key_cap},
+    kbd::{Kbd, Shortcut},
     tooltip::TooltipExt,
 };
 
@@ -90,13 +90,7 @@ impl Sidebar {
         now: Instant,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let colors = Theme::of(cx).colors;
         let hovered = self.pointer.nav == Some(NEW_SESSION);
-        let modifier = if cfg!(target_os = "macos") {
-            "⌘"
-        } else {
-            "Ctrl"
-        };
         let row = self
             .nav_row(
                 NEW_SESSION,
@@ -109,7 +103,7 @@ impl Sidebar {
             // The shortcut shows under the pointer, so at rest the row reads
             // as the others do.
             .when(enabled && hovered, |row| {
-                row.child(key_cap(&[Cap::Text(modifier), Cap::Text("N")], colors).mr(-SPACE_1))
+                row.child(div().mr(-SPACE_1).child(Kbd::new(Shortcut::key("N").cmd())))
             });
         if enabled {
             row.on_click(

@@ -5,13 +5,16 @@
 
 use gpui::{
     App, ClickEvent, Context, Div, FocusHandle, FontWeight, IntoElement, KeyBinding, MouseButton,
-    MouseDownEvent, ParentElement, Pixels, SharedString, Stateful, Styled, Window, actions, div,
-    img, prelude::*, px, svg,
+    MouseDownEvent, ParentElement, Pixels, Stateful, Styled, Window, actions, div, img, prelude::*,
+    px,
 };
-use theme::{ICON_SIZE, KEY_CAP_SIZE, SPACE_1, SPACE_2, TEXT_BODY, Theme};
+use theme::{SPACE_2, TEXT_BODY, Theme};
 
 use super::Shell;
-use crate::assets::{APP_ICON, Icon};
+use crate::{
+    assets::APP_ICON,
+    kbd::{Kbd, Key, Shortcut},
+};
 
 actions!(
     quit_dialog,
@@ -100,7 +103,7 @@ impl Shell {
                 button("quit-cancel", "Cancel")
                     .bg(colors.key_background)
                     .text_color(colors.text_primary)
-                    .child(key_cap("esc", cx))
+                    .child(Kbd::new(Shortcut::of(Key::Escape)).small().outline())
                     .on_click(cx.listener(|shell, _: &ClickEvent, window, cx| {
                         shell.cancel_quit(window, cx)
                     })),
@@ -110,10 +113,10 @@ impl Shell {
                     .bg(colors.danger)
                     .text_color(colors.text_on_danger)
                     .child(
-                        svg()
-                            .path(Icon::Return.path())
-                            .size(ICON_SIZE)
-                            .text_color(colors.text_on_danger.opacity(0.6)),
+                        Kbd::new(Shortcut::of(Key::Return))
+                            .small()
+                            .outline()
+                            .color(colors.text_on_danger.opacity(0.8)),
                     )
                     .on_click(|_, _, cx| cx.quit()),
             );
@@ -184,24 +187,4 @@ fn button(id: &'static str, label: &'static str) -> Stateful<Div> {
         // A press on a button is not a press on the scrim behind it.
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .child(label)
-}
-
-/// A key cap drawn as an outline, so it reads on the button's fill.
-fn key_cap(key: impl Into<SharedString>, cx: &App) -> Div {
-    let colors = Theme::of(cx).colors;
-    div()
-        .h(px(18.))
-        .min_w(px(18.))
-        .px(SPACE_1)
-        .flex()
-        .items_center()
-        .justify_center()
-        .rounded(px(5.))
-        .border_1()
-        .border_color(colors.text_secondary.opacity(0.6))
-        .text_color(colors.text_secondary)
-        .text_size(px(9.))
-        .font_weight(FontWeight::BOLD)
-        .line_height(KEY_CAP_SIZE)
-        .child(key.into())
 }

@@ -7,7 +7,7 @@ use theme::{MAIN_INSET, SPACE_1, SPACE_2, Theme};
 use workspace::Page;
 
 use super::{Sidebar, header::icon_button};
-use crate::assets::Icon;
+use crate::{assets::Icon, kbd::Shortcut};
 
 /// The footer's pages, in order, with their buttons' ids.
 const PAGES: [(&str, Page); 3] = [
@@ -21,12 +21,8 @@ impl Sidebar {
         let colors = Theme::of(cx).colors;
         let buttons = PAGES.map(|(id, page)| {
             let shown = self.footer_page == Some(page);
-            let label = match page {
-                Page::Settings if cfg!(target_os = "macos") => "Settings (⌘,)",
-                Page::Settings => "Settings (Ctrl+,)",
-                page => page.title(),
-            };
-            icon_button(id, Icon::page(page), label, true, colors, |button| {
+            let shortcut = (page == Page::Settings).then(|| Shortcut::key(",").cmd());
+            icon_button(id, Icon::page(page), page.title(), true, colors, |button| {
                 button
                     .when(shown, |button| button.bg(colors.hover))
                     .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
@@ -35,6 +31,7 @@ impl Sidebar {
                         });
                     }))
             })
+            .shortcut(shortcut)
         });
         // The buttons' bottom sits on the card's bottom edge, `MAIN_INSET` up.
         div()

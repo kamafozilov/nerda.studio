@@ -1,5 +1,6 @@
-//! A text tooltip naming an icon-only control, centered above it, or below it
-//! in the window's top row, where there is no room above.
+//! A text tooltip naming an icon-only control, then its shortcut in a key
+//! cap, centered above it, or below it in the window's top row, where there is
+//! no room above.
 //!
 //! GPUI's own `.tooltip()` places the label at the pointer and flips it over
 //! the pointer near the window's bottom, onto neighboring controls. This one
@@ -12,9 +13,12 @@ use gpui::{
     SharedString, Stateful, Styled, Task, WeakEntity, Window, deferred, div, prelude::*,
 };
 use theme::{
-    CONTROL_RADIUS, SPACE_1, SPACE_2, TEXT_BODY, TOOLTIP_HEIGHT, Theme,
+    CONTROL_RADIUS, HAIRLINE, KEY_CAP_SIZE_SMALL, SPACE_1, SPACE_2, TEXT_BODY, TOOLTIP_HEIGHT,
+    Theme,
     motion::{TOOLTIP_DELAY, TOOLTIP_WARM},
 };
+
+use crate::kbd::{Kbd, Shortcut};
 
 pub trait TooltipExt {
     /// Shows `text` centered above the control once the pointer rests on it.
@@ -33,6 +37,7 @@ impl TooltipExt for Stateful<Div> {
         WithTooltip {
             id,
             text: text.into(),
+            shortcut: None,
             target: self,
             below: false,
         }
@@ -43,6 +48,7 @@ impl TooltipExt for Stateful<Div> {
 pub struct WithTooltip {
     id: ElementId,
     text: SharedString,
+    shortcut: Option<Shortcut>,
     target: Stateful<Div>,
     below: bool,
 }
@@ -51,6 +57,12 @@ impl WithTooltip {
     /// Shows the tooltip under the control, for controls in the top row.
     pub fn below(mut self) -> Self {
         self.below = true;
+        self
+    }
+
+    /// Shows the shortcut that does what the control does, after its name.
+    pub fn shortcut(mut self, shortcut: impl Into<Option<Shortcut>>) -> Self {
+        self.shortcut = shortcut.into();
         self
     }
 }
@@ -158,15 +170,26 @@ impl RenderOnce for WithTooltip {
                                 .h(TOOLTIP_HEIGHT)
                                 .flex()
                                 .items_center()
+                                .gap(SPACE_2)
                                 .whitespace_nowrap()
-                                .px(SPACE_2)
+                                .pl(SPACE_2)
+                                // The key cap stands as far from the right edge as
+                                // from the top and bottom.
+                                .pr(match self.shortcut {
+                                    Some(_) => {
+                                        (TOOLTIP_HEIGHT - KEY_CAP_SIZE_SMALL) / 2. - HAIRLINE
+                                    }
+                                    None => SPACE_2,
+                                })
                                 .rounded(CONTROL_RADIUS)
                                 .border_1()
-                                .border_color(colors.border)
+                                .border_color(colors.popover_border)
                                 .bg(colors.popover_background)
+                                .shadow(colors.popover_shadows())
                                 .text_size(TEXT_BODY)
                                 .text_color(colors.text_primary)
-                                .child(self.text),
+                                .child(self.text)
+                                .children(self.shortcut.map(|keys| Kbd::new(keys).small())),
                         ),
                 ))
             })
