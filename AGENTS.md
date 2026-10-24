@@ -57,7 +57,10 @@ folder and window.
 
 ### Launching the app
 
-Launch with `cargo run -p dev -- try`, never `cargo run -p studio`:
+The owner works at this Mac while agents do: nothing an agent runs may take their
+window, keyboard or mouse. Launch with `cargo run -p dev -- try`, which stays in the
+background; `cargo run -p studio` and `try --front` refuse to start unless a person
+types them at a terminal.
 
 1. Start it as a background task: `cargo run -p dev -- try --for 600`.
 2. Read `window <number>` from its output; `screencapture -x -o -l <number> shot.png`
@@ -74,15 +77,18 @@ What it gives the app:
   inactive and under the desktop picture, on no screen. The owner keeps the screens and
   the keyboard. The app draws its own frames there at 60 Hz, so motion runs, a plain
   `screencapture` shows the current frame, and CPU can be measured.
+- `--active` draws the window as the active one (the cursor shows and blinks);
+  `--desktop <rrggbb>` gives its glass that desktop, such as `ffffff` or `000000`, for
+  contrast over the worst one. Measured: the light sidebar over `000000` reads 196,
+  198, 201, as on a real black desktop.
+- Nothing opens outside the window: a system picker or the Finder says on stdout that it
+  doesn't open from a background build.
 - Arguments after `--` go to the app.
 
-`--front` runs it as a regular app in front, for what only that shows: the active
-window's look, the menu bar, an on-screen region (`screencapture -R`), contrast over a
-window put behind it. It takes the owner's keyboard and mouse away from their work, so
-run it only when the owner asks for it in the session; never for motion, CPU or
-screenshots, which the background build gives. Taking the
-owner's window over is the one case for `cargo run -p studio`, and only when the change
-is that takeover.
+What the background can't show is the macOS menu bar and the system's own windows (a
+picker, the Finder): check a menu command by dispatching its action from a probe, and
+leave a picker's look to the owner, with exact steps. Never use computer use or
+synthetic OS events: they drive the owner's own mouse and keyboard.
 
 ## Proving without a real click
 
@@ -94,8 +100,8 @@ The agent's terminal has no Accessibility permission, so macOS drops synthetic O
 - Motion: log the animated value per frame with timestamps; slow a spring tenfold to
   screenshot its middle.
 - Pixels: `screencapture -x -o -l <window>` for a background build, sampled in sRGB.
-  Give a change a frame or two (50 ms) before capturing it.
-  For contrast over a window behind the app, `--front` with the owner's go-ahead.
+  Give a change a frame or two (50 ms) before capturing it. For contrast on glass, run
+  with `--desktop ffffff` and `--desktop 000000`.
 - Light appearance without touching the system:
   `cargo run -p dev -- try -- -NSRequiresAquaSystemAppearance YES`.
 - Agents: `NERDA_AGENT_PROGRAM=<repo>/target/debug/fake-agent` (`cargo build -p agent
