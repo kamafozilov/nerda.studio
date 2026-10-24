@@ -20,14 +20,12 @@ Five patterns, each a field of lightness over the card marked in one ink (`crate
 With an image, None becomes **Image only**: the image itself, every pixel, read between
 pixels so a small image scaled up stays smooth.
 
-**An image covers the card whole**, whatever the pattern: cleared around the composer, a
-picture would show a dark box cut out of it. The composer's surfaces set it apart
-instead: its box, its project pill, its branch and the tray's controls turn
-`composer_glass`, `composer_background` at 88%, so the picture shows faintly through
-them. Over the worst image (white behind dark, black behind light, at Bold) the
-placeholder and the branch keep 4.76:1 (dark) and 6.22:1 (light). Without an image, or
-with it hidden, the pattern clears around the composer and the surfaces are opaque, as
-before.
+**The composer stands on glass** whenever a pattern or an image shows: its box, its
+project pill, its branch and the tray's controls turn `composer_glass`,
+`composer_background` at 88%, so what is under them shows faintly through. The
+placeholder and the branch keep at least 6.38:1 over a Bold pattern (7.70:1 light) and,
+over the worst image (white behind dark, black behind light, at Bold), 4.76:1 (dark) and
+6.22:1 (light). With None and no image in use the surfaces are opaque.
 
 - The dither marks 2 pt dots against an 8 by 8 Bayer threshold, fixed to the card, so a
   moving pattern changes only where its field does. Sizes are in points, scaled to the
@@ -35,9 +33,9 @@ before.
   marks every dot, so its brightest band keeps its texture.
 - **An image** is scaled to cover the card, centered. On a dark card its light areas draw
   the marks, on a light card its dark areas, so it reads the right way round in both.
-- **Clear around the composer.** The pattern is gone within 16 pt of the composer's
-  column (the context row, the box and the problem line), measured as the column lays
-  out, and full 120 pt away. Nothing is read on the pattern, so its ink may be faint.
+- **Under the composer, not around it.** Every pattern covers the card whole, the
+  composer included: a pattern cleared around it read as a hole cut in the card. The
+  composer's surfaces set it apart instead (below).
 - **Ink.** Gray is `backdrop` (white at 17% dark, `text_primary` at 14% light), Warm is
   `backdrop_warm` (`claude` at 50% dark, 45% light), Image is each mark in the image's
   color under it at 45%. **Strength** scales that alpha: Subtle 0.6, Medium 1, Bold 1.7.
@@ -66,10 +64,12 @@ window is too short for it, staying under the top row:
   fifth the size with its ink 2.5 times stronger, around a small composer; the chosen one
   has a `focus_ring` ring and its name in `text_primary`.
 - **Image**: a dashed box, "Add an image", that opens the system's picker for one file; or
-  the image, small, with Replace and Remove, and at the title's end its state ("Shown",
-  "Hidden") and a switch that sets the image aside without letting go of it: hidden,
-  the patterns draw alone and the image's colors wait, and showing it again brings both
-  back. Why an image couldn't be added shows under it.
+  the image, small, with Replace and Remove. The small image is itself the switch that
+  sets it aside without letting go of it: under the pointer a struck-through eye shows
+  over it ("Hide image"), and a click hides it; hidden, it stays in gray at half its
+  strength with an open eye on it ("Show image"), the patterns draw alone and the image's
+  colors wait, and a click brings both back. Why an image couldn't be added shows under
+  it.
 - **Color**: Gray, Warm and Image as chips with a dot of each; Image's dot is the image.
 - **Strength**: Subtle, Medium, Bold in one segmented control.
 - **Move slowly**, with a switch.

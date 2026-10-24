@@ -1,4 +1,4 @@
-use backdrop::{Frame, Ink, Pattern, Rect};
+use backdrop::{Frame, Ink, Pattern};
 
 const PATTERNS: [Pattern; 5] = [
     Pattern::Horizon,
@@ -17,12 +17,6 @@ fn frame(pattern: Pattern) -> Frame {
         ink: Ink::Solid([255, 255, 255, 40]),
         source: None,
         light: false,
-        clear: Some(Rect {
-            x: 200.,
-            y: 180.,
-            width: 400.,
-            height: 140.,
-        }),
         time: 0.,
     }
 }
@@ -32,24 +26,13 @@ fn each(pixels: &[u8]) -> impl Iterator<Item = &[u8; 4]> {
     pixels.as_chunks::<4>().0.iter()
 }
 
-fn alpha_at(pixels: &[u8], width: u32, x: u32, y: u32) -> u8 {
-    pixels[(y * width + x) as usize * 4 + 3]
-}
-
 #[test]
-fn every_pattern_marks_something_and_keeps_the_clear_area_bare() {
+fn every_pattern_marks_something() {
     for pattern in PATTERNS {
-        let frame = frame(pattern);
-        let pixels = frame.render();
+        let pixels = frame(pattern).render();
         assert_eq!(pixels.len(), 800 * 500 * 4);
         let marked = each(&pixels).filter(|pixel| pixel[3] > 0).count();
         assert!(marked > 1000, "{pattern:?} marked {marked} pixels");
-        // The clear area and the 16 points around it stay bare.
-        for y in (180 - 32)..(320 + 32) {
-            for x in (200 - 32)..(600 + 32) {
-                assert_eq!(alpha_at(&pixels, 800, x, y), 0, "{pattern:?} at {x}, {y}");
-            }
-        }
     }
 }
 
@@ -98,7 +81,6 @@ fn a_frame_smaller_than_a_cell_draws_without_panicking() {
             Frame {
                 width,
                 height,
-                clear: None,
                 ..frame(pattern)
             }
             .render();

@@ -76,21 +76,15 @@ impl Composer {
             backdrop::Backdrop::global(cx).update(cx, |backdrop, _| backdrop.release(window));
             return None;
         };
-        Some(backdrop::backdrop(
-            look,
-            chosen.moving,
-            self.column.clone(),
-            cx,
-        ))
+        Some(backdrop::backdrop(look, chosen.moving, cx))
     }
 
-    /// Whether a draft's card draws the owner's image, as it is or through
-    /// a pattern.
-    pub(super) fn on_image(&self, cx: &mut Context<Self>) -> bool {
+    /// Whether a draft's card shows a pattern or the owner's image.
+    pub(super) fn on_backdrop(&self, cx: &mut Context<Self>) -> bool {
         let workspace = self.store.read(cx).workspace();
         let draft = (workspace.session(self.session)).is_none_or(|session| session.is_empty());
         let chosen = workspace.backdrop().clone();
-        draft && self.image_in_use(&chosen, cx).is_some()
+        draft && (chosen.style != BackdropStyle::None || self.image_in_use(&chosen, cx).is_some())
     }
 
     /// The owner's image, once it reads, unless it is hidden.
@@ -103,13 +97,13 @@ impl Composer {
         source.filter(|_| !chosen.image_hidden)
     }
 
-    /// The fills of the composer's surfaces. Over the owner's image both are
-    /// `composer_glass`, so the picture shows through them; else the
-    /// box and the pill are `composer_background`, the tray's quiet controls
-    /// the card's own fill.
+    /// The fills of the composer's surfaces. Over a pattern or the owner's
+    /// image both are `composer_glass`, so what is under them shows faintly
+    /// through; else the box and the pill are `composer_background`, the
+    /// tray's quiet controls the card's own fill.
     pub(super) fn surfaces(&self, cx: &mut Context<Self>) -> Surfaces {
         let colors = Theme::of(cx).colors;
-        if self.on_image(cx) {
+        if self.on_backdrop(cx) {
             Surfaces {
                 raised: colors.composer_glass,
                 quiet: colors.composer_glass,

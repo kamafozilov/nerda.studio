@@ -14,19 +14,17 @@ mod source;
 mod thumbnails;
 
 pub use source::{ImageState, add_image, forget_image};
-pub use thumbnails::picture;
+pub use thumbnails::{picture, picture_in_gray};
 
 use std::{
-    cell::Cell,
-    rc::Rc,
     sync::Arc,
     time::{Duration, Instant},
 };
 
-use backdrop::{Frame, Ink, Pattern, Rect, Source};
+use backdrop::{Frame, Ink, Pattern, Source};
 use gpui::{
-    App, AppContext, Bounds, Context, Corners, Entity, Global, Hsla, IntoElement, Pixels,
-    RenderImage, Styled, Task, Window, WindowAppearance, canvas, px,
+    App, AppContext, Context, Corners, Entity, Global, Hsla, IntoElement, RenderImage, Styled,
+    Task, Window, WindowAppearance, canvas, px,
 };
 use theme::{HAIRLINE, MAIN_RADIUS, Theme};
 use workspace::{BackdropStrength, BackdropStyle, BackdropTint};
@@ -135,14 +133,7 @@ impl Look {
     }
 
     /// The frame of this look over `size` device pixels.
-    pub fn frame(
-        &self,
-        width: u32,
-        height: u32,
-        scale: f32,
-        clear: Option<Rect>,
-        time: f32,
-    ) -> Frame {
+    pub fn frame(&self, width: u32, height: u32, scale: f32, time: f32) -> Frame {
         Frame {
             width,
             height,
@@ -151,10 +142,6 @@ impl Look {
             ink: self.ink,
             source: self.source.clone(),
             light: self.light,
-            // An image covers the card whole, the composer's glass setting
-            // it apart: a pattern cleared around the composer would cut a
-            // dark box out of the picture.
-            clear: if self.source.is_some() { None } else { clear },
             // The image alone holds still, so it is never drawn again for time.
             time: if self.pattern == Pattern::Image {
                 0.
@@ -277,15 +264,9 @@ impl Backdrop {
     }
 }
 
-/// The pattern behind a draft's composer, filling the card, clear of the
-/// area `clear` holds when the card paints: the composer's column, measured
-/// as it lays out.
-pub fn backdrop(
-    look: Look,
-    moving: bool,
-    clear: Rc<Cell<Option<Bounds<Pixels>>>>,
-    cx: &App,
-) -> impl IntoElement + use<> {
+/// The pattern behind a draft's composer, filling the card under it: the
+/// composer's surfaces, not a hole in the pattern, set it apart.
+pub fn backdrop(look: Look, moving: bool, cx: &App) -> impl IntoElement + use<> {
     let backdrop = Backdrop::global(cx);
     let moving = moving && !cx.reduce_motion();
     canvas(
@@ -297,7 +278,6 @@ pub fn backdrop(
                     (f32::from(bounds.size.width) * scale).round() as u32,
                     (f32::from(bounds.size.height) * scale).round() as u32,
                     scale,
-                    clear.get().map(|area| device_rect(area, bounds, scale)),
                     backdrop.time(moving),
                 );
                 let (image, retired) = backdrop.prepare(frame.clone(), moving, cx);
@@ -328,15 +308,4 @@ fn rgba_bytes(color: Hsla, gain: f32) -> [u8; 4] {
     let rgba = color.to_rgb();
     let alpha = (rgba.a * gain).min(1.);
     [rgba.r, rgba.g, rgba.b, alpha].map(|channel| (channel * 255.).round() as u8)
-}
-
-/// `area` in the device pixels of `bounds`, from its top-left corner.
-fn device_rect(area: Bounds<Pixels>, bounds: Bounds<Pixels>, scale: f32) -> Rect {
-    let offset = area.origin - bounds.origin;
-    Rect {
-        x: f32::from(offset.x) * scale,
-        y: f32::from(offset.y) * scale,
-        width: f32::from(area.size.width) * scale,
-        height: f32::from(area.size.height) * scale,
-    }
 }

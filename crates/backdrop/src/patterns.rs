@@ -165,13 +165,9 @@ fn place(frame: &Frame, x: f32, y: f32) -> Place {
     }
 }
 
-/// The field at a point given in device pixels, faded by the clear area.
+/// The field at a point given in device pixels.
 fn shown(frame: &Frame, x: f32, y: f32) -> f32 {
-    let open = frame.openness(x, y);
-    if open <= 0. {
-        return 0.;
-    }
-    frame.pattern.field(&place(frame, x, y)) * open
+    frame.pattern.field(&place(frame, x, y))
 }
 
 /// One square dot per cell where the field beats the cell's threshold, so
@@ -257,8 +253,7 @@ fn characters(frame: &Frame, canvas: &mut Canvas) {
 }
 
 /// The image itself, each pixel its own color, or the ink at the image's
-/// density. It covers the card whole, clear area included: the composer's
-/// glass sets it apart. Each pixel is read between four of the image's, so a
+/// density. Each pixel is read between four of the image's, so a
 /// small image scaled up stays smooth, and each column and row is placed
 /// once, not once a pixel.
 fn image(frame: &Frame, canvas: &mut Canvas) {

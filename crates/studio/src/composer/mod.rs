@@ -18,16 +18,12 @@ mod projects;
 mod toolbar;
 mod tray;
 
-use std::{
-    cell::Cell,
-    path::{Path, PathBuf},
-    rc::Rc,
-};
+use std::path::{Path, PathBuf};
 
 use gpui::{
-    App, Bounds, ClickEvent, Context, Entity, FocusHandle, Focusable, IntoElement, KeyBinding,
-    ParentElement, Pixels, Render, SharedString, Styled, Subscription, Window, actions, canvas,
-    div, prelude::*, px, relative, svg,
+    App, ClickEvent, Context, Entity, FocusHandle, Focusable, IntoElement, KeyBinding,
+    ParentElement, Render, SharedString, Styled, Subscription, Window, actions, div, prelude::*,
+    px, relative, svg,
 };
 use theme::{
     COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS, CONTROL_RADIUS,
@@ -87,9 +83,6 @@ pub struct Composer {
     tray_open: bool,
     /// While the tray's options go, until their spring settles.
     tray_closing: Option<gpui::Task<()>>,
-    /// Where the column stood when last laid out, which a draft's backdrop
-    /// keeps clear.
-    column: Rc<Cell<Option<Bounds<Pixels>>>>,
     attachments: Attachments,
     /// Why the last attempt to attach, to send or to change the agent fell
     /// short, shown under the box until the next edit.
@@ -152,7 +145,6 @@ impl Composer {
             panel_focus: cx.focus_handle(),
             tray_open: false,
             tray_closing: None,
-            column: Rc::default(),
             attachments: Attachments::default(),
             problem: None,
             picking: false,
@@ -255,9 +247,9 @@ impl Composer {
 
     /// Where the session runs, over the box: the project's pill on the box's
     /// leading edge, and the branch its checkout is on, or the commit, at
-    /// the trailing edge. Their content stands in the box's padding. Over
-    /// the owner's image the branch stands on glass as the pill does, so it
-    /// reads over any picture.
+    /// the trailing edge. Their content stands in the box's padding. Over a
+    /// pattern or the owner's image the branch stands on the pill's surface,
+    /// so it reads over any of them.
     fn render_context(
         &self,
         draft: bool,
@@ -265,7 +257,7 @@ impl Composer {
         cx: &mut Context<Self>,
     ) -> Option<impl IntoElement + use<>> {
         let colors = Theme::of(cx).colors;
-        let glass = self.on_image(cx).then(|| self.surfaces(cx).raised);
+        let glass = self.on_backdrop(cx).then(|| self.surfaces(cx).raised);
         let store = self.store.read(cx);
         let workspace = store.workspace();
         let project_id = workspace.session(self.session)?.project;
@@ -344,27 +336,14 @@ impl Render for Composer {
             .workspace()
             .session(self.session)
             .is_none_or(|session| session.is_empty());
-        let measure = {
-            let column = self.column.clone();
-            canvas(
-                move |bounds, _, _| column.set(Some(bounds)),
-                |_, _, _, _| {},
-            )
-            .absolute()
-            .top_0()
-            .left_0()
-            .size_full()
-        };
         let column = div()
-            .relative()
             .w_full()
             .max_w(COMPOSER_MAX_WIDTH)
             .flex()
             .flex_col()
             .children(self.render_context(draft, window, cx))
             .child(self.render_box(window, cx))
-            .children(self.render_problem(cx))
-            .child(measure);
+            .children(self.render_problem(cx));
         let backdrop = self.render_backdrop(draft, window, cx);
         // A draft's column stands a little above the middle, where the eye
         // rests: the space above it is `DRAFT_RISE` of what is left.

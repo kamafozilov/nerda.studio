@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use ::backdrop::{Ink, Pattern, Rect, Source};
+use ::backdrop::{Ink, Pattern, Source};
 use gpui::{
     App, Hsla, IntoElement, ParentElement, Pixels, RenderImage, Styled, Window, div, px, relative,
 };
@@ -15,7 +15,7 @@ use crate::backdrop::{self, Look};
 const THUMB_HEIGHT: Pixels = px(68.);
 
 /// A pattern card's face: the card's color, the pattern over it, and a
-/// small composer in its middle, which the pattern keeps clear of.
+/// small composer in its middle, over it.
 pub(super) fn card_face(
     picture: Option<Arc<RenderImage>>,
     fill: Hsla,
@@ -57,8 +57,8 @@ const THUMB_SHRINK: f32 = 5.;
 const THUMB_GAIN: f32 = 2.5;
 
 /// A pattern drawn for a card `width` wide: the card's shape, shrunk by
-/// `THUMB_SHRINK` with its pattern and its ink `THUMB_GAIN` stronger, clear
-/// of the small composer.
+/// `THUMB_SHRINK` with its pattern and its ink `THUMB_GAIN` stronger, under
+/// the small composer as the card is under the real one.
 pub(super) fn pattern_card(
     look: Look,
     width: Pixels,
@@ -68,12 +68,6 @@ pub(super) fn pattern_card(
     let scale = window.scale_factor();
     let width = (f32::from(width) * scale).round();
     let height = (f32::from(THUMB_HEIGHT) * scale).round();
-    let clear = Rect {
-        x: width * MINI_COMPOSER.0,
-        y: height * MINI_COMPOSER.1,
-        width: width * MINI_COMPOSER.2,
-        height: height * MINI_COMPOSER.3,
-    };
     let gain = |alpha: u8| (alpha as f32 * THUMB_GAIN).min(255.) as u8;
     let ink = match look.ink {
         Ink::Solid([r, g, b, a]) => Ink::Solid([r, g, b, gain(a)]),
@@ -82,13 +76,7 @@ pub(super) fn pattern_card(
     let look = Look { ink, ..look };
     backdrop::Backdrop::global(cx).update(cx, |backdrop, _| {
         let time = backdrop.still_time();
-        let frame = look.frame(
-            width as u32,
-            height as u32,
-            scale / THUMB_SHRINK,
-            Some(clear),
-            time,
-        );
+        let frame = look.frame(width as u32, height as u32, scale / THUMB_SHRINK, time);
         backdrop.thumbnail(frame)
     })
 }
@@ -109,7 +97,7 @@ pub(super) fn image_picture(
     };
     let (width, height) = (f32::from(size.0) * scale, f32::from(size.1) * scale);
     backdrop::Backdrop::global(cx).update(cx, |backdrop, _| {
-        let frame = look.frame(width.round() as u32, height.round() as u32, scale, None, 0.);
+        let frame = look.frame(width.round() as u32, height.round() as u32, scale, 0.);
         backdrop.thumbnail(frame)
     })
 }

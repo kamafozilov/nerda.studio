@@ -23,7 +23,6 @@ fn frame(pattern: Pattern, ink: Ink, light: bool) -> Frame {
         ink,
         source: Some(halves()),
         light,
-        clear: None,
         time: 0.,
     }
 }
@@ -88,7 +87,7 @@ fn without_a_source_the_image_and_its_colors_draw_nothing() {
 }
 
 #[test]
-fn the_image_alone_covers_the_clear_area_as_it_is() {
+fn the_image_alone_shows_every_pixel_as_it_is() {
     let white = Arc::new(Source::new(4, 4, &[255; 64]).unwrap());
     let frame = Frame {
         width: 400,
@@ -98,12 +97,6 @@ fn the_image_alone_covers_the_clear_area_as_it_is() {
         ink: Ink::Source { alpha: 200 },
         source: Some(white),
         light: false,
-        clear: Some(backdrop::Rect {
-            x: 150.,
-            y: 75.,
-            width: 100.,
-            height: 50.,
-        }),
         time: 0.,
     };
     let pixels = frame.render();

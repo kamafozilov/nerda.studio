@@ -3,8 +3,8 @@
 //! colors of an image, over transparency.
 //!
 //! A pattern is drawn in points and scaled to the display, so it keeps its size
-//! on any screen, and it clears away around the composer, so nothing read
-//! there ever sits on it. Given an image, a pattern draws the image's
+//! on any screen. It covers the whole card, the composer included: the
+//! composer's surfaces set it apart. Given an image, a pattern draws the image's
 //! lightness instead of its own. Drawing is pure and quick enough to repeat
 //! several times a second, which is how a pattern moves: [`Frame::time`]
 //! shifts it.
@@ -17,15 +17,6 @@ use std::sync::Arc;
 
 pub use patterns::Pattern;
 pub use source::Source;
-
-/// A rectangle in device pixels, from the top-left corner of the frame.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Rect {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-}
 
 /// What the marks are colored with.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -51,16 +42,9 @@ pub struct Frame {
     /// The frame lies on a light surface, where a mark darkens: the image's
     /// dark areas then draw the most marks.
     pub light: bool,
-    /// The pattern fades out toward this area and leaves it empty.
-    pub clear: Option<Rect>,
     /// Seconds into the pattern's slow drift; a still pattern stays at one time.
     pub time: f32,
 }
-
-/// The room the pattern fades over around the clear area, in points: none
-/// within `CLEAR_NEAR`, full by `CLEAR_FAR`.
-const CLEAR_NEAR: f32 = 16.;
-const CLEAR_FAR: f32 = 120.;
 
 impl Frame {
     /// The frame's pixels, BGRA with straight alpha, row by row.
@@ -82,18 +66,6 @@ impl Frame {
         };
         patterns::draw(self, &mut canvas);
         pixels
-    }
-
-    /// How much of the pattern shows at a point given in device pixels: 0 in
-    /// and near the clear area, rising to 1 away from it.
-    pub(crate) fn openness(&self, x: f32, y: f32) -> f32 {
-        let Some(clear) = self.clear else {
-            return 1.;
-        };
-        let dx = (clear.x - x).max(x - (clear.x + clear.width)).max(0.);
-        let dy = (clear.y - y).max(y - (clear.y + clear.height)).max(0.);
-        let distance = dx.hypot(dy) / self.scale;
-        noise::smoothstep(CLEAR_NEAR, CLEAR_FAR, distance)
     }
 
     /// How strongly the image asks for marks at a point, in `0..1`: its
