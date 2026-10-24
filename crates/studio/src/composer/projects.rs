@@ -1,5 +1,5 @@
-//! The project over the box: a pill whose menu searches the projects, opens
-//! a draft in the one picked, and adds a new one.
+//! The project over the box: a pill whose menu offers No project, searches
+//! the folder projects, opens a draft in the one picked, and adds a new one.
 
 use gpui::{
     Anchor, App, ClickEvent, Context, EventEmitter, Focusable, IntoElement, ParentElement,
@@ -8,7 +8,7 @@ use gpui::{
 use theme::{
     CONTROL_RADIUS, CONTROL_SIZE, HAIRLINE, ICON_SIZE, ICON_SIZE_SMALL, SPACE_2, SPACE_3, Theme,
 };
-use workspace::ProjectId;
+use workspace::{NO_PROJECT, ProjectId, ProjectKind, Timestamp, matches_search};
 
 use super::Composer;
 use crate::{
@@ -23,16 +23,39 @@ pub struct OpenProject(pub ProjectId);
 impl EventEmitter<OpenProject> for Composer {}
 
 impl Composer {
-    /// The projects matching the search, the session's checked at the end,
-    /// then New project.
+    /// No project, then the folder projects, each while it matches the
+    /// search, the session's checked at the end; then New project.
     fn project_entries(&self, cx: &App) -> Vec<Entry<Self>> {
         let colors = Theme::of(cx).colors;
         let workspace = self.store.read(cx).workspace();
         let current = workspace
             .session(self.session)
             .map(|session| session.project);
+        let on_computer = current
+            .and_then(|id| workspace.project(id))
+            .is_some_and(|project| project.kind == ProjectKind::Computer);
         let query = self.projects.query(cx);
-        let mut entries: Vec<Entry<Self>> = (workspace.matching_projects(&query).into_iter())
+        let mut entries: Vec<Entry<Self>> = Vec::new();
+        if matches_search(NO_PROJECT, &query) {
+            let pick =
+                move |composer: &mut Composer, _: &mut Window, cx: &mut Context<Composer>| {
+                    if on_computer {
+                        return;
+                    }
+                    let computer = composer.store.update(cx, |store, cx| {
+                        store.update(cx, |workspace| workspace.computer_project(Timestamp::now()))
+                    });
+                    if let Some(id) = computer {
+                        cx.emit(OpenProject(id));
+                    }
+                };
+            entries.push(Entry::Item(
+                Item::new("project-none", NO_PROJECT, pick)
+                    .icon(Icon::Computer, colors.text_secondary)
+                    .checked_at_end(on_computer),
+            ));
+        }
+        let folders: Vec<Entry<Self>> = (workspace.matching_projects(&query).into_iter())
             .map(|project| {
                 let id = project.id;
                 let name = workspace
@@ -50,6 +73,10 @@ impl Composer {
                 )
             })
             .collect();
+        if !entries.is_empty() && !folders.is_empty() {
+            entries.push(Entry::Separator);
+        }
+        entries.extend(folders);
         if entries.is_empty() {
             entries.push(Entry::Section("No matching projects".into()));
         }
@@ -63,7 +90,7 @@ impl Composer {
         entries
     }
 
-    /// The project's folder icon, name and a chevron on the composer's fill
+    /// The project's icon, name and a chevron on the composer's fill
     /// under its hairline, lighter under the pointer and while the menu is
     /// open. The pill stands on the box's leading edge and pads its content
     /// as the box does, so its icon is in the column of the box's text. The
@@ -72,6 +99,7 @@ impl Composer {
     /// card's bottom: three edges on one line, never two side by side.
     pub(super) fn render_project_pill(
         &self,
+        icon: Icon,
         name: SharedString,
         draft: bool,
         window: &mut Window,
@@ -126,7 +154,7 @@ impl Composer {
             }))
             .child(
                 svg()
-                    .path(Icon::Folder.path())
+                    .path(icon.path())
                     .flex_none()
                     .size(ICON_SIZE)
                     .text_color(colors.text_secondary),

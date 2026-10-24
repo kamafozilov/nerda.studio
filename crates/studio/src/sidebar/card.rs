@@ -1,6 +1,6 @@
 //! A session row: one line of its project's badge, its title and how long ago
 //! it was active. The badge's hue and initials tell projects apart at a
-//! glance.
+//! glance; the computer's badge is its icon.
 
 use std::{
     collections::HashMap,
@@ -10,15 +10,18 @@ use std::{
 
 use gpui::{
     AnyElement, ClickEvent, Context, FontWeight, Hsla, IntoElement, ParentElement, SharedString,
-    Styled, Task, div, prelude::*,
+    Styled, Task, div, prelude::*, svg,
 };
 use theme::{
-    BADGE_SIZE, BADGE_TEXT, CONTROL_RADIUS, ROW_GAP, ROW_HEIGHT, SPACE_1, SPACE_2, TEXT_CAPTION,
-    Theme,
+    BADGE_SIZE, BADGE_TEXT, CONTROL_RADIUS, Colors, ICON_SIZE_SMALL, ROW_GAP, ROW_HEIGHT, SPACE_1,
+    SPACE_2, TEXT_CAPTION, Theme,
 };
-use workspace::{Head, Project, ProjectId, Session, SessionId, Timestamp, compact_age};
+use workspace::{
+    Head, Project, ProjectId, ProjectKind, Session, SessionId, Timestamp, compact_age,
+};
 
 use super::{Sidebar, fade::Key};
+use crate::assets::Icon;
 
 /// What a session row shows, read from the workspace when it changes rather
 /// than on every frame.
@@ -33,19 +36,56 @@ pub(super) struct Row {
 }
 
 /// A project as its sessions' rows show it, worked out once per refresh and
-/// shared by its rows.
+/// shared by its rows: its badge.
 #[derive(Clone)]
-pub(super) struct ProjectFace {
-    /// The badge's initials and hue.
-    pub initials: SharedString,
-    pub hue: usize,
+pub(super) enum ProjectFace {
+    /// A folder's initials, in its hue.
+    Folder { initials: SharedString, hue: usize },
+    /// The computer's icon on a neutral fill: no folder to name or color it by.
+    Computer,
 }
 
 impl ProjectFace {
     pub fn new(project: &Project) -> Self {
-        Self {
-            initials: initials(&project.title).into(),
-            hue: hue(&project.path),
+        match project.kind {
+            ProjectKind::Folder => Self::Folder {
+                initials: initials(&project.title).into(),
+                hue: hue(&project.path),
+            },
+            ProjectKind::Computer => Self::Computer,
+        }
+    }
+
+    /// The badge, `BADGE_SIZE` with `SPACE_1` corners.
+    fn badge(&self, colors: &Colors) -> AnyElement {
+        let badge = div()
+            .size(BADGE_SIZE)
+            .flex_none()
+            .rounded(SPACE_1)
+            .flex()
+            .items_center()
+            .justify_center();
+        match self {
+            Self::Folder { initials, hue } => {
+                let face = colors.badges[hue % colors.badges.len()];
+                badge
+                    .bg(face.fill)
+                    .text_size(BADGE_TEXT)
+                    .line_height(BADGE_SIZE)
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .text_color(face.text)
+                    .child(initials.clone())
+                    .into_any_element()
+            }
+            Self::Computer => badge
+                .bg(colors.key_background)
+                .child(
+                    svg()
+                        .path(Icon::Computer.path())
+                        .size(ICON_SIZE_SMALL)
+                        .text_color(colors.text_secondary),
+                )
+                .into_any_element(),
         }
     }
 
@@ -129,13 +169,16 @@ impl Sidebar {
         }
     }
 
-    /// Every project's folder, noting which projects the heads are read for.
+    /// Every folder project's folder, noting which projects the heads are
+    /// read for. The computer has no head: its home folder is no checkout,
+    /// even one that happens to be a repository.
     fn projects_to_head(&mut self, cx: &mut Context<Self>) -> Vec<(ProjectId, PathBuf)> {
         let workspace = self.store.read(cx).workspace();
         self.headed_projects = workspace.project_ids();
         workspace
             .projects()
             .into_iter()
+            .filter(|project| project.kind.is_folder())
             .map(|project| (project.id, project.path.clone()))
             .collect()
     }
@@ -206,12 +249,8 @@ impl Sidebar {
         } else {
             Hsla::transparent_black()
         };
-        let badge = colors.badges[row.project.hue % colors.badges.len()];
-        let (title, initials, age) = (
-            row.title.clone(),
-            row.project.initials.clone(),
-            row.age.clone(),
-        );
+        let badge = row.project.badge(&colors);
+        let (title, age) = (row.title.clone(), row.age.clone());
         let fill = self.fills.at(Key::Session(id), target, Instant::now());
         let on_surface = selected || hovered;
         slot.id(("session-slot", id.0))
@@ -231,21 +270,7 @@ impl Sidebar {
                     .on_click(cx.listener(move |sidebar, _: &ClickEvent, _, cx| {
                         sidebar.open_session(id, cx)
                     }))
-                    .child(
-                        div()
-                            .size(BADGE_SIZE)
-                            .flex_none()
-                            .rounded(SPACE_1)
-                            .bg(badge.fill)
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_size(BADGE_TEXT)
-                            .line_height(BADGE_SIZE)
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(badge.text)
-                            .child(initials),
-                    )
+                    .child(badge)
                     .child(
                         div()
                             .flex_1()

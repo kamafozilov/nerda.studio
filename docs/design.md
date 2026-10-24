@@ -55,8 +55,8 @@ the sidebar and the tabs read the same over any desktop. Light keeps its glass.
 | `text_secondary_on_surface` | `a0a0a1` | `45474c` (L 0.399) | Supporting text on a row's `hover` or `row_selected` surface |
 | `text_tertiary` | `797979` (L 0.57), 4.55 on the base | `505358` | Section titles, a row's age |
 | `scrim` | `151619` at 64% | `fbfdff` at 60% | Dims the window under a dialog; nothing is read on it |
-| `key_background` | text primary at 10% | text primary at 10% | Key cap fill; `text_secondary` on it keeps 4.92 / 5.51 even under `hover` |
-| `badges` | fill L 0.38 C 0.075, initials L 0.87 C 0.10 | fill L 0.91 C 0.045, initials L 0.43 C 0.12 | Project badges, eight hues (25, 60, 95, 145, 185, 235, 285, 330), chroma cut to stay in sRGB; the initials keep at least 6.73:1 (dark) and 5.98:1 (light) on their fill, 5.27 and 5.39 under a row's surface |
+| `key_background` | text primary at 10% | text primary at 10% | Key caps, No project's badge; `text_secondary` on it keeps 4.92 / 5.51 under `hover` |
+| `badges` | fill L 0.38 C 0.075, initials L 0.87 C 0.10 | fill L 0.91 C 0.045, initials L 0.43 C 0.12 | Folder badges, eight hues (25, 60, 95, 145, 185, 235, 285, 330), chroma cut to fit sRGB; the initials keep at least 6.73:1 (dark) and 5.98:1 (light) on their fill, 5.27 and 5.39 under a row's surface |
 
 ### Contrast on glass
 
@@ -118,7 +118,7 @@ Sizes sit on a 4 px grid, in `crates/theme/src/metrics.rs`, but for the card's
   same set; take one from elsewhere only when the set has nothing close, at the same
   stroke. The search field's magnifier keeps its ring to 15 of the 24 units: one that
   fills the box looks oversized beside 13 pt text.
-  GPUI paints an SVG in its own `text_color` only, never its parent's. The branch on a
+  GPUI paints an SVG in its own `text_color` only. The branch on a
   session card is the pull request icon's set's branch without its arrow, which is lost
   at `ICON_SIZE_SMALL`.
 - **A toggle** shows the set's outline icon while off and the same outline with its main

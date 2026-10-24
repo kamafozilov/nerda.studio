@@ -12,7 +12,7 @@ use std::{
 };
 use theme::{CONTROL_RADIUS, HAIRLINE, NOTICE_MAX_HEIGHT, ROW_HEIGHT, SPACE_1, SPACE_2, Theme};
 
-use workspace::{Page, ProjectId, ProjectScope, Tab, Timestamp, age_changes_in};
+use workspace::{Page, ProjectId, ProjectKind, ProjectScope, Tab, Timestamp, age_changes_in};
 
 use super::{
     Sidebar,
@@ -185,14 +185,20 @@ impl Sidebar {
             // Filtered to one project, the list says so: other projects may
             // have sessions.
             let filtered = match workspace.scope() {
-                ProjectScope::Project(project) => workspace.display_name(project),
+                ProjectScope::Project(project) => workspace.project(project),
                 ProjectScope::All => None,
             };
             let text: SharedString = match (self.searching(), filtered) {
                 (true, _) => {
                     format!("No sessions match \u{201c}{}\u{201d}", self.query.trim()).into()
                 }
-                (false, Some(project)) => format!("No sessions in {project} yet").into(),
+                (false, Some(project)) if project.kind == ProjectKind::Computer => {
+                    "No sessions without a project yet".into()
+                }
+                (false, Some(project)) => {
+                    let name = workspace.display_name(project.id).unwrap_or_default();
+                    format!("No sessions in {name} yet").into()
+                }
                 (false, None) => "No sessions yet".into(),
             };
             return self.empty_state(text, cx).into_any_element();

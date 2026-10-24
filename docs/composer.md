@@ -105,25 +105,32 @@ conversation over a docked composer are in [session.md](session.md).
   backticks in the monospaced font, until the next edit.
 - **The context row**, over the box and `SPACE_1` above it, `CONTROL_SIZE` tall, in
   `TEXT_BODY` `text_secondary`, its icons at `ICON_SIZE` in the column of the box's text:
-  - On the box's leading edge, the project's pill: a folder, the project's name as the
-    sidebar shows it and a chevron at `ICON_SIZE_SMALL`, `SPACE_2` apart, on
+  - On the box's leading edge, the project's pill: a folder, or a computer for No
+    project, the project's name as the sidebar shows it and a chevron at
+    `ICON_SIZE_SMALL`, `SPACE_2` apart, on
     `composer_background` under a `border` hairline with `CONTROL_RADIUS`, padded as the
     box is, `hover` washed over it under the pointer and while its menu is open; no
     tooltip. A long name truncates before the branch does.
   - At the trailing edge, the branch its checkout is on, or the commit, cut in the
-    middle, at most 40% of the row, the whole of it in the tooltip. Outside git there is
-    no branch. It is read as [sidebar.md](sidebar.md) says.
+    middle, at most 40% of the row, the whole of it in the tooltip. Outside git, and in
+    No project, there is no branch. It is read as [sidebar.md](sidebar.md) says.
 - **The project menu**, from the pill's leading edge, so the pill, the menu and the box
   stand on one edge, never two side by side: downward from a draft, upward from a docked
   composer, 256 wide at least. It leads with a "Search projects" field, 36 tall over a
   hairline, its text starting in the items' icon column, which takes the focus and
-  starts empty; then the projects whose name contains the search, folding
-  case and apostrophes as the session search does (`o'z` finds `oʻzbek`), most recently
-  active first, each after a folder, the session's own checked at the row's end; "No
-  matching projects" when none does; then a hairline and "New project", which opens Add
-  project. Its hairlines run edge to edge. Arrows move the highlight, Enter picks it, else the first project. Picking
-  another project shows its draft, reopened if it has one, as New session there would;
-  picking the session's own changes nothing.
+  starts empty; then "No project" after a computer, for a session that works on the
+  computer itself rather than in a folder, and a hairline; then the folder projects,
+  most recently active first, each after a folder. Each shows while its name contains
+  the search, folding case and apostrophes as the session search does (`o'z` finds
+  `oʻzbek`), the session's own checked at the row's end; "No matching projects" when
+  none does; then a hairline and "New project", which opens Add project. Its hairlines
+  run edge to edge. Arrows move the highlight, Enter picks it, else the first item.
+  Picking another project shows its draft, reopened if it has one, as New session there
+  would; picking the session's own changes nothing.
+- **No project** is a project of its own kind, made the first time it is picked, at
+  most one: its sessions run in the home folder, and no branch is read for it. Adding
+  the home folder with Add project opens it, as adding any folder already there opens
+  that project.
 - **One composer per open session.** A message half written, its attachments included,
   stays with its session while another tab is shown, and goes when its tab closes; it
   isn't saved. A pasted image's file stays in `attachments/`. Showing a

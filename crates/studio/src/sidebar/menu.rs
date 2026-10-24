@@ -7,7 +7,7 @@ use gpui::{
     prelude::*,
 };
 use theme::Theme;
-use workspace::{ProjectScope, SessionSort, Workspace};
+use workspace::{NO_PROJECT, ProjectScope, SessionSort, Workspace};
 
 use super::{Sidebar, header::row_button};
 use crate::{
@@ -80,7 +80,18 @@ impl Sidebar {
             scope == ProjectScope::All,
             |workspace| workspace.set_scope(ProjectScope::All),
         )];
-        for project in workspace.projects() {
+        if let Some(computer) = workspace.computer() {
+            let id = computer.id;
+            project_entries.push(choice(
+                "scope-none",
+                NO_PROJECT,
+                scope == ProjectScope::Project(id),
+                move |workspace| workspace.set_scope(ProjectScope::Project(id)),
+            ));
+            project_entries.push(Entry::Separator);
+        }
+        for project in (workspace.projects().into_iter()).filter(|project| project.kind.is_folder())
+        {
             let id = project.id;
             let name = SharedString::from(workspace.display_name(id).unwrap_or_default());
             project_entries.push(choice(

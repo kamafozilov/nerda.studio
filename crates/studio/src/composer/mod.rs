@@ -24,7 +24,7 @@ use theme::{
     COMPOSER_MAX_LINES, COMPOSER_MAX_WIDTH, COMPOSER_MIN_LINES, COMPOSER_RADIUS, CONTROL_SIZE,
     HAIRLINE, ICON_SIZE, SPACE_1, SPACE_2, SPACE_3, TEXT_SMALL, Theme,
 };
-use workspace::{Head, SessionId};
+use workspace::{Head, ProjectKind, SessionId};
 
 use attachments::Attachments;
 pub(crate) use chips::{chip, chip_label};
@@ -238,10 +238,14 @@ impl Composer {
         let project_id = workspace.session(self.session)?.project;
         let project = workspace.project(project_id)?;
         let name: SharedString = workspace.display_name(project_id)?.into();
+        let icon = match project.kind {
+            ProjectKind::Folder => Icon::Folder,
+            ProjectKind::Computer => Icon::Computer,
+        };
         let branch = store.head(project.id).map(|head| match head {
             Head::Branch(name) | Head::Detached(name) => SharedString::from(name.clone()),
         });
-        let pill = self.render_project_pill(name, draft, window, cx);
+        let pill = self.render_project_pill(icon, name, draft, window, cx);
         Some(
             div()
                 .h(CONTROL_SIZE)

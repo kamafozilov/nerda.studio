@@ -19,6 +19,8 @@ pub enum Icon {
     /// Opens a pill's choices.
     ChevronDown,
     Close,
+    /// No project: a session working on the computer itself.
+    Computer,
     /// The Design page.
     Design,
     /// An attached file that is neither an image nor a folder.
@@ -72,6 +74,7 @@ impl Icon {
             Self::Claude => "icons/claude.svg",
             Self::ChevronDown => "icons/arrow-down-01.svg",
             Self::Close => "icons/cancel-01.svg",
+            Self::Computer => "icons/computer.svg",
             Self::Design => "icons/pen-tool-03.svg",
             Self::File => "icons/file-02.svg",
             Self::Forward => "icons/arrow-right-01.svg",
@@ -128,6 +131,10 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/claude.svg",
         include_bytes!("../assets/icons/claude.svg"),
+    ),
+    (
+        "icons/computer.svg",
+        include_bytes!("../assets/icons/computer.svg"),
     ),
     (
         "icons/file-02.svg",
