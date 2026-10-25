@@ -13,6 +13,7 @@ mod history;
 mod icon;
 mod model;
 mod paths;
+mod preferences;
 mod query;
 mod store;
 mod tabs;
@@ -37,6 +38,7 @@ pub use model::{
     Session, SessionId, SessionSort, Tab, Timestamp,
 };
 pub use paths::home_relative;
+pub use preferences::{OnLaunch, Preferences};
 pub use query::matches_search;
 pub use store::{default_data_dir, default_instance_lock_path, default_state_path, write_state};
 
@@ -73,6 +75,8 @@ pub struct Workspace {
     /// The sidebar's width in points as last dragged; `None` keeps the
     /// app's default.
     sidebar_width: Option<f32>,
+    /// How the app works, as set on the Settings page.
+    preferences: Preferences,
 }
 
 impl Workspace {

@@ -7,8 +7,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    AgentChoice, Backdrop, LoadError, NO_PROJECT, Page, Project, ProjectId, ProjectKind,
-    ProjectScope, Session, SessionId, SessionSort, Tab, Workspace, paths,
+    AgentChoice, Backdrop, LoadError, NO_PROJECT, Page, Preferences, Project, ProjectId,
+    ProjectKind, ProjectScope, Session, SessionId, SessionSort, Tab, Workspace, paths,
 };
 
 /// Format version written by this build; files with any other version are refused.
@@ -67,6 +67,7 @@ struct FileRef<'a> {
     backdrop: &'a Backdrop,
     #[serde(skip_serializing_if = "Option::is_none")]
     sidebar_width: Option<f32>,
+    preferences: &'a Preferences,
 }
 
 /// A page's tab and its index among all tabs.
@@ -111,6 +112,9 @@ struct FileV1 {
     /// Files written before the sidebar could be resized have none.
     #[serde(default)]
     sidebar_width: Option<f32>,
+    /// Files written before the Settings page have none.
+    #[serde(default)]
+    preferences: Preferences,
 }
 
 #[derive(Deserialize)]
@@ -171,6 +175,7 @@ impl Workspace {
             last_choice: &self.last_choice,
             backdrop: &self.backdrop,
             sidebar_width: self.sidebar_width,
+            preferences: &self.preferences,
         };
         serde_json::to_vec_pretty(&file).map_err(io::Error::other)
     }
@@ -222,6 +227,7 @@ impl Workspace {
             last_choice: file.last_choice,
             backdrop: file.backdrop,
             sidebar_width: file.sidebar_width,
+            preferences: file.preferences,
             ..Workspace::default()
         };
         workspace.set_scope(match file.scope {
