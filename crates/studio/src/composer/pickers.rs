@@ -5,7 +5,7 @@
 
 use gpui::{App, Context, Hsla, SharedString};
 use theme::{Colors, Theme};
-use workspace::{AGENTS, Agent, AgentChoice, AgentId, ModelId};
+use workspace::{AGENTS, Agent, AgentChoice, AgentId, Effort, ModelId};
 
 use super::Composer;
 use crate::{
@@ -57,13 +57,26 @@ impl Picker {
     }
 
     /// The mark before the pill's value, in its own color: the agent's logo
-    /// for the model, the gauge for the effort.
+    /// for the model, the gauge for the effort, its needle and color on the
+    /// level.
     pub fn mark(self, choice: &AgentChoice, colors: Colors) -> Option<(Icon, Hsla)> {
         match self {
             Picker::Model => logo(&choice.agent, colors),
-            Picker::Effort => Some((Icon::Usage, colors.text_secondary)),
+            Picker::Effort => Some(effort_mark(choice.effort, colors)),
         }
     }
+}
+
+/// The gauge for an effort level, in the level's color.
+fn effort_mark(effort: Effort, colors: Colors) -> (Icon, Hsla) {
+    let color = colors.effort[match effort {
+        Effort::Low => 0,
+        Effort::Medium => 1,
+        Effort::High => 2,
+        Effort::ExtraHigh => 3,
+        Effort::Max => 4,
+    }];
+    (Icon::Effort(effort), color)
 }
 
 /// What the session's agent offers; one this build doesn't know offers what
@@ -98,11 +111,13 @@ impl Composer {
 
     pub(super) fn picker_entries(&self, picker: Picker, cx: &App) -> Vec<Entry<Self>> {
         let choice = self.choice(cx);
+        let colors = Theme::of(cx).colors;
         match picker {
-            Picker::Model => model_entries(&choice, Theme::of(cx).colors),
+            Picker::Model => model_entries(&choice, colors),
             Picker::Effort => (offers(&choice).efforts.iter().enumerate())
                 .map(|(at, level)| {
                     let effort = level.effort;
+                    let (icon, color) = effort_mark(effort, colors);
                     Entry::Item(
                         Item::new(
                             ("effort", at as u64),
@@ -111,7 +126,9 @@ impl Composer {
                                 composer.choose(|choice| choice.effort = effort, cx)
                             },
                         )
-                        .checked(choice.effort == effort),
+                        .checked(choice.effort == effort)
+                        .icon(icon, color)
+                        .tag((effort == Effort::default()).then_some("Recommended")),
                     )
                 })
                 .collect(),

@@ -48,14 +48,14 @@ conversation over a docked composer are in [session.md](session.md).
 - **The toolbar**, `CONTROL_SIZE` high, `SPACE_2` under the text, pulled left by half of
   what Attach's button adds around its icon, so the `+` stands in the text's column: Attach, a `border`
   hairline `ICON_SIZE` tall that sets it apart from the choices, then two pills, the
-  model (Claude's logo, "Opus 5.5") and the effort (a gauge, "High"), then Send at the
+  model (Claude's logo, "Opus 5.5") and the effort (a gauge, "Medium"), then Send at the
   trailing edge.
   - Attach, "Attach files", opens the system's picker for files and folders, several at
     once, with an Attach button; cancelling it changes nothing, and a second click while
     it is open opens no other.
   - A pill is `CONTROL_SIZE` high with `CONTROL_RADIUS`: its mark at `ICON_SIZE`, the
     agent's logo in its brand's color (`claude`, `d97757` dark, `c6613f` light) or the
-    gauge in `text_secondary`, its value in `TEXT_BODY` `text_secondary` and a chevron
+    effort's gauge, its value in `TEXT_BODY` `text_secondary` and a chevron
     at `ICON_SIZE_SMALL`, unfilled at rest and on `hover`
     under the pointer and while its menu is open, as the sidebar's menu button is. Its
     tooltip names it: "Model", "Effort". A long value truncates.
@@ -101,11 +101,22 @@ conversation over a docked composer are in [session.md](session.md).
   the card, and a menu that never covers its pill can't take the next click on the pill
   as a pick. The model menu lists each agent's name ("Claude Code") over its models,
   Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5, each after the agent's logo; the effort
-  menu Low, Medium, High, Extra high, Max. A check marks the current value. Focus goes
-  back to the text when a picker closes.
+  menu Low, Medium, High, Extra high, Max, Medium tagged "Recommended". A check marks
+  the current value. Focus goes back to the text when a picker closes.
+- **The effort's gauge** shows the level twice, in the pill and before each item of its
+  menu: its needle stands on the level's tick, left for Low, up for High, right for Max
+  (`gauge-<level>.svg`), and its color, `effort`, warms as the level rises. Low is
+  `text_secondary`; Medium, High, Extra high and Max are teal, blue, amber and coral at h
+  165, 245, 80 and 40, L 0.80 C 0.13 (dark) or L 0.56 C 0.15 (light), chroma cut to
+  sRGB: `5ed8a9`, `80c5ff`, `e9b452`, `ffa383` and `038963`, `007ac1`, `986b00`,
+  `ba4e25`. Only icons wear it: the faintest keeps 6.60:1 (dark) and 3.83:1 (light) on a
+  highlighted item, past the 3:1 an icon needs. The tag is a small cap
+  (`KEY_CAP_SIZE_SMALL`, `SPACE_1` sides and corners) on `key_background` in
+  `TEXT_CAPTION`, supporting text at rest (4.67:1 dark, 6.20:1 light) and
+  `text_primary` under the highlight, where dark's gray would fall to 3.65:1.
 - **Choices are saved** with the session at once, and the last one made becomes what a
   new session, and a draft opened again, start from. A file from before choices starts
-  on Opus 5.5, High. A model or agent this build doesn't know (a newer
+  on Opus 5.5, Medium. A model or agent this build doesn't know (a newer
   build's, or a retired model) shows as written, checked under its agent, and stays in
   the file until another is picked; an effort or access it doesn't know reads as the
   default. The agents and their options are a table in `crates/workspace/src/agents.rs`,

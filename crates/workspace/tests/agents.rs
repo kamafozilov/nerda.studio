@@ -39,12 +39,12 @@ const TWO_SESSIONS: &str = r#"{
 }"#;
 
 #[test]
-fn sessions_start_on_opus_at_high_in_full_access() {
+fn sessions_start_on_opus_at_medium_in_full_access() {
     let temp = TempDir::new();
     let mut workspace = Workspace::default();
     let project = add(&mut workspace, &temp, "web");
     let session = workspace.new_session(project, Timestamp(2)).unwrap();
-    let expected = choice("opus", Effort::High, Access::FullAccess);
+    let expected = choice("opus", Effort::Medium, Access::FullAccess);
     assert_eq!(workspace.last_choice(), &expected);
     assert_eq!(workspace.session(session).unwrap().choice, expected);
 
@@ -116,7 +116,7 @@ fn an_unknown_agent_or_model_is_kept_as_written() {
     let worked = &workspace.session(SessionId(1)).unwrap().choice;
     assert_eq!(worked.model, ModelId("claude-opus-4-1".to_owned()));
     // An effort or access a newer build wrote reads as the default.
-    assert_eq!(worked.effort, Effort::High);
+    assert_eq!(worked.effort, Effort::Medium);
     assert_eq!(worked.access, Access::FullAccess);
     let draft = &workspace.session(SessionId(2)).unwrap().choice;
     assert_eq!(draft.agent, AgentId("other-agent".to_owned()));
@@ -153,7 +153,7 @@ fn the_choice_becomes_the_agents_arguments() {
             "--model",
             "opus",
             "--effort",
-            "high",
+            "medium",
             "--permission-mode",
             "bypassPermissions"
         ]

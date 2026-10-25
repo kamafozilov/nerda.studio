@@ -27,7 +27,7 @@ components read them through `Theme::of(cx)` and the constants in `theme`, never
 - Do not stack another translucent surface on the main area. GPUI blurs only what is behind
   the window, not the app's own content, so a menu or popover needs an opaque background of
   its own.
-- The window follows the system's light or dark appearance and switches live.
+- The window follows the system's light or dark appearance, live.
 
 ## Colors
 
@@ -66,7 +66,7 @@ the sidebar and the tabs read the same over any desktop. Light keeps its glass.
 
 Roles that belong to one screen are set where it is described: `danger`, `diff_added`
 and its washes, `link`, `mention`, `syntax` and `activity` in [session.md](session.md);
-`claude`, `backdrop` and `backdrop_warm` in [backdrop.md](backdrop.md) and
+`claude`, `effort`, `backdrop` and `backdrop_warm` in [backdrop.md](backdrop.md) and
 [composer.md](composer.md).
 
 ### Contrast on glass

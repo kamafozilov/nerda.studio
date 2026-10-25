@@ -8,8 +8,8 @@ use gpui::{
     SharedString, Styled, Window, div, prelude::*, svg,
 };
 use theme::{
-    CONTROL_RADIUS, DISABLED_OPACITY, HAIRLINE, ICON_SIZE_ROW, ROW_HEIGHT, SPACE_1, SPACE_2,
-    SPACE_3, Theme,
+    CONTROL_RADIUS, DISABLED_OPACITY, HAIRLINE, ICON_SIZE_ROW, KEY_CAP_SIZE_SMALL, ROW_HEIGHT,
+    SPACE_1, SPACE_2, SPACE_3, TEXT_CAPTION, Theme,
 };
 
 use super::{Level, Menu};
@@ -41,6 +41,11 @@ pub(crate) struct Item<T> {
     shortcut: Option<Shortcut>,
     /// A short note at the row's end in secondary text: an age, a place.
     detail: Option<SharedString>,
+    /// The detail drawn as a tag, a word set apart after the label such as
+    /// Recommended: a small cap on `key_background` in supporting text,
+    /// `text_primary` under the highlight, where dark's supporting gray
+    /// would fall to 3.65:1.
+    tagged: bool,
     /// The label in secondary text: a choice that stands back, such as a
     /// remote branch under the local ones.
     quiet: bool,
@@ -64,6 +69,7 @@ impl<T> Item<T> {
             icon: None,
             shortcut: None,
             detail: None,
+            tagged: false,
             quiet: false,
             enabled: true,
             pick: Rc::new(pick),
@@ -110,6 +116,15 @@ impl<T> Item<T> {
 
     pub fn detail(mut self, detail: impl Into<SharedString>) -> Self {
         self.detail = Some(detail.into());
+        self
+    }
+
+    /// The tag after the label; `None` leaves the row without one.
+    pub fn tag(mut self, tag: Option<impl Into<SharedString>>) -> Self {
+        if let Some(tag) = tag {
+            self.detail = Some(tag.into());
+            self.tagged = true;
+        }
         self
     }
 
@@ -239,9 +254,26 @@ impl<T: 'static, K: 'static> Menu<T, K> {
                     })
                     .child(item.label),
             )
+            .children((item.detail.as_ref()).filter(|_| item.tagged).map(|tag| {
+                div()
+                    .flex_none()
+                    .h(KEY_CAP_SIZE_SMALL)
+                    .px(SPACE_1)
+                    .flex()
+                    .items_center()
+                    .rounded(SPACE_1)
+                    .bg(colors.key_background)
+                    .text_size(TEXT_CAPTION)
+                    .text_color(if highlighted {
+                        colors.text_primary
+                    } else {
+                        supporting
+                    })
+                    .child(tag.clone())
+            }))
             .children(
                 item.detail
-                    .filter(|detail| !detail.is_empty())
+                    .filter(|detail| !item.tagged && !detail.is_empty())
                     .map(|detail| {
                         div()
                             .flex_none()

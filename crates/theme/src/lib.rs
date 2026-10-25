@@ -133,6 +133,8 @@ pub struct Colors {
     /// The working indicator's dots, by row from the top; nothing is read
     /// on them.
     pub activity: [Hsla; 3],
+    /// The effort gauge's color per level, Low to Max.
+    pub effort: [Hsla; 5],
     /// The badges that tell projects apart by color; a project keeps its hue.
     pub badges: [BadgeColors; 8],
 }
@@ -238,6 +240,7 @@ impl Theme {
                     type_name: rgba(palette.syntax[4]).into(),
                 },
                 activity: palette.activity.map(|color| rgba(color).into()),
+                effort: palette.effort.map(|color| rgba(color).into()),
                 badges: palette.badges.map(|(fill, text)| BadgeColors {
                     fill: rgba(fill).into(),
                     text: rgba(text).into(),

@@ -69,6 +69,12 @@ pub(crate) struct Palette {
     /// pink at h 245, 60 and 10 (L 0.84 / 0.82 / 0.76 dark, 0.60 / 0.62 /
     /// 0.60 light). Nothing is read on them.
     pub activity: [u32; 3],
+    /// The effort gauge, Low to Max, warming as the level rises: Low in
+    /// `text_secondary`, then teal, blue, amber and coral at h 165, 245, 80
+    /// and 40, L 0.80 C 0.13 (dark) or L 0.56 C 0.15 (light), chroma cut to
+    /// sRGB. Icons only: the least keeps 6.60:1 (dark) and 3.83:1 (light) on
+    /// a highlighted menu item.
+    pub effort: [u32; 5],
     /// Project badges as (fill, initials), one per hue: red, orange, yellow,
     /// green, teal, blue, violet, pink. Fill at L 0.38 C 0.075 (dark) or L 0.91
     /// C 0.045 (light), initials at L 0.87 C 0.10 or L 0.43 C 0.12, chroma cut to
@@ -113,6 +119,7 @@ pub(crate) const DARK: Palette = Palette {
     mention_border: 0x69cee64d,
     syntax: [0xceb5ffff, 0x96d798ff, 0xfcb17eff, 0x96c9feff, 0x60dbd4ff],
     activity: [0xabcff0ff, 0xf0b788ff, 0xf78c9eff],
+    effort: [0xa0a0a1ff, 0x5ed8a9ff, 0x80c5ffff, 0xe9b452ff, 0xffa383ff],
     badges: [
         (0x64312eff, 0xfec4beff),
         (0x5f3813ff, 0xffc79bff),
@@ -162,6 +169,7 @@ pub(crate) const LIGHT: Palette = Palette {
     mention_border: 0x0976894d,
     syntax: [0x6d41a9ff, 0x016b1aff, 0x8f4802ff, 0x005a9dff, 0x056662ff],
     activity: [0x4886b8ff, 0xbe7125ff, 0xcc4f6aff],
+    effort: [0x505358ff, 0x038963ff, 0x007ac1ff, 0x986b00ff, 0xba4e25ff],
     badges: [
         (0xfed6d2ff, 0x852e2cff),
         (0xf9dbc4ff, 0x764002ff),

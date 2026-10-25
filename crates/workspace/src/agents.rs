@@ -20,8 +20,9 @@ pub struct ModelId(pub String);
 #[serde(rename_all = "kebab-case")]
 pub enum Effort {
     Low,
-    Medium,
+    /// What a session starts on, and what the menu recommends.
     #[default]
+    Medium,
     High,
     ExtraHigh,
     Max,

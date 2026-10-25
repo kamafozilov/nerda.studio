@@ -32,6 +32,9 @@ pub enum Icon {
     Computer,
     /// The Design page.
     Design,
+    /// An effort level: the gauge with its needle on the level's tick, from
+    /// the left for Low to the right for Max.
+    Effort(workspace::Effort),
     /// An attached file that is neither an image nor a folder.
     File,
     /// Forward to the tab Back left.
@@ -124,6 +127,13 @@ impl Icon {
             Self::CloseSmall => "icons/cancel-small.svg",
             Self::Computer => "icons/computer.svg",
             Self::Design => "icons/pen-tool-03.svg",
+            Self::Effort(effort) => match effort {
+                workspace::Effort::Low => "icons/gauge-low.svg",
+                workspace::Effort::Medium => "icons/gauge-medium.svg",
+                workspace::Effort::High => "icons/gauge-high.svg",
+                workspace::Effort::ExtraHigh => "icons/gauge-extra-high.svg",
+                workspace::Effort::Max => "icons/gauge-max.svg",
+            },
             Self::File => "icons/file-02.svg",
             Self::Forward => "icons/arrow-right-01.svg",
             Self::Folder => "icons/folder-01.svg",
@@ -289,6 +299,26 @@ const FILES: &[(&str, &[u8])] = &[
     (
         "icons/folder-upload.svg",
         include_bytes!("../assets/icons/folder-upload.svg"),
+    ),
+    (
+        "icons/gauge-extra-high.svg",
+        include_bytes!("../assets/icons/gauge-extra-high.svg"),
+    ),
+    (
+        "icons/gauge-high.svg",
+        include_bytes!("../assets/icons/gauge-high.svg"),
+    ),
+    (
+        "icons/gauge-low.svg",
+        include_bytes!("../assets/icons/gauge-low.svg"),
+    ),
+    (
+        "icons/gauge-max.svg",
+        include_bytes!("../assets/icons/gauge-max.svg"),
+    ),
+    (
+        "icons/gauge-medium.svg",
+        include_bytes!("../assets/icons/gauge-medium.svg"),
     ),
     (
         "icons/gauge.svg",
