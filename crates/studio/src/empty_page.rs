@@ -34,6 +34,5 @@ fn purpose(page: Page) -> &'static str {
         Page::Routines => "Work your agents repeat on a schedule will live here.",
         Page::Usage => "How much your agents use, by session and project, will show here.",
         Page::PullRequests => "Pull requests from your projects will show here.",
-        Page::Settings => "How Nerda Studio looks and works will be set here.",
     }
 }

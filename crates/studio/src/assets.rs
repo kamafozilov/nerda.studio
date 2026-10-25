@@ -71,7 +71,7 @@ pub enum Icon {
     View,
     /// Sets something aside without letting go of it.
     ViewOff,
-    /// A task handed to another agent.
+    /// A task handed to another agent; also the Agents and models settings.
     Agent,
     /// Something failed.
     Alert,
@@ -97,8 +97,16 @@ pub enum Icon {
     Terminal,
     /// The agent's thinking.
     Thinking,
-    /// Any other tool the agent called.
+    /// Any other tool the agent called; also the Advanced settings.
     Tool,
+    /// The General settings.
+    Sliders,
+    /// The Appearance settings: the backdrop's palette.
+    Appearance,
+    /// The Keyboard settings.
+    Keyboard,
+    /// The Notifications settings.
+    Notification,
 }
 
 impl Icon {
@@ -110,7 +118,6 @@ impl Icon {
             workspace::Page::Routines => Self::Routines,
             workspace::Page::Usage => Self::Usage,
             workspace::Page::PullRequests => Self::PullRequests,
-            workspace::Page::Settings => Self::Settings,
         }
     }
 
@@ -171,6 +178,10 @@ impl Icon {
             Self::Terminal => "icons/command-line.svg",
             Self::Thinking => "icons/brain-02.svg",
             Self::Tool => "icons/wrench-01.svg",
+            Self::Sliders => "icons/sliders.svg",
+            Self::Appearance => "icons/paint-board.svg",
+            Self::Keyboard => "icons/keyboard.svg",
+            Self::Notification => "icons/notification.svg",
         }
     }
 }
@@ -325,6 +336,18 @@ const FILES: &[(&str, &[u8])] = &[
         include_bytes!("../assets/icons/gauge.svg"),
     ),
     ("icons/gear.svg", include_bytes!("../assets/icons/gear.svg")),
+    (
+        "icons/sliders.svg",
+        include_bytes!("../assets/icons/sliders.svg"),
+    ),
+    (
+        "icons/keyboard.svg",
+        include_bytes!("../assets/icons/keyboard.svg"),
+    ),
+    (
+        "icons/notification.svg",
+        include_bytes!("../assets/icons/notification.svg"),
+    ),
     (
         "icons/git-branch.svg",
         include_bytes!("../assets/icons/git-branch.svg"),

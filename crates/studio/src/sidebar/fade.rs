@@ -11,7 +11,7 @@ use workspace::SessionId;
 
 /// A row with a fill of its own.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(super) enum Key {
+pub(crate) enum Key {
     /// New session or a page, by its place among them.
     Nav(usize),
     Session(SessionId),
@@ -62,7 +62,7 @@ fn mix(from: Hsla, to: Hsla, t: f32) -> Hsla {
 }
 
 #[derive(Default)]
-pub(super) struct Fills {
+pub(crate) struct Fills {
     fades: HashMap<Key, Fade>,
 }
 

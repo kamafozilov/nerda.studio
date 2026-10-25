@@ -8,7 +8,7 @@
 
 mod archive;
 mod card;
-mod fade;
+pub(crate) mod fade;
 mod footer;
 mod header;
 mod list;

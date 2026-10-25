@@ -104,6 +104,7 @@ impl Shell {
     /// window, so typing never goes to a composer out of sight.
     pub(super) fn focus_shown(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let focus = match self.shown_composer() {
+            _ if self.settings_open => self.settings.focus_handle(cx),
             Some(composer) => composer.focus_handle(cx),
             None => self.focus_handle.clone(),
         };
@@ -117,6 +118,7 @@ impl Shell {
             return true;
         };
         focused == self.focus_handle
+            || self.settings.focus_handle(cx).contains(&focused, window)
             || self
                 .composers
                 .values()

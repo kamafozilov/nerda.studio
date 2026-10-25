@@ -67,7 +67,7 @@ the sidebar and the tabs read the same over any desktop. Light keeps its glass.
 Roles that belong to one screen are set where it is described: `danger`, `diff_added`
 and its washes, `link`, `mention`, `syntax` and `activity` in [session.md](session.md);
 `claude`, `effort`, `backdrop` and `backdrop_warm` in [backdrop.md](backdrop.md) and
-[composer.md](composer.md).
+[composer.md](composer.md); the `switch` colors in [settings.md](settings.md).
 
 ### Contrast on glass
 
@@ -178,7 +178,8 @@ insets and sizes:
   (`popover_background`, `popover_border`, `popover_shadow`) with `DIALOG_RADIUS`, 42
   tall with its hairline and 16 px sides.
   It takes no clicks or focus and doesn't animate. Held down, the key's repeat is the
-  second press. The menu's Quit, and `Cmd-Q` with no window open, quit at once.
+  second press. The menu's Quit, and `Cmd-Q` with no window open, quit at once; so
+  does the first press once Settings turns Ask before quitting off.
 - **Closing the window** leaves the app running, as Mac apps do; a click on its Dock icon
   opens the window again on the same projects. Elsewhere closing it quits.
 - **Menus** are `popover_background` (opaque) under a `popover_border` hairline,
@@ -216,9 +217,9 @@ insets and sizes:
 - **The sidebar's** header, session cards, messages, empty states and footer follow
   [sidebar.md](sidebar.md).
 - **The composer**, where a session's message is written, follows [composer.md](composer.md).
-- **Pages** are empty for now: a page on screen shows its title in medium-weight
-  `text_primary` and one `text_secondary` line on what it will hold, centered in the
-  main area, `SPACE_1` apart.
+- **Pages** are empty for now: the title in medium `text_primary` over one
+  `text_secondary` line on what it will hold, centered, `SPACE_1` apart. Settings, over
+  the whole window, follows [settings.md](settings.md).
 - **Palettes** are dialogs of one field over a list:
   `PALETTE_WIDTH` (576) centered a tenth of the way down the window and never above the
   top row, `popover_background` with a hairline, a large shadow and `DIALOG_RADIUS` (12),

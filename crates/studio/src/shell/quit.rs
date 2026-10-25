@@ -1,6 +1,7 @@
 //! Cmd-Q (Ctrl-Q elsewhere) in the window quits only on a second press: the
-//! first shows a hint saying so, which goes away if none follows in time. The
-//! menu's Quit is a deliberate choice and quits at once.
+//! first shows a hint saying so, which goes away if none follows in time.
+//! Settings can turn that off, so the first press quits. The menu's Quit is a
+//! deliberate choice and quits at once.
 
 use std::time::Duration;
 
@@ -19,7 +20,8 @@ impl Shell {
     /// Quits if the hint is up, else puts it up for `REPEAT_WITHIN`. Held down,
     /// the key's repeat is the second press.
     pub(super) fn request_quit(&mut self, cx: &mut Context<Self>) {
-        if self.quit_hint.take().is_some() {
+        let confirm = self.store.read(cx).workspace().preferences().confirm_quit;
+        if self.quit_hint.take().is_some() || !confirm {
             cx.quit();
             return;
         }

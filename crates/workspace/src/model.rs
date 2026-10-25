@@ -167,6 +167,9 @@ pub enum AddedProject {
 
 /// A part of the app beside the sessions, not tied to a project. There is one
 /// of each: opening it again shows its tab instead of adding another.
+/// Settings is not one: it takes the whole window, without a tab, and a
+/// Settings tab an earlier build saved is skipped as a page this build
+/// doesn't know.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Page {
     Notes,
@@ -174,17 +177,15 @@ pub enum Page {
     Routines,
     Usage,
     PullRequests,
-    Settings,
 }
 
 impl Page {
-    pub const ALL: [Page; 6] = [
+    pub const ALL: [Page; 5] = [
         Page::Notes,
         Page::Design,
         Page::Routines,
         Page::Usage,
         Page::PullRequests,
-        Page::Settings,
     ];
 
     /// The pages the sidebar lists under its search field, in order; the rest
@@ -198,7 +199,6 @@ impl Page {
             Page::Routines => "Routines",
             Page::Usage => "Usage",
             Page::PullRequests => "Pull requests",
-            Page::Settings => "Settings",
         }
     }
 
@@ -210,7 +210,6 @@ impl Page {
             Page::Routines => "routines",
             Page::Usage => "usage",
             Page::PullRequests => "pull-requests",
-            Page::Settings => "settings",
         }
     }
 

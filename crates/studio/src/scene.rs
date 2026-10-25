@@ -16,9 +16,9 @@ use std::{
 };
 
 use gpui::{
-    App, AppContext, Entity, HeadlessAppContext, Keystroke, Modifiers, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, PlatformInput, ScrollDelta, ScrollEvent, WindowAppearance,
-    WindowHandle, point, px, size,
+    App, AppContext, Entity, HeadlessAppContext, KeyDownEvent, KeyUpEvent, Keystroke, Modifiers,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PlatformInput, ScrollDelta,
+    ScrollEvent, WindowAppearance, WindowHandle, point, px, size,
 };
 use image::RgbaImage;
 use workspace::{AddedProject, Timestamp, Workspace};
@@ -224,6 +224,19 @@ impl Scene {
                 .ok();
             self.settle();
         }
+    }
+
+    /// Presses and releases a key, such as `"space"`: what a focused control
+    /// takes as a keyboard-activated click, which `keys` (down only) is not.
+    pub fn press(&mut self, key: &'static str) {
+        let keystroke = Keystroke::parse(key).expect("a keystroke such as space");
+        self.input(PlatformInput::KeyDown(KeyDownEvent {
+            keystroke: keystroke.clone(),
+            is_held: false,
+            prefer_character_input: false,
+        }));
+        self.input(PlatformInput::KeyUp(KeyUpEvent { keystroke }));
+        self.settle();
     }
 
     /// Moves the pointer to `x`, `y` in points from the window's top left.

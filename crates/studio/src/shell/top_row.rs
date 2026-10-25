@@ -1,6 +1,7 @@
 //! The window's top row, on the glass across the whole window: the traffic
 //! lights, the sidebar toggle, Back and Forward at the open sidebar's edge, then
-//! the tabs over the card. Its empty space stands in for the macOS titlebar.
+//! the tabs over the card; in Settings the toggle alone. Its empty space stands
+//! in for the macOS titlebar.
 
 use gpui::{
     AnimationExt, ClickEvent, Context, IntoElement, MouseButton, ParentElement, StyleRefinement,
@@ -56,7 +57,9 @@ impl Shell {
                 |lead, phase: f32| lead.w(MAIN_INSET * (1. - phase.clamp(0., 1.))),
             ))
             // Cached: a drag or a tab's motion redraws the tabs alone.
-            .child(self.tabs.clone().cached(strip))
+            .when(!self.settings_open, |row| {
+                row.child(self.tabs.clone().cached(strip))
+            })
             .child(div().flex_none().w(MAIN_INSET))
     }
 
@@ -109,35 +112,38 @@ impl Shell {
             .pl(traffic_lights::content_start())
             .child(self.sidebar_toggle(cx))
             .child(div().flex_1())
-            .child(
-                icon_button("back", Icon::Back, "Back", can_go_back, colors, |button| {
-                    button.occlude().when(can_go_back, |button| {
-                        button.on_click(|_: &ClickEvent, window, cx| {
-                            window.dispatch_action(Box::new(GoBack), cx)
-                        })
-                    })
-                })
-                .shortcut(Shortcut::key("[").cmd())
-                .below(),
-            )
-            .child(
-                icon_button(
-                    "forward",
-                    Icon::Forward,
-                    "Forward",
-                    can_go_forward,
-                    colors,
-                    |button| {
-                        button.occlude().when(can_go_forward, |button| {
-                            button.on_click(|_: &ClickEvent, window, cx| {
-                                window.dispatch_action(Box::new(GoForward), cx)
+            .when(!self.settings_open, |navigation| {
+                navigation
+                    .child(
+                        icon_button("back", Icon::Back, "Back", can_go_back, colors, |button| {
+                            button.occlude().when(can_go_back, |button| {
+                                button.on_click(|_: &ClickEvent, window, cx| {
+                                    window.dispatch_action(Box::new(GoBack), cx)
+                                })
                             })
                         })
-                    },
-                )
-                .shortcut(Shortcut::key("]").cmd())
-                .below(),
-            )
+                        .shortcut(Shortcut::key("[").cmd())
+                        .below(),
+                    )
+                    .child(
+                        icon_button(
+                            "forward",
+                            Icon::Forward,
+                            "Forward",
+                            can_go_forward,
+                            colors,
+                            |button| {
+                                button.occlude().when(can_go_forward, |button| {
+                                    button.on_click(|_: &ClickEvent, window, cx| {
+                                        window.dispatch_action(Box::new(GoForward), cx)
+                                    })
+                                })
+                            },
+                        )
+                        .shortcut(Shortcut::key("]").cmd())
+                        .below(),
+                    )
+            })
             .with_spring(
                 "navigation",
                 self.sidebar_spring(),

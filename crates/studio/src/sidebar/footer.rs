@@ -1,7 +1,7 @@
 //! The bottom row: Settings as a row like the pages above the list, then
-//! Usage and Pull requests as icon buttons at its trailing edge. Each shows
-//! its page's tab, opening it if it isn't open, and stays marked while on
-//! screen. While more of the list lies below, the list fades out into the
+//! Usage and Pull requests as icon buttons at its trailing edge. Settings
+//! opens over the whole window, the sidebar included; each button shows its
+//! page's tab, opening it if it isn't open, and stays marked while on screen. While more of the list lies below, the list fades out into the
 //! footer, which takes on the sidebar's material.
 
 use std::time::Instant;
@@ -15,7 +15,11 @@ use theme::{
 };
 use workspace::Page;
 
-use super::{Sidebar, list::more_below, nav::page_row};
+use super::{
+    Sidebar,
+    list::more_below,
+    nav::{SETTINGS, page_row},
+};
 use crate::{
     assets::Icon,
     tooltip::{TooltipExt, WithTooltip},
@@ -36,7 +40,10 @@ impl Sidebar {
         let now = Instant::now();
         let material = Theme::of(cx).colors.window_background;
         let settings = self
-            .render_page_row(Page::Settings, now, cx)
+            .nav_row(SETTINGS, Icon::Settings, "Settings".into(), true, now, cx)
+            .on_click(|_: &ClickEvent, window, cx| {
+                window.dispatch_action(Box::new(crate::shell::OpenSettings), cx)
+            })
             .flex_1()
             .min_w_0();
         let buttons = BUTTONS.map(|(id, page)| self.page_button(id, page, cx));

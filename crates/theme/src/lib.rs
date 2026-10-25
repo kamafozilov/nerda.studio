@@ -78,6 +78,15 @@ pub struct Colors {
     /// Fill of a key cap, a shortcut shown beside a label; its text uses
     /// `text_secondary`.
     pub key_background: Hsla,
+    /// A switch's track while on: `text_primary`, as there is no accent.
+    pub switch_on: Hsla,
+    /// The knob on `switch_on`: the card's own color, opaque.
+    pub switch_on_knob: Hsla,
+    /// A switch's track while off: text primary at 16% (light) or 18% (dark),
+    /// under a `popover_border` hairline.
+    pub switch_off: Hsla,
+    /// The knob on `switch_off`: white.
+    pub switch_off_knob: Hsla,
     /// Fill of an attachment chip in the composer, at rest; its name uses
     /// `text_primary`, its icon `text_secondary`.
     pub chip_background: Hsla,
@@ -213,6 +222,10 @@ impl Theme {
                 scrim: rgba(palette.scrim).into(),
                 key_background: rgba(palette.key).into(),
                 chip_background: rgba(palette.chip).into(),
+                switch_on: rgba(palette.switch_on).into(),
+                switch_on_knob: rgba(palette.switch_on_knob).into(),
+                switch_off: rgba(palette.switch_off).into(),
+                switch_off_knob: rgba(palette.switch_off_knob).into(),
                 composer_background: rgba(palette.composer).into(),
                 composer_glass: rgba(palette.composer_glass).into(),
                 tab_background: rgba(palette.tab).into(),

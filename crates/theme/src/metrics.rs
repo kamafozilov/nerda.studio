@@ -169,3 +169,21 @@ pub const TEXT_CAPTION: Pixels = px(11.);
 pub const SPACE_1: Pixels = px(4.);
 pub const SPACE_2: Pixels = px(8.);
 pub const SPACE_3: Pixels = px(12.);
+
+/// A switch: its track, and the knob inside it, `SWITCH_INSET` clear of its edge.
+pub const SWITCH_WIDTH: Pixels = px(28.);
+pub const SWITCH_HEIGHT: Pixels = px(16.);
+pub const SWITCH_KNOB: Pixels = px(12.);
+pub const SWITCH_INSET: Pixels = px(2.);
+
+/// The Settings page's column: at most this wide, its padding inside, centered
+/// in the card, and `SETTINGS_TOP` down from the card's top.
+pub const SETTINGS_CONTENT_MAX_WIDTH: Pixels = px(768.);
+pub const SETTINGS_TOP: Pixels = px(64.);
+/// Between a Settings section's title and its parts, and between its parts.
+pub const SETTINGS_PART_GAP: Pixels = px(40.);
+/// Every picker on the Settings page is this wide, so their edges line up.
+pub const SETTINGS_PICKER_WIDTH: Pixels = px(128.);
+/// A Settings section's title, and the headings of its parts.
+pub const TEXT_TITLE: Pixels = px(22.);
+pub const TEXT_SUBTITLE: Pixels = px(14.);

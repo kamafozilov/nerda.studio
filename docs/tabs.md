@@ -5,7 +5,7 @@ The top row's tabs (`crates/studio/src/tabs/`; their model in
 [design.md](design.md)'s Motion.
 
 - **Tabs** in the top row are the pages open (Notes, Design, Routines, and the sidebar
-  footer's Usage, Pull requests and Settings), and the sessions open in the project on
+  footer's Usage and Pull requests), and the sessions open in the project on
   screen (`crates/studio/src/tabs/`). Each project keeps its own session tabs, saved with
   the workspace; showing another project's session switches the row to that project's
   tabs, and the pages stay in it. A page on screen keeps its project's tabs beside it. A
@@ -25,8 +25,11 @@ The top row's tabs (`crates/studio/src/tabs/`; their model in
   session gets a tab at the end unless it has one; so does a page, which has one tab at
   most, however often it is opened. A used session opened while the project's unused
   draft is selected takes the draft's tab, in its place; from another project's draft it
-  opens at the end and the draft's tab goes. Closing the selected tab selects its right neighbor,
-  else its left; closing the last tab on screen opens the project's draft, so a project on
+  opens at the end and the draft's tab goes. A page opened while that draft is the only
+  tab on screen takes its tab too, so Notes opened from a fresh start is one tab, not
+  two; beside any other tab a page opens at the end. Settings is no tab: it opens over the
+  whole window and leaves the tabs as they were ([settings.md](settings.md)). Closing the selected tab selects its
+  right neighbor, else its left; closing the last tab on screen opens the project's draft, so a project on
   screen always shows something, and before the first project leaves the welcome. A tab
   closes from its button, a middle click, `Cmd-W`, or its menu (a right click): Close
   Tab, Close Other Tabs, Close Tabs to the Right or to the Left, Close All Tabs. Dragged
@@ -35,8 +38,8 @@ The top row's tabs (`crates/studio/src/tabs/`; their model in
 - **Tab shortcuts** (Ctrl for Cmd elsewhere): `Cmd-T` or `Cmd-N` new session, `Cmd-W`
   close, `Cmd-Alt-T` close the others, `Cmd-Shift-W` close all, `Ctrl-Tab`,
   `Cmd-Shift-]` or `Cmd-}` the next tab and `Ctrl-Shift-Tab`, `Cmd-Shift-[` or `Cmd-{` the
-  previous, wrapping, `Cmd-1` to `Cmd-8` by place and `Cmd-9` the last, `Cmd-,` the
-  Settings page.
+  previous, wrapping, `Cmd-1` to `Cmd-8` by place and `Cmd-9` the last. In Settings, `Cmd-W`
+  leaves it and the others leave it for the tab they show.
 - **Back and Forward** (`Cmd-[`, `Cmd-]`) retrace the tabs shown, as a browser's
   history does, the last 50 of them, kept in memory only; a closed tab drops out of
   them, and a new visit clears Forward.

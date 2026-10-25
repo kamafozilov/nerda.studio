@@ -1,12 +1,14 @@
 //! The main window's layout. The window's glass holds the top row (the traffic
 //! lights, the sidebar toggle, Back and Forward, then the tabs) and, under it, the
 //! sidebar; the main area is a card raised beside the sidebar, rounded and inset
-//! from the window's edges.
+//! from the window's edges. Settings takes over the sidebar and the card while
+//! it is open (`settings_mode`).
 
 mod commands;
 mod composers;
 mod layout;
 mod quit;
+mod settings_mode;
 mod sidebar_edge;
 mod top_row;
 
@@ -24,8 +26,16 @@ use theme::{TEXT_BODY, Theme, motion};
 use workspace::{SessionId, Tab, Timestamp, Visits};
 
 use crate::{
-    accessibility, add_project::AddProjectPalette, app_menu, instance::Screen, native_window,
-    sidebar::Sidebar, store::Store, system_theme, tabs::TabStrip,
+    accessibility,
+    add_project::AddProjectPalette,
+    app_menu,
+    instance::Screen,
+    native_window,
+    settings::{Leave, SettingsPage},
+    sidebar::Sidebar,
+    store::Store,
+    system_theme,
+    tabs::TabStrip,
 };
 
 pub use commands::ActivateTab;
@@ -70,6 +80,10 @@ pub struct Shell {
     store: Entity<Store>,
     sidebar: Entity<Sidebar>,
     tabs: Entity<TabStrip>,
+    /// Kept while the app runs, so the section chosen stays between visits.
+    settings: Entity<SettingsPage>,
+    /// Settings has the sidebar and the card, in place of the tabs.
+    settings_open: bool,
     /// Back and Forward through the tabs shown.
     visits: Visits,
     /// Each open session's composer; see `composers`.
@@ -183,12 +197,20 @@ impl Shell {
             )
         });
         let tabs = cx.new(|cx| TabStrip::new(store.clone(), cx));
+        let settings = cx.new(|cx| SettingsPage::new(store.clone(), cx));
+        cx.observe(&settings, |_, _, cx| cx.notify()).detach();
+        cx.subscribe_in(&settings, window, |shell, _, _: &Leave, window, cx| {
+            shell.leave_settings(window, cx);
+        })
+        .detach();
         let sidebar_width = sidebar_edge::saved_width(store.read(cx));
         let mut shell = Self {
             focus_handle,
             store,
             sidebar,
             tabs,
+            settings,
+            settings_open: false,
             visits,
             composers: HashMap::new(),
             tab_shown: None,
@@ -274,11 +296,6 @@ impl Shell {
         self.sidebar_width
     }
 
-    #[cfg(all(target_os = "macos", test))]
-    pub fn open_tabs(&self, cx: &App) -> Vec<Tab> {
-        self.store.read(cx).workspace().open_tabs()
-    }
-
     fn toggle_sidebar(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         cx.set_reduce_motion(accessibility::reduce_motion());
         self.sidebar_open = !self.sidebar_open;
@@ -329,6 +346,7 @@ impl Render for Shell {
                     if shell.add_project.is_some() {
                         return;
                     }
+                    shell.leave_settings(window, cx);
                     if !shell.sidebar_open {
                         shell.toggle_sidebar(window, cx);
                     }
@@ -339,7 +357,8 @@ impl Render for Shell {
                         .sidebar
                         .update(cx, |sidebar, cx| sidebar.focus_search(window, cx))
                 }))
-                .on_action(cx.listener(|shell, _: &NewSession, _, cx| {
+                .on_action(cx.listener(|shell, _: &NewSession, window, cx| {
+                    shell.leave_settings(window, cx);
                     shell
                         .sidebar
                         .update(cx, |sidebar, cx| sidebar.new_session(cx))
@@ -364,7 +383,7 @@ impl Render for Shell {
                     .flex_1()
                     .min_h_0()
                     .flex()
-                    .child(self.sidebar())
+                    .child(self.sidebar(window, cx))
                     .child(self.main_area(cx))
                     // Only at rest: while the sidebar slides its edge moves.
                     .when(self.sidebar_open && self.tabs_held.is_none(), |row| {

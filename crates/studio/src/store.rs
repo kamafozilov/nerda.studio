@@ -93,7 +93,10 @@ impl Store {
             );
         };
         match Workspace::load(&path) {
-            Ok(workspace) => (workspace, Some(path), None),
+            Ok(mut workspace) => {
+                workspace.open_on_launch(Timestamp::now());
+                (workspace, Some(path), None)
+            }
             Err(LoadError::Corrupt(_)) => Self::set_aside(path),
             // Unreadable but intact: leave the file alone and run without saving
             // rather than overwrite it.

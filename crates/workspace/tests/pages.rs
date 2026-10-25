@@ -87,34 +87,31 @@ fn a_page_opened_from_the_draft_alone_takes_its_tab() {
     let draft = workspace.new_session(ProjectId(1), Timestamp(100)).unwrap();
     workspace.open_session(draft);
     assert!(!workspace.can_close_tab(Tab::Session(draft)));
-    workspace.open_page(Page::Settings);
-    let settings = Tab::Page(Page::Settings);
-    assert_eq!(workspace.open_tabs(), [settings]);
-    assert_eq!(workspace.selected_tab(), Some(settings));
+    workspace.open_page(Page::Usage);
+    let usage = Tab::Page(Page::Usage);
+    assert_eq!(workspace.open_tabs(), [usage]);
+    assert_eq!(workspace.selected_tab(), Some(usage));
     // The draft keeps its project on screen, and project 2's tab stays open.
     assert_eq!(workspace.context_project(), Some(ProjectId(1)));
-    assert_eq!(workspace.tabs(), [session(5), settings]);
+    assert_eq!(workspace.tabs(), [session(5), usage]);
 
     // Another page then opens beside it, and closing both brings the same draft back.
     workspace.open_page(Page::Notes);
-    assert_eq!(workspace.open_tabs(), [settings, NOTES]);
+    assert_eq!(workspace.open_tabs(), [usage, NOTES]);
     workspace.close_all_tabs(Timestamp(200));
     assert_eq!(workspace.open_tabs(), [Tab::Session(draft)]);
 
     // Beside another tab, the draft keeps its own and the page opens last.
     workspace.open_page(Page::Notes);
     workspace.open_session(draft);
-    workspace.open_page(Page::Settings);
-    assert_eq!(
-        workspace.open_tabs(),
-        [NOTES, Tab::Session(draft), settings]
-    );
+    workspace.open_page(Page::Usage);
+    assert_eq!(workspace.open_tabs(), [NOTES, Tab::Session(draft), usage]);
 
     // A used session alone on screen keeps its tab.
     let mut workspace = load_json(FIXTURE);
     workspace.open_session(SessionId(3));
-    workspace.open_page(Page::Settings);
-    assert_eq!(workspace.open_tabs(), [session(3), settings]);
+    workspace.open_page(Page::Usage);
+    assert_eq!(workspace.open_tabs(), [session(3), usage]);
 }
 
 #[test]
@@ -163,7 +160,7 @@ fn the_footer_pages_save_under_their_own_names() {
     let temp = TempDir::new();
     let path = temp.path().join("workspace.json");
     let mut workspace = Workspace::default();
-    for page in [Page::Usage, Page::PullRequests, Page::Settings] {
+    for page in [Page::Usage, Page::PullRequests] {
         workspace.open_page(page);
     }
     workspace.save(&path).unwrap();
@@ -175,10 +172,21 @@ fn the_footer_pages_save_under_their_own_names() {
         .iter()
         .map(|page| page["page"].as_str().unwrap())
         .collect();
-    assert_eq!(keys, ["usage", "pull-requests", "settings"]);
-    assert_eq!(json["selected_page"], "settings");
+    assert_eq!(keys, ["usage", "pull-requests"]);
+    assert_eq!(json["selected_page"], "pull-requests");
 
     let loaded = Workspace::load(&path).unwrap();
     assert_eq!(loaded.tabs(), workspace.tabs());
-    assert_eq!(loaded.selected_tab(), Some(Tab::Page(Page::Settings)));
+    assert_eq!(loaded.selected_tab(), Some(Tab::Page(Page::PullRequests)));
+}
+
+#[test]
+fn a_settings_tab_an_earlier_build_saved_is_skipped() {
+    let workspace = load_json(&FIXTURE.replace(
+        r#""sessions""#,
+        r#""tabs": [3], "pages": [{"page": "settings", "at": 1}],
+            "selected_page": "settings", "sessions""#,
+    ));
+    assert_eq!(workspace.tabs(), [session(3)]);
+    assert_eq!(workspace.selected_tab(), None);
 }

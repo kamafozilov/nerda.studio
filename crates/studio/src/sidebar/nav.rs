@@ -26,6 +26,9 @@ use crate::{
 /// first, then the footer's.
 pub(super) const NEW_SESSION: usize = 0;
 
+/// Settings' row, in the footer after the pages.
+pub(super) const SETTINGS: usize = NEW_SESSION + 1 + Page::ALL.len();
+
 /// The row the page takes.
 pub(super) fn page_row(page: Page) -> usize {
     let at = Page::ALL.iter().position(|&each| each == page);
@@ -141,7 +144,7 @@ impl Sidebar {
     /// One row: its icon and title in the row's color, on its fill. The row
     /// on screen and the one under the pointer take the wash and
     /// `text_primary`; the others rest in `text_secondary`.
-    fn nav_row(
+    pub(super) fn nav_row(
         &mut self,
         index: usize,
         icon: Icon,

@@ -18,10 +18,12 @@ mod native_window;
 mod scene;
 #[cfg(all(target_os = "macos", test))]
 mod scenes;
+mod settings;
 mod shell;
 mod sidebar;
 mod sidebar_glyph;
 mod store;
+mod switch;
 mod system_theme;
 mod tabs;
 mod text_input;
@@ -106,6 +108,7 @@ fn start(state: Option<std::path::PathBuf>, cx: &mut App) -> Entity<Store> {
     sidebar::bind_keys(cx);
     add_project::bind_keys(cx);
     menu::bind_keys(cx);
+    settings::bind_keys(cx);
     conversation::bind_keys(cx);
     app_menu::init(cx);
     let theme = system_theme::current(cx.window_appearance());

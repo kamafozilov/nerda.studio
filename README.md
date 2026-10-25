@@ -68,7 +68,7 @@ the front.
   [docs/design.md](docs/design.md).
 - `crates/workspace`: projects (folders, or the computer itself), sessions, the agents a
   session can run and its choice among them, and the sessions and pages (Notes, Design,
-  Routines, Usage, Pull requests, Settings) open as tabs, with no UI: adding folders,
+  Routines, Usage, Pull requests) open as tabs, the preferences Settings sets, with no UI: adding folders,
   browsing them by a typed path, search, sort and filter, archiving a session and
   restoring it, opening and closing tabs, Back and Forward, a project's icon, a
   repository's branches and switching between them, and the choice of the new session's
