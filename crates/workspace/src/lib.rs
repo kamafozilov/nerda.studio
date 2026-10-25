@@ -83,6 +83,17 @@ impl Workspace {
         now: Timestamp,
     ) -> Result<AddedProject, AddProjectError> {
         let path = paths::resolve_project_dir(path)?;
+        // The home folder is the computer, never a folder project beside it.
+        if paths::home_project_dir().as_ref() == Some(&path) {
+            let existed = self.computer().is_some();
+            if let Some(computer) = self.computer_project(now) {
+                return Ok(if existed {
+                    AddedProject::Existing(computer)
+                } else {
+                    AddedProject::Added(computer)
+                });
+            }
+        }
         if let Some(existing) = self.projects.iter().find(|project| project.path == path) {
             return Ok(AddedProject::Existing(existing.id));
         }
@@ -104,7 +115,7 @@ impl Workspace {
         if let Some(computer) = self.computer() {
             return Some(computer.id);
         }
-        let path = paths::resolve_project_dir(&dirs::home_dir()?).ok()?;
+        let path = paths::home_project_dir()?;
         let id = ProjectId(self.allocate_id());
         self.projects.push(Project {
             id,

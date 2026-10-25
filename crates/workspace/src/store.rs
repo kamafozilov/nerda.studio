@@ -7,8 +7,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    AgentChoice, Backdrop, LoadError, Page, Project, ProjectId, ProjectScope, Session, SessionId,
-    SessionSort, Tab, Workspace,
+    AgentChoice, Backdrop, LoadError, NO_PROJECT, Page, Project, ProjectId, ProjectKind,
+    ProjectScope, Session, SessionId, SessionSort, Tab, Workspace, paths,
 };
 
 /// Format version written by this build; files with any other version are refused.
@@ -178,15 +178,25 @@ impl Workspace {
     /// Rebuilds a workspace from disk, dropping duplicates and anything pointing at missing items.
     fn from_file(file: FileV1) -> Result<Workspace, LoadError> {
         let mut project_ids = HashSet::new();
-        let projects: Vec<Project> = file
+        let mut projects: Vec<Project> = file
             .projects
             .into_iter()
             .filter(|project| project_ids.insert(project.id))
             .collect();
+        let folded = fold_home_into_computer(&mut projects);
+        let moved = |id: ProjectId| -> ProjectId {
+            (folded.iter())
+                .find(|&&(from, _)| from == id)
+                .map_or(id, |&(_, to)| to)
+        };
         let mut session_ids = HashSet::new();
         let sessions: Vec<Session> = file
             .sessions
             .into_iter()
+            .map(|mut session| {
+                session.project = moved(session.project);
+                session
+            })
             .filter(|session| {
                 project_ids.contains(&session.project) && session_ids.insert(session.id)
             })
@@ -214,7 +224,10 @@ impl Workspace {
             sidebar_width: file.sidebar_width,
             ..Workspace::default()
         };
-        workspace.set_scope(file.scope);
+        workspace.set_scope(match file.scope {
+            ProjectScope::Project(id) => ProjectScope::Project(moved(id)),
+            ProjectScope::All => ProjectScope::All,
+        });
         for id in file.tabs {
             let tab = Tab::Session(id);
             if workspace.session(id).is_some() && !workspace.tabs.contains(&tab) {
@@ -233,8 +246,7 @@ impl Workspace {
                 workspace.tabs.insert(at, tab);
             }
         }
-        workspace.project_on_screen = file
-            .project_on_screen
+        workspace.project_on_screen = (file.project_on_screen.map(moved))
             .filter(|&project| workspace.project(project).is_some());
         // An older file's selection becomes its one tab.
         if let Some(selected) = file.selected_session {
@@ -245,6 +257,37 @@ impl Workspace {
         Ok(workspace)
     }
 }
+/// Makes the home folder's entries one computer. An older build, which knows
+/// no kinds, writes the computer back as a folder at the home path, and one
+/// could add the home folder as a folder; either would show beside the
+/// computer as a second No project. The computer kept is the first one, else
+/// the first entry at home; every other is dropped, and the pairs returned
+/// name each dropped id with the kept one, for what pointed at it to follow.
+fn fold_home_into_computer(projects: &mut Vec<Project>) -> Vec<(ProjectId, ProjectId)> {
+    let home = paths::home_project_dir();
+    let at_home = |project: &Project| {
+        project.kind == ProjectKind::Computer || Some(&project.path) == home.as_ref()
+    };
+    let kept = (projects.iter())
+        .position(|project| project.kind == ProjectKind::Computer)
+        .or_else(|| projects.iter().position(at_home));
+    let Some(kept) = kept else {
+        return Vec::new();
+    };
+    let computer = projects[kept].id;
+    projects[kept].kind = ProjectKind::Computer;
+    projects[kept].title = NO_PROJECT.to_owned();
+    let mut folded = Vec::new();
+    projects.retain(|project| {
+        if project.id == computer || !at_home(project) {
+            return true;
+        }
+        folded.push((project.id, computer));
+        false
+    });
+    folded
+}
+
 /// Writes `bytes` from [`Workspace::encode`] to `path` atomically, creating
 /// missing parent folders: a crash mid-write leaves the old file whole.
 pub fn write_state(path: &Path, bytes: &[u8]) -> io::Result<()> {

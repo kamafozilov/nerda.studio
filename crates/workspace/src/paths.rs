@@ -25,6 +25,12 @@ pub(crate) fn resolve_project_dir(path: &Path) -> Result<PathBuf, AddProjectErro
     }
 }
 
+/// The home folder as a project's path holds it; `None` when the platform
+/// names none or it can't be resolved.
+pub(crate) fn home_project_dir() -> Option<PathBuf> {
+    resolve_project_dir(&dirs::home_dir()?).ok()
+}
+
 /// The folder's own name, or the whole path for a root such as `/`.
 pub(crate) fn project_title(path: &Path) -> String {
     match path.file_name() {

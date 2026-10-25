@@ -4,6 +4,7 @@
 
 use crate::scene::{Scene, Settings};
 
+mod project_menu;
 mod sidebar_resize;
 
 /// Relative luminance of an sRGB pixel, 0 to 1.

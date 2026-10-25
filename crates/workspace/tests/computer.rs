@@ -125,3 +125,98 @@ fn the_computer_survives_saving_and_folders_are_written_as_before() {
     let text = std::fs::read_to_string(&path).unwrap();
     assert_eq!(text.matches("\"kind\"").count(), 1, "{text}");
 }
+
+/// The home folder as a JSON string, as a project's path holds it.
+fn home_json() -> String {
+    format!(
+        "{:?}",
+        std::fs::canonicalize(home()).unwrap().display().to_string()
+    )
+}
+
+#[test]
+fn adding_the_home_folder_first_makes_the_computer() {
+    let mut workspace = Workspace::default();
+    let AddedProject::Added(computer) = workspace.add_project(&home(), NOW).unwrap() else {
+        panic!("the home folder should add the computer");
+    };
+    assert_eq!(
+        workspace.computer().map(|project| project.id),
+        Some(computer)
+    );
+    assert_eq!(workspace.computer_project(NOW), Some(computer));
+    assert_eq!(workspace.projects().len(), 1);
+}
+
+#[test]
+fn a_computer_an_older_build_saved_as_a_folder_loads_as_the_computer() {
+    // An older build drops the kind it doesn't know, leaving a folder at home.
+    let workspace = load_json(&format!(
+        r#"{{"version": 1, "next_id": 4,
+            "projects": [
+                {{"id": 0, "title": "web", "path": "/tmp/web", "created_at": 1}},
+                {{"id": 2, "title": "No project", "path": {home}, "created_at": 1}}
+            ],
+            "sessions": [{{"id": 3, "project": 2, "title": "New session", "created_at": 1}}]}}"#,
+        home = home_json()
+    ));
+    let computer = workspace.computer().expect("the computer");
+    assert_eq!(computer.id, ProjectId(2));
+    assert_eq!(workspace.projects().len(), 2);
+    assert_eq!(
+        workspace.project(ProjectId(0)).unwrap().kind,
+        ProjectKind::Folder
+    );
+    assert_eq!(
+        workspace.session(workspace::SessionId(3)).unwrap().project,
+        ProjectId(2)
+    );
+    assert!(
+        workspace
+            .matching_projects("")
+            .iter()
+            .all(|p| p.id == ProjectId(0))
+    );
+}
+
+#[test]
+fn a_folder_at_home_beside_the_computer_folds_into_it() {
+    let workspace = load_json(&format!(
+        r#"{{"version": 1, "next_id": 6,
+            "projects": [
+                {{"id": 1, "title": "kamron", "path": {home}, "created_at": 1}},
+                {{"id": 2, "title": "No project", "path": {home}, "created_at": 1, "kind": "computer"}}
+            ],
+            "sessions": [
+                {{"id": 3, "project": 1, "title": "old", "created_at": 1}},
+                {{"id": 4, "project": 2, "title": "new", "created_at": 1}}
+            ],
+            "scope": {{"Project": 1}}}}"#,
+        home = home_json()
+    ));
+    assert_eq!(workspace.projects().len(), 1);
+    assert_eq!(workspace.computer().map(|p| p.id), Some(ProjectId(2)));
+    for session in [3, 4] {
+        assert_eq!(
+            workspace
+                .session(workspace::SessionId(session))
+                .unwrap()
+                .project,
+            ProjectId(2)
+        );
+    }
+    assert_eq!(
+        workspace.scope(),
+        workspace::ProjectScope::Project(ProjectId(2))
+    );
+}
+
+#[test]
+fn a_folder_named_no_project_elsewhere_stays_a_folder() {
+    let workspace = load_json(
+        r#"{"version": 1, "next_id": 1,
+            "projects": [{"id": 0, "title": "No project", "path": "/tmp/No project", "created_at": 1}]}"#,
+    );
+    assert!(workspace.computer().is_none());
+    assert_eq!(workspace.projects()[0].kind, ProjectKind::Folder);
+}
