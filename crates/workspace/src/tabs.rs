@@ -6,7 +6,8 @@
 //! screen opens the project's draft, so a project on screen always shows
 //! something. That draft alone on screen can't close: closing it would only
 //! open it again. A used session opened while the draft is on screen takes
-//! the draft's tab instead of a new one.
+//! the draft's tab instead of a new one, and so does a page opened while that
+//! draft is the only tab on screen.
 
 use std::collections::HashSet;
 
@@ -36,19 +37,25 @@ impl Workspace {
     /// Shows a tab: opens it last unless it is open, and selects it. A session
     /// brings its project on screen; an unknown one changes nothing. A used
     /// session opened from the unused draft on screen takes the draft's tab: in
-    /// its place in the same project, last in another.
+    /// its place in the same project, last in another. A page opened while that
+    /// draft is the only tab on screen takes its place.
     pub fn open_tab(&mut self, tab: Tab) {
-        let mut draft = None;
-        if let Tab::Session(id) = tab {
-            let Some(project) = self.session(id).map(|session| session.project) else {
-                return;
-            };
-            draft = self
-                .selected
-                .filter(|&selected| self.is_draft(selected) && !self.is_draft(tab))
-                .map(|selected| (selected, self.project_on_screen == Some(project)));
-            self.project_on_screen = Some(project);
-        }
+        let draft_on_screen = self.selected.filter(|&selected| self.is_draft(selected));
+        let draft = match tab {
+            Tab::Session(id) => {
+                let Some(project) = self.session(id).map(|session| session.project) else {
+                    return;
+                };
+                let same_project = self.project_on_screen == Some(project);
+                self.project_on_screen = Some(project);
+                draft_on_screen
+                    .filter(|_| !self.is_draft(tab))
+                    .map(|draft| (draft, same_project))
+            }
+            Tab::Page(_) => draft_on_screen
+                .filter(|&draft| self.open_tabs() == [draft])
+                .map(|draft| (draft, true)),
+        };
         if !self.tabs.contains(&tab) {
             let place = draft.and_then(|(draft, same_project)| {
                 let index = self.tabs.iter().position(|&open| open == draft)?;

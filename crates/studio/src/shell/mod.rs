@@ -274,6 +274,11 @@ impl Shell {
         self.sidebar_width
     }
 
+    #[cfg(all(target_os = "macos", test))]
+    pub fn open_tabs(&self, cx: &App) -> Vec<Tab> {
+        self.store.read(cx).workspace().open_tabs()
+    }
+
     fn toggle_sidebar(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         cx.set_reduce_motion(accessibility::reduce_motion());
         self.sidebar_open = !self.sidebar_open;

@@ -4,6 +4,7 @@
 
 use crate::scene::{Scene, Settings};
 
+mod draft_tab;
 mod effort_menu;
 mod project_menu;
 mod sidebar_resize;

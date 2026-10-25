@@ -73,11 +73,48 @@ fn closing_a_selected_page_selects_its_neighbor_then_the_draft() {
 fn a_draft_beside_a_page_can_close() {
     let mut workspace = load_json(FIXTURE);
     let draft = workspace.new_session(ProjectId(1), Timestamp(100)).unwrap();
-    workspace.open_session(draft);
-    assert!(!workspace.can_close_tab(Tab::Session(draft)));
     workspace.open_page(Page::Design);
+    workspace.open_session(draft);
+    assert_eq!(workspace.open_tabs(), [DESIGN, Tab::Session(draft)]);
     workspace.close_tab(Tab::Session(draft), Timestamp(100));
     assert_eq!(workspace.open_tabs(), [DESIGN]);
+}
+
+#[test]
+fn a_page_opened_from_the_draft_alone_takes_its_tab() {
+    let mut workspace = load_json(FIXTURE);
+    workspace.open_session(SessionId(5));
+    let draft = workspace.new_session(ProjectId(1), Timestamp(100)).unwrap();
+    workspace.open_session(draft);
+    assert!(!workspace.can_close_tab(Tab::Session(draft)));
+    workspace.open_page(Page::Settings);
+    let settings = Tab::Page(Page::Settings);
+    assert_eq!(workspace.open_tabs(), [settings]);
+    assert_eq!(workspace.selected_tab(), Some(settings));
+    // The draft keeps its project on screen, and project 2's tab stays open.
+    assert_eq!(workspace.context_project(), Some(ProjectId(1)));
+    assert_eq!(workspace.tabs(), [session(5), settings]);
+
+    // Another page then opens beside it, and closing both brings the same draft back.
+    workspace.open_page(Page::Notes);
+    assert_eq!(workspace.open_tabs(), [settings, NOTES]);
+    workspace.close_all_tabs(Timestamp(200));
+    assert_eq!(workspace.open_tabs(), [Tab::Session(draft)]);
+
+    // Beside another tab, the draft keeps its own and the page opens last.
+    workspace.open_page(Page::Notes);
+    workspace.open_session(draft);
+    workspace.open_page(Page::Settings);
+    assert_eq!(
+        workspace.open_tabs(),
+        [NOTES, Tab::Session(draft), settings]
+    );
+
+    // A used session alone on screen keeps its tab.
+    let mut workspace = load_json(FIXTURE);
+    workspace.open_session(SessionId(3));
+    workspace.open_page(Page::Settings);
+    assert_eq!(workspace.open_tabs(), [session(3), settings]);
 }
 
 #[test]
